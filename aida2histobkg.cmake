@@ -20,7 +20,7 @@
 
 # CMakeLists.txt for event package. It creates a library with dictionary and a main program
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(aidafull)
+project(aida2histobkg)
 
 # You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
 #   - ROOT built with classic configure/make use the provided $ROOTSYS/etc/cmake/FindROOT.cmake
@@ -39,9 +39,9 @@ add_definitions(${ROOT_CXX_FLAGS})
 ROOT_GENERATE_DICTIONARY(G__AIDA AIDA.h LINKDEF AIDALinkDef.h)
 
 #---Create a shared library with geneated dictionary
-add_library(AIDA SHARED AIDA.cpp G__AIDA.cxx) # Link2Dictionary!
-target_link_libraries(AIDA ${ROOT_LIBRARIES})   # Link2Dictionary!
+add_library(AIDAbkg SHARED AIDA.cpp G__AIDA.cxx) # Link2Dictionary!
+target_link_libraries(AIDAbkg ${ROOT_LIBRARIES})   # Link2Dictionary!
 
 #---Create  a main program using the library
-add_executable(aidafull LuckyDollOrigin.cpp AIDAUnpacker.cpp BuildAIDAEvents.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEvents.h CommandLineInterface.h rawaida.h)
-target_link_libraries(aidafull AIDA)
+add_executable(aida2histbkg MakeBackgroundHisto.cpp AIDAUnpacker.cpp CommandLineInterface.cpp AIDAUnpacker.h CommandLineInterface.h rawaida.h)
+target_link_libraries(aida2histbkg AIDAbkg)

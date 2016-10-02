@@ -136,7 +136,7 @@ void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
     hit->SetADC(aidaraw.adcData);
     hit->SetEnergy((double)aidaraw.adcData);
     hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
-    hit->SetID(aidaraw.dssdNo * aidaraw.stripNo);
+    hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);
     hit->SetXY(aidaraw.stripNo);
     hit->SetZ(aidaraw.dssdNo);
     flocalaidaION->AddHit(hit);
@@ -150,7 +150,7 @@ void BuildAIDAEvents::AddAIDABetaHits(rawaida_info aidaraw){
     hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
     if ((flastfastts[aidaraw.feeNo][aidaraw.chNo] + fwindowDisc) > aidaraw.timestamp)
         hit->SetFastTimestamp(flastfasttsEXT[aidaraw.feeNo][aidaraw.chNo]);
-    hit->SetID(aidaraw.dssdNo * aidaraw.stripNo);
+    hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);
     hit->SetXY(aidaraw.stripNo);
     hit->SetZ(aidaraw.dssdNo);
     flocalaidaBETA->AddHit(hit);
@@ -178,8 +178,8 @@ bool BuildAIDAEvents::CloseBetaEvent()
     if(fverbose>0)
       cout << __PRETTY_FUNCTION__ << endl;
 
-    unsigned short* hitx= flocalaidaBETA->GetMultX();
-    unsigned short* hity= flocalaidaBETA->GetMultY();
+    unsigned short* hitx= flocalaidaBETA->GetMultXs();
+    unsigned short* hity= flocalaidaBETA->GetMultYs();
     unsigned short mult=flocalaidaBETA->GetMult();
 
     if (mult<64&&!fflag_trans&&(hitx[0]+hity[0]<8)&&(hitx[1]+hity[1]<8)&&(hitx[2]+hity[2]<8)&&(hitx[3]+hity[3]<8)&&(hitx[4]+hity[4]<8)&&(hitx[5]+hity[5]<8))

@@ -67,17 +67,17 @@ int main(int argc, char* argv[]){
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
-  interface->Add("-wi", "Ion event building window", &WindowIon);
-  interface->Add("-wb", "Beta event building window", &WindowBeta);
-  interface->Add("-wd", "Fast Discriminator Scan window", &WindowDiscriminator);
+  interface->Add("-wi", "Ion event building window (default: 2500*10ns)", &WindowIon);
+  interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
+  interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);
 
-  interface->Add("-map", "mapping file (default: FEE_table.txt)", &MappingFile);
+  interface->Add("-map", "mapping file", &MappingFile);
   interface->Add("-cal", "calibration file", &CalibrationFile);
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill", &FillFlag);
-  interface->Add("-tt", "aida transient time (20000?)", &TransientTime);
+  interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
 
 
   interface->CheckFlags(argc, argv);
@@ -238,7 +238,7 @@ int main(int argc, char* argv[]){
       }else if (!evts->IsBETA()){
           tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
       }
-      runtime[i+1] = (double)(tend-tstart)/(double)1e8;
+      runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
       runtime[0] += runtime[i+1];
       cout<<evts->GetCurrentBetaEvent()<<" beta events"<<endl;
       cout<<evts->GetCurrentIonEvent()<<" ion events"<<endl;

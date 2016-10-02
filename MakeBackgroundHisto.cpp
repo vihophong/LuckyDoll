@@ -41,7 +41,7 @@ int main(int argc, char* argv[]){
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
-  interface->Add("-map", "mapping file (default: FEE_table.txt)", &MappingFile);
+  interface->Add("-map", "mapping file", &MappingFile);
 
 
   interface->CheckFlags(argc, argv);
@@ -129,7 +129,7 @@ int main(int argc, char* argv[]){
             break;
           }
       }
-      runtime[i+1] = (double)(tend-tstart)/(double)1e8;
+      runtime[i+1] = runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
       runtime[0] += runtime[i+1];
       cout<<"nhits"<< aidaunpkg->GetHitNumber()<<endl;
       delete aidaunpkg;
@@ -142,7 +142,14 @@ int main(int argc, char* argv[]){
   runtime.Write("runtime");
   //tree->Write();
   ofile->Close();
-  runtime.Print();
+
+  cout<<"\n**********************SUMMARY**********************\n"<<endl;
+  cout<<"Total run length = "<<runtime[0]<< " seconds"<<endl;
+  cout<<"Sub runs length"<<endl;
+  for (Int_t i=0;i<nfiles;i++){
+      cout<<inputfiles[i]<<" - "<<runtime[i+1]<< " seconds"<<endl;
+  }
+
 
   //! Finish----------------
   double time_end = get_time();

@@ -39,9 +39,9 @@ add_definitions(${ROOT_CXX_FLAGS})
 ROOT_GENERATE_DICTIONARY(G__AIDA AIDA.h LINKDEF AIDALinkDef.h)
 
 #---Create a shared library with geneated dictionary
-add_library(AIDA SHARED AIDA.cpp G__AIDA.cxx) # Link2Dictionary!
-target_link_libraries(AIDA ${ROOT_LIBRARIES})   # Link2Dictionary!
+add_library(AIDA2ph SHARED AIDA.cpp G__AIDA.cxx) # Link2Dictionary!
+target_link_libraries(AIDA2ph ${ROOT_LIBRARIES})   # Link2Dictionary!
 
 #---Create  a main program using the library
-add_executable(aidafull LuckyDollOrigin.cpp AIDAUnpacker.cpp BuildAIDAEvents.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEvents.h CommandLineInterface.h rawaida.h)
-target_link_libraries(aidafull AIDA)
+add_executable(aida2pulser MakePulserHisto.cpp AIDAUnpacker.cpp BuildAIDAEvents.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEvents.h CommandLineInterface.h rawaida.h)
+target_link_libraries(aida2pulser AIDA2ph)

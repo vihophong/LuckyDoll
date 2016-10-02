@@ -305,7 +305,7 @@ public:
       fhits.push_back(hit);
       //! newly added
       Int_t z=(Int_t)hit->GetZ();
-      if (hit->GetXY() < 64) fmultx[z]++;
+      if (hit->GetXY() < NumStrX) fmultx[z]++;
       else fmulty[z]++;
       fmult++;
     }
@@ -391,9 +391,15 @@ public:
     unsigned short GetMult(){return fmult;}
 
     //! Returns the X strip multiplicity of the event
-    unsigned short* GetMultX(){return fmultx;}
+    unsigned short* GetMultXs(){return fmultx;}
     //! Returns the Y strip multiplicity of the event
-    unsigned short* GetMultY(){return fmulty;}
+    unsigned short* GetMultYs(){return fmulty;}
+
+    //! Returns the X strip in dssd multiplicity of the event
+    unsigned short GetMultX(short dssd){return fmultx[dssd];}
+    //! Returns the Y strip in dssd multiplicity of the event
+    unsigned short GetMultY(short dssd){return fmulty[dssd];}
+
 
     unsigned short* GetNClustersZ(){return fnclustersz;}
 

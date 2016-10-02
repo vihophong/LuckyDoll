@@ -474,7 +474,7 @@ void AIDAUnpacker::read_threshold_table(char* inf)
     }
     ifstream inpf(inf);
     if (inpf.fail()){
-        cout<<"Invalid file path!"<<endl;
+        cout<<"No Threshold file given!"<<endl;
         return;
     }
     cout<<"Start reading threshold table from "<<inf<<endl;

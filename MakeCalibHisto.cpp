@@ -7,6 +7,8 @@
 #include "TFile.h"
 #include "TROOT.h"
 #include "TTree.h"
+#include "TH1.h"
+#include "TH2.h"
 #include "TCutG.h"
 #include "TKey.h"
 #include "TStopwatch.h"
@@ -23,7 +25,24 @@ bool signal_received = false;
 void signalhandler(int sig);
 double get_time();
 
+
+typedef struct {
+    unsigned long long T; 	 // Calibrated time
+    unsigned long long Tfast;
+    double E; 	 // Energy
+    double EX;
+    double EY;
+    double x,y,z;// number of pixel for AIDA, or number of tube for BELEN
+    unsigned char ID; 	 // Detector type (BigRips, Aida ion, AIDA beta, BELEN, Clovers)
+    //** other stuff pending to define **//
+} datatype;
+
+
+const unsigned char IDion = 4;
+const unsigned char IDbeta = 5;
+
 int main(int argc, char* argv[]){
+
   //! Program start time
   double time_start = get_time();
   TStopwatch timer;
@@ -31,13 +50,15 @@ int main(int argc, char* argv[]){
   //! Add signal handler
   signal(SIGINT,signalhandler);
 
-  cout << "AIDA event builder" << endl;
+  cout << "Generate Pulser or 207Bi calibration spectra" << endl;
   int Verbose = 0;
+  int Mode = NULL;
+  int Mult = 1;
   long long int WindowIon = 2500; //time unit: 10 ns
   long long int WindowBeta = 2500; //time unit: 10 ns
   long long int WindowDiscriminator = 0;
 
-  int FillFlag = 0;
+
   long long int TransientTime = 20000;
 
   char* InputAIDA = NULL;
@@ -50,21 +71,36 @@ int main(int argc, char* argv[]){
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
-  interface->Add("-wi", "Ion event building window", &WindowIon);
-  interface->Add("-wb", "Beta event building window", &WindowBeta);
-  interface->Add("-wd", "Fast Discriminator Scan window", &WindowDiscriminator);
+  interface->Add("-wi", "Ion event building window (default: 2500*10ns)", &WindowIon);
+  interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
+  interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);
 
-  interface->Add("-map", "mapping file (default: FEE_table.txt)", &MappingFile);
+  interface->Add("-map", "mapping file ", &MappingFile);
   interface->Add("-cal", "calibration file", &CalibrationFile);
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
-  interface->Add("-f", "fill data or not: 1 fill data 0 no fill", &FillFlag);
-  interface->Add("-tt", "aida transient time (20000?)", &TransientTime);
-
+   interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
+   interface->Add("-m", " mode selection: 1: pulser spectra 2: source spectra", &Mode);
+   interface->Add("-mult", " Multiplicity condition (<=) in X and Y strips (for source spectra mode)", &Mult);
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
+
+  if(Mode == NULL){
+    cout << "No Mode selection given " << endl;
+    return 1;
+  }
+  if(Mode >2 || Mode <1){
+    cout << "Invalid Mode selection " << endl;
+    return 1;
+  }
+
+
+  if(Mult == 1){
+    cout << "Use default multiplicity < 1 " << endl;
+    //return 1;
+  }
 
   if(InputAIDA == NULL){
     cout << "No AIDA input list of files given " << endl;
@@ -76,10 +112,14 @@ int main(int argc, char* argv[]){
   }
   if(ThresholdFile == NULL){
     cout << "No Threshold table given " << endl;
-    return 1;
+    ThresholdFile = new char[100];
+    strcpy(ThresholdFile,"dummy2312039290");
+    //return 1;
   }
   if(CalibrationFile == NULL){
     cout << "No Calibration table given " << endl;
+    CalibrationFile = new char[100];
+    strcpy(CalibrationFile,"dummy2312039290");
     //return 1;
   }
   if(OutFile == NULL){
@@ -94,9 +134,10 @@ int main(int argc, char* argv[]){
   ofile->cd();
 
   //! Book tree and histograms
-  TTree* treeion=new TTree("ion","tree ion");
-  TTree* treebeta=new TTree("beta","tree beta");
-  TTree* treepulser=new TTree("pulser","tree pulser");
+  TH2F* spectra=new TH2F ("spectra","spectra",NumDSSD*(NumStrX+NumStrY),0,NumDSSD*(NumStrX+NumStrY),4000,0,24000);
+  TH2F* calibspectra=new TH2F ("calibspectra","calibspectra",NumDSSD*(NumStrX+NumStrY),0,NumDSSD*(NumStrX+NumStrY),4000,0,24000);
+
+
 
   //! Read list of files
   string inputfiles[1000];
@@ -122,7 +163,6 @@ int main(int argc, char* argv[]){
   for (Int_t i=0;i<nfiles;i++){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
       evts->SetVerbose(Verbose);
-      if (FillFlag) evts->BookTree(treeion,treebeta,treepulser);
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
@@ -132,6 +172,8 @@ int main(int argc, char* argv[]){
       evts->SetEventWindowBETA(WindowBeta);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
+      if (Mode == 1) evts->SetPulserInStream(true);
+      else evts->SetPulserInStream(false);
       evts->Init((char*)inputfiles[i].c_str());
       double time_last = (double) get_time();
 
@@ -143,24 +185,56 @@ int main(int argc, char* argv[]){
       long long tend;
       int start=0;
 
+      double local_time_start = get_time();
+
       //!event loop
       while(evts->GetNextEvent()){
           ttotal++;
           ctr=evts->GetCurrentADBlock();
           if(ctr%1000 == 0){
             int nevtbeta = evts->GetCurrentBetaEvent();
-            int nevtion = evts->GetCurrentIonEvent();
+            int nevtpulser = evts->GetCurrentPulserEvent();
             double time_end = get_time();
             cout << inputfiles[i] << setw(5) << setiosflags(ios::fixed) << setprecision(1) << (100.*ctr)/total<<" % done\t" <<
-              (Float_t)ctr/(time_end - time_start) << " blocks/s " <<
-              (Float_t)nevtbeta/(time_end - time_start) <<" betas/s  "<<
-               (Float_t)nevtion/(time_end - time_start) <<" ions/s "<<
-               (total-ctr)*(time_end - time_start)/(Float_t)ctr << "s to go | ";
-            if (evts->IsBETA()) cout<<"beta: x"<<evts->GetAIDABeta()->GetCluster(0)->GetHitPositionX()<<"y"<<
-                                       evts->GetAIDABeta()->GetCluster(0)->GetHitPositionY()<<"\r"<< flush;
-            else cout<<"ion: x"<<evts->GetAIDAIon()->GetCluster(0)->GetHitPositionX()<<"y"<<
-                       evts->GetAIDAIon()->GetCluster(0)->GetHitPositionY()<<"\r"<<flush;
+              (Float_t)ctr/(time_end - local_time_start) << " blocks/s " <<
+              (Float_t)nevtbeta/(time_end - local_time_start) <<" betas/s  "<<
+                (Float_t)nevtpulser/(time_end - local_time_start) <<" pulsers/s  "<<
+               (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r "<<flush;
             time_last = time_end;
+          }
+          if ((Mode==1) && evts->IsBETA() && evts->GetAIDABeta()->GetMult()>64) { //pulser mode
+              for (Int_t i = 0;i<evts->GetAIDABeta()->GetMult();i++){
+                  int adc = evts->GetAIDABeta()->GetHit(i)->GetADC();
+                  double energy = evts->GetAIDABeta()->GetHit(i)->GetEnergy();
+                  short z =  evts->GetAIDABeta()->GetHit(i)->GetZ();
+                  short xy = evts->GetAIDABeta()->GetHit(i)->GetXY();
+                  if (xy<NumStrX) {
+                      spectra->Fill(xy + z*NumStrX,adc);
+                      calibspectra->Fill(xy + z*NumStrX,energy);
+                  }else{
+                      spectra->Fill((xy - NumStrX) + z*NumStrY + NumDSSD*NumStrX,adc);
+                      calibspectra->Fill((xy - NumStrX) + z*NumStrY + NumDSSD*NumStrX,energy);
+                  }
+              }
+          }
+          if ((Mode==2) && evts->IsBETA() && evts->GetAIDABeta()->GetMult()<64) { //beta mode
+              for (Int_t i = 0;i<evts->GetAIDABeta()->GetMult();i++){
+                  int adc = evts->GetAIDABeta()->GetHit(i)->GetADC();
+                  double energy = evts->GetAIDABeta()->GetHit(i)->GetEnergy();
+                  short z =  evts->GetAIDABeta()->GetHit(i)->GetZ();
+                  short xy = evts->GetAIDABeta()->GetHit(i)->GetXY();
+                  if (xy<NumStrX) {
+                      if (evts->GetAIDABeta()->GetMultX(z) <= (unsigned short) Mult){
+                          spectra->Fill(xy + z*NumStrX,adc);
+                          calibspectra->Fill(xy + z*NumStrX,energy);
+                      }
+                  }else{
+                      if (evts->GetAIDABeta()->GetMultY(z) <= (unsigned short) Mult){
+                          spectra->Fill((xy - NumStrX) + z*NumStrY + NumDSSD*NumStrX,adc);
+                          calibspectra->Fill((xy - NumStrX) + z*NumStrY + NumDSSD*NumStrX,energy);
+                      }
+                  }
+              }
           }
 
           //!Get run time
@@ -171,6 +245,7 @@ int main(int argc, char* argv[]){
               tstart = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
               start++;
           }
+
           if(signal_received){
             break;
           }
@@ -183,20 +258,24 @@ int main(int argc, char* argv[]){
       runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
       runtime[0] += runtime[i+1];
       cout<<evts->GetCurrentBetaEvent()<<" beta events"<<endl;
-      cout<<evts->GetCurrentIonEvent()<<" ion events"<<endl;
-      cout<<ttotal<<" all events (beta+ion)"<<endl;
       cout<<evts->GetCurrentPulserEvent()<<" pulser events"<<endl;
+      cout<<ttotal<<" all events"<<endl;
       delete evts;
   }
-  if (FillFlag){
-      treeion->Write();
-      treebeta->Write();
-      treepulser->Write();
-      runtime.Write("runtime");
-  }
+
+  spectra->Write();
+  calibspectra->Write();
+  runtime.Write("runtime");
+
   ofile->Close();
 
-  runtime.Print();
+  cout<<"\n**********************SUMMARY**********************\n"<<endl;
+  cout<<"Total run length = "<<runtime[0]<< " seconds"<<endl;
+  cout<<"Sub runs length"<<endl;
+  for (Int_t i=0;i<nfiles;i++){
+      cout<<inputfiles[i]<<" - "<<runtime[i+1]<< " seconds"<<endl;
+  }
+  //runtime.Print();
   //! Finish----------------
   double time_end = get_time();
   cout << "\nProgram Run time: " << time_end - time_start << " s." << endl;

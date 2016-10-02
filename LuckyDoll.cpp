@@ -36,8 +36,8 @@ typedef struct {
 } datatype;
 
 
-const uint8_t IDion = 4;
-const uint8_t IDbeta = 5;
+const unsigned char IDion = 4;
+const unsigned char IDbeta = 5;
 
 int main(int argc, char* argv[]){
 

@@ -11,7 +11,6 @@
 #include "TKey.h"
 #include "TStopwatch.h"
 #include "TClonesArray.h"
-#include "TArtEventInfo.hh"
 #include "CommandLineInterface.h"
 #include "AIDAUnpacker.h"
 
@@ -29,60 +28,29 @@ int main(int argc, char* argv[]){
   //! Add signal handler
   signal(SIGINT,signalhandler);
 
-  cout << "Grand Merger for BigRIPS, AIDA and BRIKEN" << endl;
-  int LastEvent = -1;
+  cout << "AIDA Unpacker: Convert raw data into root tree files with no events structure (only hits)" << endl;
   int Verbose = 0;
-  long long int Window = 10000; //time unit: 10 ns
-  long long int offsetBigripsAIDA=-1200;
-  long long int offsetBigripsEurica=0;
-
-  int Mode = 0;
-  char* InputBigRIPS = NULL;
   char* InputAIDA = NULL;
-  char* InputBRIKEN = NULL;
-  char* InputEURICA = NULL;
   char* OutFile = NULL;
-  char* CalibrationFile = NULL;
   char* ThresholdFile = NULL;
   char* MappingFile = NULL;
   //char* CutFile = NULL;
   //Read in the command line arguments
   CommandLineInterface* interface = new CommandLineInterface();
-  interface->Add("-b", "BigRIPS input file", &InputBigRIPS);
-  interface->Add("-e", "EURICA input file", &InputEURICA);
   interface->Add("-a", "AIDA input file", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
   //interface->Add("-c", "cutfile", &CutFile);
-
-  interface->Add("-ba", "time stamp offset Bigrips (minus) AIDA", &offsetBigripsAIDA);
-  interface->Add("-be", "time stamp offset Bigrips (minus) EURICA", &offsetBigripsEurica);
-  interface->Add("-w", "event building window", &Window);
-  interface->Add("-m", "event building mode: 0 everything, 1 isomerdata, 2 beta, 3 both", &Mode);
-  interface->Add("-le", "last event to be read", &LastEvent);
   interface->Add("-v", "verbose level", &Verbose);
-
   interface->Add("-map", "mapping file (default: FEE_table.txt)", &MappingFile);
-  interface->Add("-cal", "calibration file", &CalibrationFile);
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
-  if(InputBigRIPS == NULL){
-    cout << "No BigRIPS input file given " << endl;
-    //return 1;
-  }
-  if(InputEURICA == NULL){
-    cout << "No EURICA input file given " << endl;
-    //return 1;
-  }
+
   if(InputAIDA == NULL){
     cout << "No AIDA input file given " << endl;
     return 1;
-  }
-  if(InputBRIKEN == NULL){
-    cout << "No BRIKEN input file given " << endl;
-    //return 1;
   }
   if(MappingFile == NULL){
     cout << "No Mapping file given " << endl;

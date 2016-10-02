@@ -11,7 +11,6 @@
 #include "TKey.h"
 #include "TStopwatch.h"
 #include "TClonesArray.h"
-#include "TArtEventInfo.hh"
 #include "CommandLineInterface.h"
 #include "AIDAUnpacker.h"
 #include "BuildAIDAEvents.h"
@@ -60,7 +59,7 @@ int main(int argc, char* argv[]){
   interface->Add("-cal", "calibration file", &CalibrationFile);
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
-  interface->Add("-f", "fill data or not: 0 fill data 1 no fill", &FillFlag);
+  interface->Add("-f", "fill data or not: 1 fill data 0 no fill", &FillFlag);
   interface->Add("-tt", "aida transient time (20000?)", &TransientTime);
 
 

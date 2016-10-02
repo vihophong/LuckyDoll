@@ -16,5 +16,11 @@ make
 
 ## To run
 ./aida
+or
+./aidafull
+or
+./aida2tree
+or
+./aida2histo
 
 then follow the instruction

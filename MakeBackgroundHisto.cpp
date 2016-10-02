@@ -11,7 +11,6 @@
 #include "TKey.h"
 #include "TStopwatch.h"
 #include "TClonesArray.h"
-#include "TArtEventInfo.hh"
 #include "CommandLineInterface.h"
 #include "AIDAUnpacker.h"
 #include "TH1.h"

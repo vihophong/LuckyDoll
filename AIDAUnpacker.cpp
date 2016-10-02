@@ -2,14 +2,22 @@
 
 AIDAUnpacker::AIDAUnpacker():midas(),rawaida(),finfile()
 {
+    fenableFastDisc = false;
     rawtree=NULL;
+    //! Default threshold
+    for (int i=0;i<NumDSSD;i++){
+        for (int j=0;j<NumStrXY;j++){
+            dssd_thr[i][j]=0.;
+        }
+    }
+    for (int i=0;i<NumFee;i++) for (int j=0;j<NumChFee;j++) chMask[i][j]=1;
 }
 
 AIDAUnpacker::~AIDAUnpacker(){
 
 }
 
-void AIDAUnpacker::Init(char* inputfile){
+void AIDAUnpacker::Init(char *inputfile){
     fverbose = 0;
     first_scan_flag=true;
     fillFlag = true;
@@ -75,7 +83,6 @@ void AIDAUnpacker::ClearSorter(){
         MBS_bits[i][0]=0;
         MBS_bits[i][1]=0;
         my_tm_stp_msb=0;
-        for (int j=0;j<NumChFee;j++) chMask[i][j]=1;
     }
     my_time_offset=0;
     tm_stp_prev=0;
@@ -167,14 +174,30 @@ bool AIDAUnpacker::GetNextHitMIDAS(){
 bool AIDAUnpacker::GetNextHit(){
     if (GetNextHitMIDAS()){
         //! reconstruct raw aida data  here
-        if (!first_scan_flag)
-        while(!ReconstructRawAIDA()){
-            if (!GetNextHitMIDAS())
-                return false;
+        if (!first_scan_flag){
+            while(!ReconstructRawAIDA()){
+                if (!GetNextHitMIDAS())
+                    return false;
+            }
+        }else{
+            ReconstructRawAIDA();
         }
-        ReconstructRawAIDA();
-        if (rawtree!=NULL&&!first_scan_flag) rawtree->Fill();
-        rawaida.evt++;
+
+        if (rawtree!=NULL&&!first_scan_flag) {
+            if (ts_prev==rawaida.timestamp&&prev_rt==rawaida.rangeType&&prev_fee==rawaida.feeNo&&prev_ch==rawaida.chNo)
+                cout<<"duplicate entry found!"<<rawaida.feeNo <<
+                      " cr blk"<<fcurrentblk<<" prev blk"<<prev_blk<<
+                      " cr pkg"<<fcurrentpkg<<" prev pkg"<<prev_pkg<<endl;
+            ts_prev=rawaida.timestamp;
+            prev_rt=rawaida.rangeType;
+            prev_fee=rawaida.feeNo;
+            prev_ch=rawaida.chNo;
+            prev_blk=fcurrentblk;
+            prev_pkg=fcurrentpkg;
+            rawtree->Fill();
+            ncheck++;
+            rawaida.evt++;
+        }
         return true;
     }else{
         return false;
@@ -206,6 +229,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
     // get status of flags from previous entry
     sync_flag=sync_flag_modules[midas.feeId];
     pause_flag=pause_flag_modules[midas.feeId];
+
 
     fillFlag=true;
     if ((feeMask>>midas.feeId)&0x1==0){
@@ -332,7 +356,6 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
         }// if (midas.infoCode==8)
     }//if great info data
 
-
     //Skip uninteresting piece of data!
     if(fillFlag&&!first_scan_flag){
         //get time stamp which include msb
@@ -372,24 +395,27 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             }else{
                 rawaida.extTimestamp=(my_time_offset+rawaida.timestamp)/tm_stp_scaler_ratio; //convert to ext timestamp unit
             }
-            //! Masking for slow discriminator data
-            if (rawaida.infoCode==0&&chMask[rawaida.feeNo][rawaida.chNo]){
-                if (rawaida.infoCode==0) corrTS->Fill(rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp);
-            }else{
-                fillFlag=false;
-            }
 
-            //! masking for data less than threshold
-            if (flag_threhold&&rawaida.infoCode==0&&rawaida.adcData<dssd_thr[rawaida.dssdNo][rawaida.stripNo])
-                fillFlag=false;
 
 
             //!Check global time warps
             if (tm_stp_prev>rawaida.timestamp){
-                cout<<"AIDA time stamp has gone down!"<<std::dec<<tm_stp_prev<<"--"<<rawaida.timestamp<<endl;
+                cout<<"AIDA time stamp has gone down!"<<std::dec<<tm_stp_prev<<"--"<<rawaida.timestamp<<" fee"<<rawaida.feeNo<<endl;
                 fillFlag=false;
             }
             tm_stp_prev=rawaida.timestamp;
+
+            //! Masking for slow discriminator data
+            if (rawaida.infoCode==0&&rawaida.rangeType==0){
+                if(chMask[rawaida.feeNo][rawaida.chNo]){
+                    if (rawaida.infoCode==0) corrTS->Fill(rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp);
+                }else{
+                    fillFlag=false;
+                }
+                //! masking for data less than threshold
+                if (flag_threhold&&rawaida.adcData<dssd_thr[rawaida.dssdNo][rawaida.stripNo])
+                    fillFlag=false;
+            }
 
         }else{ //fail sync flag
             fillFlag=false;
@@ -398,6 +424,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
         fillFlag=false;
     }
 
+    if (!(rawaida.infoCode==0||(fenableFastDisc&&rawaida.infoCode==6))) return false;
     return fillFlag;
 }
 
@@ -424,6 +451,11 @@ void AIDAUnpacker::read_mapping(char* mapping_file){
         //std::cout<<FEE_index<<ch_index<<DSSD_index<<strip_index<<std::endl;
         FEEtoDSSD[FEE_index][ch_index]=DSSD_index;
         FEEtoStrip[FEE_index][ch_index]=strip_index;
+
+        //! reverse mapping!
+        DSSDtoFee[DSSD_index][strip_index]=FEE_index;
+        DSSDtoCh[DSSD_index][strip_index]=ch_index;
+
         chMask[FEE_index][ch_index]=ch_mask;
         lineread++;
     }
@@ -504,11 +536,12 @@ int AIDAUnpacker::GetFirstSync(){
     //!Read header of the first block
     fcurrentblk = 0;
     ReadHeader();
+    ncheck=0;
 }
 
-int AIDAUnpacker::BookTree()
+int AIDAUnpacker::BookTree(TTree *tree)
 {
-    rawtree=new TTree("tree","aida raw tree");
+    rawtree=tree;
     rawtree->Branch("evt",&rawaida.evt,"evt/L");
     rawtree->Branch("timestamp",&rawaida.timestamp,"timestamp/L");
     rawtree->Branch("extTimestamp",&rawaida.extTimestamp,"extTimestamp/L");

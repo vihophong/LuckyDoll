@@ -30,6 +30,9 @@ public:
     //!Set verbose level
     void SetVerbose(int verbose){fverbose = verbose;}
 
+    //! Enable fast discriminator
+    void EnableFastDiscriminator(){fenableFastDisc = true;}
+
     //! Set current block
     void SetCurrentBlock(int currentblock){fcurrentblk=currentblock;}
 
@@ -59,6 +62,7 @@ public:
 
     //! Get number of good hits
     Long64_t GetHitNumber(){return rawaida.evt;}
+    //Long64_t GetHitNumber(){return ncheck;}
 
     //! Read mapping
     void read_mapping(char* mapping_file);
@@ -70,9 +74,14 @@ public:
     TH1F* GetCorrScalerHisto(){return corrTS;}
 
     //! Book a tree
-    int BookTree();
+    int BookTree(TTree* tree);
     //! Get a tree
     TTree* GetTree(){return rawtree;}
+
+    //! reverse mapping (accesible)
+    int DSSDtoFee[NumFee][NumChFee];
+    int DSSDtoCh[NumFee][NumChFee];
+
 
 private:
     //! file path
@@ -81,6 +90,10 @@ private:
     ifstream finfile;
     //! verbose level
     int fverbose;
+
+    //! enable fast disc
+    bool fenableFastDisc;
+
     //! Correlation scaler histogram
     TH1F* corrTS;
     TTree* rawtree;
@@ -182,6 +195,16 @@ private:
     bool checkCoincidence(const unsigned long t1, const unsigned long t2, const unsigned long t3, unsigned long dt);
 
     void ClearSorter();
+
+    //! trivial
+    long long ts_prev;
+    int prev_ch;
+    int prev_fee;
+    int prev_rt;
+    int prev_blk;
+    int prev_pkg;
+    int ncheck;
+
 };
 
 #endif // AIDAUNPACKER_H

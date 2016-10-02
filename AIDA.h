@@ -18,6 +18,7 @@ public:
   AIDAHit(){
     Clear();
   }
+  virtual ~AIDAHit(){}
   //! constructor with individual values
   AIDAHit(short range, short id, int xy, int z, double en, int adc,unsigned short hitsadded, unsigned long long int ts){
     fid = id;
@@ -34,10 +35,11 @@ public:
       fid = 0;
       fxy = 0;
       fz = 0;
-      fadc = 0;
-      fen = 0;
+      fadc = -9999;
+      fen = -9999.;
       fhitsadded = 0;
       fts = 0;
+      ffastts = 0;
       frange = 0;
   }
 
@@ -63,6 +65,9 @@ public:
   void SetADC(int adc){fadc = adc;}
   //! Set the timestamp
   void SetTimestamp(unsigned long long int ts){fts = ts;}
+  //! Set the fast timestamp
+  void SetFastTimestamp(unsigned long long int fts){ffastts = fts;}
+
   //! Set current hits
   void SetHitsAdded(unsigned short hitsadded){fhitsadded = hitsadded;}
 
@@ -80,6 +85,9 @@ public:
 
   //! Get the timestamp
   unsigned long long int GetTimestamp(){return fts;}
+  //! Get the fast timestamp
+  unsigned long long int GetFastTimestamp(){return ffastts;}
+
   //! Get the raw ADC value
   int GetADC(){return fadc;}
   //! Get current hits
@@ -111,6 +119,8 @@ protected:
   int fadc;
   //! the timestamp
   unsigned long long fts;
+  unsigned long long ffastts;
+
 
   //! current hits
   unsigned short fhitsadded;
@@ -127,6 +137,7 @@ public:
   AIDACluster(){
     Clear();
   }
+  virtual ~AIDACluster(){}
   //! constructor with individual values
   AIDACluster(unsigned short x, unsigned short y, unsigned short z, unsigned short multx,unsigned short multy,
               double xenergy,double yenergy,unsigned short clustersadded, unsigned long long int ts)
@@ -148,7 +159,7 @@ public:
       fclustersadded=0;
   }
   //! Set XY
-  void SetHitPosition(short x,short y,short z){fpos.SetXYZ(x,y,z);}
+  void SetHitPosition(double x,double y,double z){fpos.SetXYZ(x,y,z);}
 
   //! Set the X strips sum energy
   void SetXEnergy(double xenergy){fsumenx = xenergy;}
@@ -162,6 +173,10 @@ public:
 
   //! Set the timestamp
   void SetTimestamp(unsigned long long int ts){fcts = ts;}
+
+  //! Set the fast timestamp
+  void SetFastTimestamp(unsigned long long int fts){fcfastts = fts;}
+
   //! Set current cluster number
   void SetClustersAdded(unsigned short clustersadded){fclustersadded = clustersadded;}
 
@@ -183,6 +198,10 @@ public:
 
   //! Get the timestamp
   unsigned long long int GetTimestamp(){return fcts;}
+
+  //! Get the fast timestamp
+  unsigned long long int GetFastTimestamp(){return fcfastts;}
+
   //! Get current cluster number
   unsigned short GetClustersAdded(){return fclustersadded;}
 
@@ -203,6 +222,10 @@ public:
 protected:
   //! translate into the DSSDs coordinator
   TVector3 fpos;
+
+  //! store the hit number
+  vector<short*> fhitsno;
+
   //! the energy lab system
   double fsumenx;
   double fsumeny;
@@ -211,8 +234,12 @@ protected:
   unsigned short fnx;
   unsigned short fny;
 
-  //! the timestamp
+  //! the ealiest timestamp
   unsigned long long fcts;
+
+  //! the ealiest fast timestamp
+  unsigned long long fcfastts;
+
   //! current hits
   unsigned short fclustersadded;
 
@@ -235,17 +262,36 @@ public:
       }
       Clear();
     }
+    virtual ~AIDA(){}
     //! Clear the AIDA information
     void Clear(Option_t *option = ""){
 
       fmult = 0;
+      fnclusters = 0;
+      fmaxz = -1;
+      /*
       for (int i=0;i<NumDSSD;i++){
           fmultx[i]=0;
           fmulty[i]=0;
       }
-      fnclusters=0;
+      */
+      memset(fmultx,0,sizeof(fmultx));
+      memset(fmulty,0,sizeof(fmulty));
+
+      memset(fnclustersz,0,sizeof(fnclustersz));
+
+
+      //! Dealocating memory
+      for (size_t idx=0;idx<fhits.size();idx++){
+          delete fhits[idx];
+      }
       fhits.clear();
+
+      for (size_t idx=0;idx<fclusters.size();idx++){
+          delete fclusters[idx];
+      }
       fclusters.clear();
+
       ftype=0;
 
     }
@@ -256,10 +302,7 @@ public:
     void AddHit(AIDAHit* hit){
       //!newly added
       hit->SetHitsAdded(fmult);
-
       fhits.push_back(hit);
-
-
       //! newly added
       Int_t z=(Int_t)hit->GetZ();
       if (hit->GetXY() < 64) fmultx[z]++;
@@ -271,7 +314,9 @@ public:
     void AddHits(vector<AIDAHit*> hits){
       fmult += hits.size();
       for(vector<AIDAHit*>::iterator hit=hits.begin(); hit!=hits.end(); hit++){
-        fhits.push_back(*hit);
+          //set hit add here!
+          //
+          fhits.push_back(*hit);
       }
     }
 
@@ -281,10 +326,23 @@ public:
       fhits = hits;
     }
 
+    //! Set the X strip multiplicity of the event
+    void SetMultX(unsigned short multx[NumDSSD]){
+        memcpy(fmultx,multx,NumDSSD*sizeof(unsigned short));
+    }
+
+    //! Set the Y strip multiplicity of the event
+    void SetMultY(unsigned short multy[NumDSSD]){
+        memcpy(fmulty,multy,NumDSSD*sizeof(unsigned short));
+    }
+
 
     //! Add a cluster
     void AddCluster(AIDACluster* cluster){
+      cluster->SetClustersAdded(fnclusters);
       fclusters.push_back(cluster);
+      int Z=(int) cluster->GetHitPositionZ();
+      fnclustersz[Z]++;
       fnclusters++;
     }
 
@@ -301,7 +359,8 @@ public:
       fnclusters = clusters.size();
       fclusters = clusters;
     }
-
+    //! Set max Z (for ion event)
+    void SetMaxZ(unsigned short maxz){fmaxz = maxz;}
     //! Set event type
     void SetType(short type){ftype = type;}
     //! Set event type
@@ -330,6 +389,14 @@ public:
     unsigned long long GetTimestamp(){return faidats;}
     //! Returns the multiplicity of the event
     unsigned short GetMult(){return fmult;}
+
+    //! Returns the X strip multiplicity of the event
+    unsigned short* GetMultX(){return fmultx;}
+    //! Returns the Y strip multiplicity of the event
+    unsigned short* GetMultY(){return fmulty;}
+
+    unsigned short* GetNClustersZ(){return fnclustersz;}
+
     //! Returns the number of clusters
     unsigned short GetNClusters(){return fnclusters;}
 
@@ -338,6 +405,8 @@ public:
     //! Returns the hit number n
     AIDACluster* GetCluster(unsigned short n){return fclusters.at(n);}
 
+    //! Return max Z (for ion event)
+    unsigned short GetMaxZ(){return fmaxz;}
 
     //! Returns the whole vector of hits
     vector<AIDAHit*> GetHits(){return fhits;}
@@ -368,14 +437,21 @@ public:
         fclusters.at(i)->Print();
     }
 
+    //! Get beta hit positions and fill in the cluster vector (clustering algorithms)
+    //! Return true if there is at least 1 cluster identifed! otherwise return false
+
+    //! Beta position
+    bool BetaGetPos(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
+    //! Ion position
+    bool IonGetPos();
 
   protected:
-    //! type of event: 0 beta  1 ion
     unsigned long long faidats;
-
+    //! type of event: 0 beta  1 ion
     short ftype;
     //! total multiplicity
     unsigned short fmult;
+
     //! x multiplicity
     unsigned short fmultx[NumDSSD];
     //! y multiplicity
@@ -384,10 +460,18 @@ public:
     //! total clusters
     unsigned short fnclusters;
 
-    //Threshold table
-    Double_t           fdssd_thr[NumDSSD][NumStrXY];
-    //Calibration table
-    Double_t           fdssd_cal[NumDSSD][NumStrXY][2];
+    //! total clusters
+    unsigned short fnclustersz[NumDSSD];
+
+    //! max hit position
+    unsigned short fmaxz;
+
+    //!Threshold table
+    Double_t fdssd_thr[NumDSSD][NumStrXY];
+
+    //!Calibration table
+    Double_t fdssd_cal[NumDSSD][NumStrXY][2];
+
 
     //! vector with the hits
     vector<AIDAHit*> fhits;

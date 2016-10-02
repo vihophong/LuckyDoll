@@ -106,12 +106,10 @@ int main(int argc, char* argv[]){
   aidaunpkg->Init(InputAIDA);
 
   //!Book a tree
-  aidaunpkg->BookTree();
-
+  //aidaunpkg->BookTree();
   aidaunpkg->read_mapping(MappingFile);
   cout<<"maa"<<endl;
   if (ThresholdFile!=NULL) aidaunpkg->read_threshold_table(ThresholdFile);
-
   aidaunpkg->SetVerbose(Verbose);
 
   cout<<"Trying to get first Sync...."<<endl;
@@ -136,7 +134,8 @@ int main(int argc, char* argv[]){
         break;
       }
   }
-  aidaunpkg->GetTree()->Write();
+  cout<<"nhits"<< aidaunpkg->GetHitNumber()<<endl;
+  //aidaunpkg->GetTree()->Write();
   ofile->Close();
 
   //! Finish----------------

@@ -11,6 +11,7 @@
 #include "TKey.h"
 #include "TStopwatch.h"
 #include "TClonesArray.h"
+#include "TArtEventInfo.hh"
 #include "CommandLineInterface.h"
 #include "AIDAUnpacker.h"
 #include "BuildAIDAEvents.h"
@@ -22,22 +23,6 @@ using namespace std;
 bool signal_received = false;
 void signalhandler(int sig);
 double get_time();
-
-
-typedef struct {
-    unsigned long long T; 	 // Calibrated time
-    unsigned long long Tfast;
-    double E; 	 // Energy
-    double EX;
-    double EY;
-    double x,y,z;// number of pixel for AIDA, or number of tube for BELEN
-    uint8_t ID; 	 // Detector type (BigRips, Aida ion, AIDA beta, BELEN, Clovers)
-    //** other stuff pending to define **//
-} datatype;
-
-
-const uint8_t IDion = 4;
-const uint8_t IDbeta = 5;
 
 int main(int argc, char* argv[]){
   //! Program start time
@@ -110,12 +95,9 @@ int main(int argc, char* argv[]){
   ofile->cd();
 
   //! Book tree and histograms
-  TTree* tree=new TTree("aida","aida tree ion and beta)");
-  datatype aida;
-  if (FillFlag){
-      tree->Branch("aida",&aida,"T/l:Tfast/l:E/D:EX/D:EY/D:x/D:y/D:z/b:ID/b");
-  }
-
+  TTree* treeion=new TTree("ion","tree ion");
+  TTree* treebeta=new TTree("beta","tree beta");
+  TTree* treepulser=new TTree("pulser","tree pulser");
 
   //! Read list of files
   string inputfiles[1000];
@@ -141,6 +123,7 @@ int main(int argc, char* argv[]){
   for (Int_t i=0;i<nfiles;i++){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
       evts->SetVerbose(Verbose);
+      if (FillFlag) evts->BookTree(treeion,treebeta,treepulser);
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
@@ -161,8 +144,6 @@ int main(int argc, char* argv[]){
       long long tend;
       int start=0;
 
-      double local_time_start = get_time();
-
       //!event loop
       while(evts->GetNextEvent()){
           ttotal++;
@@ -172,51 +153,15 @@ int main(int argc, char* argv[]){
             int nevtion = evts->GetCurrentIonEvent();
             double time_end = get_time();
             cout << inputfiles[i] << setw(5) << setiosflags(ios::fixed) << setprecision(1) << (100.*ctr)/total<<" % done\t" <<
-              (Float_t)ctr/(time_end - local_time_start) << " blocks/s " <<
-              (Float_t)nevtbeta/(time_end - local_time_start) <<" betas/s  "<<
-               (Float_t)nevtion/(time_end - local_time_start) <<" ions/s "<<
-               (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go | ";
+              (Float_t)ctr/(time_end - time_start) << " blocks/s " <<
+              (Float_t)nevtbeta/(time_end - time_start) <<" betas/s  "<<
+               (Float_t)nevtion/(time_end - time_start) <<" ions/s "<<
+               (total-ctr)*(time_end - time_start)/(Float_t)ctr << "s to go | ";
             if (evts->IsBETA()) cout<<"beta: x"<<evts->GetAIDABeta()->GetCluster(0)->GetHitPositionX()<<"y"<<
                                        evts->GetAIDABeta()->GetCluster(0)->GetHitPositionY()<<"\r"<< flush;
             else cout<<"ion: x"<<evts->GetAIDAIon()->GetCluster(0)->GetHitPositionX()<<"y"<<
                        evts->GetAIDAIon()->GetCluster(0)->GetHitPositionY()<<"\r"<<flush;
             time_last = time_end;
-          }
-          if (evts->IsBETA()&&evts->GetAIDABeta()->GetMult()<64) {
-              for (Int_t i = 0;i<evts->GetAIDABeta()->GetNClusters();i++){
-                  Double_t ex = evts->GetAIDABeta()->GetCluster(i)->GetXEnergy();
-                  Double_t ey = evts->GetAIDABeta()->GetCluster(i)->GetYEnergy();
-                  aida.ID = IDbeta;
-                  aida.E = (ex+ey)/2;
-                  aida.EX = ex;
-                  aida.EY = ey;
-                  //!If you need time ordered then we need to modify this
-                  aida.T = evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution;
-                  aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
-                  aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
-                  aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
-                  aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
-                  if (FillFlag) tree->Fill();
-              }
-          }else{
-              int lastclusterID = evts->GetAIDAIon()->GetNClusters()-1;
-              if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()==evts->GetAIDAIon()->GetMaxZ()){
-                  Double_t ex = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetXEnergy();
-                  Double_t ey = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetXEnergy();
-                  aida.ID = IDion;
-                  aida.E = (ex+ey)/2;
-                  aida.EX = ex;
-                  aida.EY = ey;
-                  aida.T = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetTimestamp() * ClockResolution;
-                  aida.Tfast = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetFastTimestamp() * ClockResolution;
-                  aida.x = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionX();
-                  aida.y = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionY();
-                  aida.z = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ();
-                  if (FillFlag) tree->Fill();
-              }else{
-                  cout<<"Somethings wrong with clustering?"<<endl;
-              }
-
           }
 
           //!Get run time
@@ -245,18 +190,14 @@ int main(int argc, char* argv[]){
       delete evts;
   }
   if (FillFlag){
-      tree->Write();
+      treeion->Write();
+      treebeta->Write();
+      treepulser->Write();
       runtime.Write("runtime");
   }
   ofile->Close();
 
-  cout<<"\n**********************SUMMARY**********************\n"<<endl;
-  cout<<"Total run length = "<<runtime[0]<< " seconds"<<endl;
-  cout<<"Sub runs length"<<endl;
-  for (Int_t i=0;i<nfiles;i++){
-      cout<<inputfiles[i]<<" - "<<runtime[i+1]<< " seconds"<<endl;
-  }
-  //runtime.Print();
+  runtime.Print();
   //! Finish----------------
   double time_end = get_time();
   cout << "\nProgram Run time: " << time_end - time_start << " s." << endl;

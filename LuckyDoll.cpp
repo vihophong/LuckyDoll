@@ -40,6 +40,7 @@ const uint8_t IDion = 4;
 const uint8_t IDbeta = 5;
 
 int main(int argc, char* argv[]){
+
   //! Program start time
   double time_start = get_time();
   TStopwatch timer;
@@ -113,7 +114,7 @@ int main(int argc, char* argv[]){
   TTree* tree=new TTree("aida","aida tree ion and beta)");
   datatype aida;
   if (FillFlag){
-      tree->Branch("aida",&aida,"T/l:Tfast/l:E/D:EX/D:EY/D:x/D:y/D:z/b:ID/b");
+      tree->Branch("aida",&aida,"T/l:Tfast/l:E/D:EX/D:EY/D:x/D:y/D:z/D:ID/b");
   }
 
 
@@ -212,6 +213,7 @@ int main(int argc, char* argv[]){
                   aida.x = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionX();
                   aida.y = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionY();
                   aida.z = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ();
+                  //if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()>0) cout<< "eeeed"<<aida.z<<endl;
                   if (FillFlag) tree->Fill();
               }else{
                   cout<<"Somethings wrong with clustering?"<<endl;

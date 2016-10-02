@@ -37,15 +37,11 @@ include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS})
 
 ROOT_GENERATE_DICTIONARY(G__AIDA AIDA.h LINKDEF AIDALinkDef.h)
-ROOT_GENERATE_DICTIONARY(G__AIDAUnpacker AIDAUnpacker.h LINKDEF AIDAUnpackerLinkDef.h)
-ROOT_GENERATE_DICTIONARY(G__BuildAIDAEvents BuildAIDAEvents.h LINKDEF BuildAIDAEventsLinkDef.h)
 
 #---Create a shared library with geneated dictionary
 add_library(AIDA SHARED AIDA.cpp G__AIDA.cxx) # Link2Dictionary!
-add_library(AIDAUnpacker SHARED AIDAUnpacker.cpp G__AIDAUnpacker.cxx) # Link2Dictionary!
-add_library(BuildAIDAEvents SHARED BuildAIDAEvents.cpp G__BuildAIDAEvents.cxx) # Link2Dictionary!
-target_link_libraries(AIDA AIDAUnpacker BuildAIDAEvents ${ROOT_LIBRARIES})   # Link2Dictionary!
+target_link_libraries(AIDA ${ROOT_LIBRARIES})   # Link2Dictionary!
 
 #---Create  a main program using the library
-add_executable(Main LuckyDoll.cpp)
-target_link_libraries(Main AIDA AIDAUnpacker BuildAIDAEvents)
+add_executable(aida LuckyDoll.cpp AIDAUnpacker.cpp BuildAIDAEvents.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEvents.h CommandLineInterface.h)
+target_link_libraries(aida AIDA)

@@ -31,7 +31,7 @@ typedef struct {
     double EX;
     double EY;
     double x,y,z;// number of pixel for AIDA, or number of tube for BELEN
-    uint8_t ID; 	 // Detector type (BigRips, Aida ion, AIDA beta, BELEN, Clovers)
+    unsigned char ID; 	 // Detector type (BigRips, Aida ion, AIDA beta, BELEN, Clovers)
     //** other stuff pending to define **//
 } datatype;
 

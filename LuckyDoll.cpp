@@ -110,10 +110,10 @@ int main(int argc, char* argv[]){
   TFile* ofile = new TFile(OutFile,"recreate");
   ofile->cd();
 
-  //! Book tree and histograms
-  TTree* tree=new TTree("aida","aida tree ion and beta)");
   datatype aida;
+  TTree* tree=new TTree("aida","aida tree ion and beta)");
   if (FillFlag){
+  //! Book tree and histograms
       tree->Branch("aida",&aida,"T/l:Tfast/l:E/D:EX/D:EY/D:x/D:y/D:z/D:ID/b");
   }
 
@@ -123,6 +123,9 @@ int main(int argc, char* argv[]){
   ifstream inf(InputAIDA);
   Int_t nfiles;
   inf>>nfiles;
+
+
+  Int_t implantationrate = 0;
 
   TVectorD runtime(nfiles+1);
   runtime[0] = 0;
@@ -218,7 +221,6 @@ int main(int argc, char* argv[]){
               }else{
                   cout<<"Somethings wrong with clustering?"<<endl;
               }
-
           }
 
           //!Get run time
@@ -242,6 +244,7 @@ int main(int argc, char* argv[]){
       runtime[0] += runtime[i+1];
       cout<<evts->GetCurrentBetaEvent()<<" beta events"<<endl;
       cout<<evts->GetCurrentIonEvent()<<" ion events"<<endl;
+      implantationrate += evts->GetCurrentIonEvent();
       cout<<ttotal<<" all events (beta+ion)"<<endl;
       cout<<evts->GetCurrentPulserEvent()<<" pulser events"<<endl;
       delete evts;
@@ -258,6 +261,7 @@ int main(int argc, char* argv[]){
   for (Int_t i=0;i<nfiles;i++){
       cout<<inputfiles[i]<<" - "<<runtime[i+1]<< " seconds"<<endl;
   }
+  cout<<"\nImplatation rate =  "<<(double)implantationrate/runtime[0]<< " cps"<<endl;
   //runtime.Print();
   //! Finish----------------
   double time_end = get_time();

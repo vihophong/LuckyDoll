@@ -48,6 +48,9 @@ public:
         }
     }
 
+    //! Set (AIDAUnpacker) max timestamp offset between exTS and inTS deviation hit by hit
+    void SetAIDAMaxTSOffset(long long maxtsoffset) {aidaunpkg->SetMaxOffSet(maxtsoffset);}
+
     //! Set Fill data or not
     void SetFillData(bool fill_flag){fflag_filldata = fill_flag;}
 

@@ -104,6 +104,8 @@ int main(int argc, char* argv[]){
   Int_t nfiles;
   inf>>nfiles;
 
+  Int_t implantationrate = 0;
+
   TVectorD runtime(nfiles+1);
   runtime[0] = 0;
   for (Int_t i=0;i<nfiles;i++){
@@ -143,6 +145,8 @@ int main(int argc, char* argv[]){
       long long tend;
       int start=0;
 
+      double local_time_start = get_time();
+
       //!event loop
       while(evts->GetNextEvent()){
           ttotal++;
@@ -152,10 +156,10 @@ int main(int argc, char* argv[]){
             int nevtion = evts->GetCurrentIonEvent();
             double time_end = get_time();
             cout << inputfiles[i] << setw(5) << setiosflags(ios::fixed) << setprecision(1) << (100.*ctr)/total<<" % done\t" <<
-              (Float_t)ctr/(time_end - time_start) << " blocks/s " <<
-              (Float_t)nevtbeta/(time_end - time_start) <<" betas/s  "<<
-               (Float_t)nevtion/(time_end - time_start) <<" ions/s "<<
-               (total-ctr)*(time_end - time_start)/(Float_t)ctr << "s to go | ";
+              (Float_t)ctr/(time_end - local_time_start) << " blocks/s " <<
+              (Float_t)nevtbeta/(time_end - local_time_start) <<" betas/s  "<<
+               (Float_t)nevtion/(time_end - local_time_start) <<" ions/s "<<
+               (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go | ";
             if (evts->IsBETA()) cout<<"beta: x"<<evts->GetAIDABeta()->GetCluster(0)->GetHitPositionX()<<"y"<<
                                        evts->GetAIDABeta()->GetCluster(0)->GetHitPositionY()<<"\r"<< flush;
             else cout<<"ion: x"<<evts->GetAIDAIon()->GetCluster(0)->GetHitPositionX()<<"y"<<
@@ -184,6 +188,7 @@ int main(int argc, char* argv[]){
       runtime[0] += runtime[i+1];
       cout<<evts->GetCurrentBetaEvent()<<" beta events"<<endl;
       cout<<evts->GetCurrentIonEvent()<<" ion events"<<endl;
+      implantationrate += evts->GetCurrentIonEvent();
       cout<<ttotal<<" all events (beta+ion)"<<endl;
       cout<<evts->GetCurrentPulserEvent()<<" pulser events"<<endl;
       delete evts;
@@ -196,7 +201,15 @@ int main(int argc, char* argv[]){
   }
   ofile->Close();
 
-  runtime.Print();
+
+  cout<<"\n**********************SUMMARY**********************\n"<<endl;
+  cout<<"Total run length = "<<runtime[0]<< " seconds"<<endl;
+  cout<<"Sub runs length"<<endl;
+  for (Int_t i=0;i<nfiles;i++){
+      cout<<inputfiles[i]<<" - "<<runtime[i+1]<< " seconds"<<endl;
+  }
+  cout<<"\nImplatation rate =  "<<(double)implantationrate/runtime[0]<< " cps"<<endl;
+  //runtime.Print();
   //! Finish----------------
   double time_end = get_time();
   cout << "\nProgram Run time: " << time_end - time_start << " s." << endl;

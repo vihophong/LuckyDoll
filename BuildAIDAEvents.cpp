@@ -18,7 +18,8 @@ BuildAIDAEvents::BuildAIDAEvents()
 
 BuildAIDAEvents::~BuildAIDAEvents()
 {
-
+    //! error on this
+    //delete aidaunpkg;
 }
 
 void BuildAIDAEvents::Init(char* aidafile)

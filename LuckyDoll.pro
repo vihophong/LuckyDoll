@@ -9,13 +9,13 @@ TEMPLATE = app
 
 
 SOURCES += \
-    #LuckyDoll.cpp \
+    LuckyDoll.cpp \
     AIDA.cpp \
     AIDADictionary.cpp \
     CommandLineInterface.cpp \
     AIDAUnpacker.cpp \
     BuildAIDAEvents.cpp \
-    MakeCalibHisto.cpp
+    #MakeCalibHisto.cpp
 
 HEADERS += \
     AIDA.h \

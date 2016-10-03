@@ -105,14 +105,17 @@ int main(int argc, char* argv[]){
       long long tstart;
       long long tend;
       int start=0;
+
+      double local_time_start = get_time();
+
       while (aidaunpkg->GetNextHit()){
           ctr=aidaunpkg->GetCurrentBlock();
           if(ctr%2000 == 0){
               double time_end = get_time();
               long long nhits=aidaunpkg->GetHitNumber();
               cout << inputfiles[i] <<": "<<setw(5) << setiosflags(ios::fixed) << setprecision(1) << (100.*ctr)/total<<" % done\t" <<
-                (Float_t)nhits/(time_end - time_start) << " hits/s (average) - "<< nhits <<" hits "<<
-                (total-ctr)*(time_end - time_start)/(Float_t)ctr << "s to go \r" << flush;
+                (Float_t)nhits/(time_end - local_time_start) << " hits/s (average) - "<< nhits <<" hits "<<
+                (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r" << flush;
               time_last = time_end;
           }
           //!Fill histogram here!

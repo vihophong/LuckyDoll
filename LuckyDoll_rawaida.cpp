@@ -106,6 +106,8 @@ int main(int argc, char* argv[]){
       long long tend;
       int start=0;
 
+      double local_time_start = get_time();
+
       cout<<"\n\n****** Start reading AIDA ******\n\n"<<endl;
       double time_last = get_time();
       int ctr = 0;
@@ -116,8 +118,8 @@ int main(int argc, char* argv[]){
               double time_end = get_time();
               long long nhits=aidaunpkg->GetHitNumber();
               cout << setw(5) << setiosflags(ios::fixed) << setprecision(1) << (100.*ctr)/total<<" % done\t" <<
-                (Float_t)nhits/(time_end - time_start) << " hits/s (average) - "<< nhits <<" hits "<<
-                (total-ctr)*(time_end - time_start)/(Float_t)ctr << "s to go \r" << flush;
+                (Float_t)nhits/(time_end - local_time_start) << " hits/s (average) - "<< nhits <<" hits "<<
+                (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r" << flush;
               time_last = time_end;
           }
           if (start==0) {

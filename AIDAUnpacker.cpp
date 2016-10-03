@@ -10,11 +10,13 @@ AIDAUnpacker::AIDAUnpacker():midas(),rawaida(),finfile()
             dssd_thr[i][j]=0.;
         }
     }
+    fmaxtsoffset = 100;
     for (int i=0;i<NumFee;i++) for (int j=0;j<NumChFee;j++) chMask[i][j]=1;
 }
 
 AIDAUnpacker::~AIDAUnpacker(){
-
+    //! error on this
+    //delete corrTS;
 }
 
 void AIDAUnpacker::Init(char *inputfile){
@@ -390,7 +392,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             //! Get correlation scaler offset
             if (rawaida.infoCode==8) {
                 long long temp=rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp;
-                if (temp-my_first_time_offset<100&&temp-my_first_time_offset>-100) my_time_offset=temp;
+                if (temp-my_first_time_offset<fmaxtsoffset&&temp-my_first_time_offset>-fmaxtsoffset) my_time_offset=temp;
                 rawaida.extTimestamp=(my_time_offset+rawaida.timestamp)/tm_stp_scaler_ratio; //convert to ext timestamp unit
             }else{
                 rawaida.extTimestamp=(my_time_offset+rawaida.timestamp)/tm_stp_scaler_ratio; //convert to ext timestamp unit

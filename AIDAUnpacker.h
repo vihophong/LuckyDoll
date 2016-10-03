@@ -39,6 +39,9 @@ public:
     //! Set current package
     void SetCurrentPackage(int currentpackage){fcurrentpkg=currentpackage;}
 
+    //! Set maximum allowed time stamp offset (between internal and external timestamp) deviation
+    void SetMaxOffSet(long long maxtsoffset){fmaxtsoffset = maxtsoffset;}
+
     //! List of available FEE card
     bool enableFEEs[33];
 
@@ -56,6 +59,9 @@ public:
 
     //! Get the first syncronization pulse
     int GetFirstSync();
+
+    //! Get the Time stamp correlation histogram
+    TH1F* GetTSCorrHist(){return corrTS;}
 
     //! Event loop : return full aida data
     bool GetNextHit();
@@ -167,9 +173,11 @@ private:
     //! local previous time stamp
     long long my_tm_stp_prev[NumFee]; //check only for adc...? or all
 
-    //! prev external time stamp
+    //!  external time stamp stuff
     bool fail_ext_tmstmp_Flag;
     long long my_ext_timestamp_prev;
+    //! Maximum allowed time stamp offset (between internal and external timestamp) deviation hits by hits
+    long long fmaxtsoffset;
 
     //!Mapping
     bool flag_mapping;
@@ -204,6 +212,8 @@ private:
     int prev_blk;
     int prev_pkg;
     int ncheck;
+
+
 
 };
 

@@ -187,7 +187,13 @@ int main(int argc, char* argv[]){
             time_last = time_end;
           }
           if (evts->IsBETA()&&evts->GetAIDABeta()->GetMult()<64) {
+              //!sort the timestamp
+              vector < pair < unsigned long long,int > > tsvector;
+              vector < pair < unsigned long long,int > > ::iterator itsvector;
               for (Int_t i = 0;i<evts->GetAIDABeta()->GetNClusters();i++){
+                  tsvector.push_back(make_pair(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
+                  /*
+                  //! No time order
                   Double_t ex = evts->GetAIDABeta()->GetCluster(i)->GetXEnergy();
                   Double_t ey = evts->GetAIDABeta()->GetCluster(i)->GetYEnergy();
                   aida.ID = IDbeta;
@@ -195,18 +201,37 @@ int main(int argc, char* argv[]){
                   aida.EX = ex;
                   aida.EY = ey;
                   //!If you need time ordered then we need to modify this
-                  aida.T = evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution;
+                  aida.T = itsvector->first;
                   aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
                   aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
                   aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
                   aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
-                  if (FillFlag) tree->Fill();
+                  */
               }
-          }else{
+              sort(tsvector.begin(),tsvector.end());
+              //!fill tree according to the time stamp
+              for (itsvector = tsvector.begin();itsvector<tsvector.end();++itsvector){
+                  Int_t i = itsvector->second;
+                  Double_t ex = evts->GetAIDABeta()->GetCluster(i)->GetXEnergy();
+                  Double_t ey = evts->GetAIDABeta()->GetCluster(i)->GetYEnergy();
+                  aida.ID = IDbeta;
+                  aida.E = (ex+ey)/2;
+                  aida.EX = ex;
+                  aida.EY = ey;
+                  //!If you need time ordered then we need to modify this
+                  aida.T = itsvector->first;
+                  aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
+                  aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
+                  aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
+                  aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
+              }
+
+              if (FillFlag) tree->Fill();
+          }else if (!evts->IsBETA()){
               int lastclusterID = evts->GetAIDAIon()->GetNClusters()-1;
               if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()==evts->GetAIDAIon()->GetMaxZ()){
                   Double_t ex = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetXEnergy();
-                  Double_t ey = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetXEnergy();
+                  Double_t ey = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetYEnergy();
                   aida.ID = IDion;
                   aida.E = (ex+ey)/2;
                   aida.EX = ex;

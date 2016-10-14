@@ -137,6 +137,7 @@ void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
     hit->SetADC(aidaraw.adcData);
     hit->SetEnergy((double)aidaraw.adcData);
     hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
+    //hit->SetTimestamp(aidaraw.timestamp);
     hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);
     hit->SetXY(aidaraw.stripNo);
     hit->SetZ(aidaraw.dssdNo);
@@ -149,6 +150,7 @@ void BuildAIDAEvents::AddAIDABetaHits(rawaida_info aidaraw){
     hit->SetADC(aidaraw.adcData);
     hit->SetEnergy((double)aidaraw.adcData*dssd_cal[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal[aidaraw.dssdNo][aidaraw.stripNo][0]);
     hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
+    //hit->SetTimestamp(aidaraw.timestamp);
     if ((flastfastts[aidaraw.feeNo][aidaraw.chNo] + fwindowDisc) > aidaraw.timestamp)
         hit->SetFastTimestamp(flastfasttsEXT[aidaraw.feeNo][aidaraw.chNo]);
     hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);

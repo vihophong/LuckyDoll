@@ -232,7 +232,6 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
     sync_flag=sync_flag_modules[midas.feeId];
     pause_flag=pause_flag_modules[midas.feeId];
 
-
     fillFlag=true;
     if ((feeMask>>midas.feeId)&0x1==0){
         fillFlag=false;
@@ -292,6 +291,9 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
         //-> Reconstruct EXT time from correlation scaler
         //-> Recontstruct AIDA time stamp
         else if (midas.infoCode==8){
+            //!omit start bit of time stamp
+            rawaida.infoCode = -1;
+
             int my_MBS_index;
             long long my_MBS_bits;
             my_MBS_index=(midas.infoField & 0x000F0000) >>16; //-> Bit 19:16 is information index
@@ -309,9 +311,12 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
 
                     //Another condition to check if t1 is in coincidence with t2 t3 within 1 us window (so the information come from 1 burse) (100 pulses)
                     if (checkCoincidence(t1,t2,t3,100)){
+                        //!Only take last bit of time stamp
+                        rawaida.infoCode = 8;
                         //note my_MBS_bits<<32 is now in index 2 which is bit 32-47
                         rawaida.extTimestamp=my_MBS_bits <<32 | MBS_bits[midas.feeId][1] <<16 | MBS_bits[midas.feeId][0];
 
+                        //cout<<"phong1 - "<<rawaida.extTimestamp<<endl;
                         //!Get first correlation scaler
                         if (first_sync_flag[midas.feeId]>0){
                             if (first_corr_scaler_datum==0) {
@@ -319,7 +324,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
                                 //get offset time from here!!!
                                 long long timestamp_temp=(long long)(tm_stp_msb_modules[midas.feeId] << 28 ) | (midas.timestampLsb & 0x0FFFFFFF); //caution this conversion!
                                 my_first_time_offset=first_corr_scaler_timestamp*tm_stp_scaler_ratio-timestamp_temp;
-                                corrTS=new TH1F("corrTS","corrTS",200,my_first_time_offset-1000,my_first_time_offset+1000);
+                                corrTS=new TH1F("corrTS","corrTS",fmaxtsoffset*2,my_first_time_offset-fmaxtsoffset,my_first_time_offset+fmaxtsoffset);
                                 //std::cout<<"Got you first offset bw AIDA-LUPO! = "<<std::dec<<my_first_time_offset<<"-- Timestamp LUPO="<<first_corr_scaler_timestamp*tm_stp_scaler_ratio<<"| Timestamp AIDA="<<timestamp_temp<<std::endl;
                                 //CAUTION:IF FOR SOME REASON WE MISS SYNC THEN THIS OFFSET MAKE NON SENSE
                             }
@@ -393,12 +398,11 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             if (rawaida.infoCode==8) {
                 long long temp=rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp;
                 if (temp-my_first_time_offset<fmaxtsoffset&&temp-my_first_time_offset>-fmaxtsoffset) my_time_offset=temp;
-                rawaida.extTimestamp=(my_time_offset+rawaida.timestamp)/tm_stp_scaler_ratio; //convert to ext timestamp unit
+                else cout<<"AIDA time stamp scaler is going down!"<<endl;
+                corrTS->Fill(temp);
             }else{
                 rawaida.extTimestamp=(my_time_offset+rawaida.timestamp)/tm_stp_scaler_ratio; //convert to ext timestamp unit
             }
-
-
 
             //!Check global time warps
             if (tm_stp_prev>rawaida.timestamp){
@@ -410,7 +414,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             //! Masking for slow discriminator data
             if (rawaida.infoCode==0&&rawaida.rangeType==0){
                 if(chMask[rawaida.feeNo][rawaida.chNo]){
-                    if (rawaida.infoCode==0) corrTS->Fill(rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp);
+                    //if (rawaida.infoCode==0) corrTS->Fill(rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp);
                 }else{
                     fillFlag=false;
                 }
@@ -557,4 +561,3 @@ int AIDAUnpacker::BookTree(TTree *tree)
     rawtree->Branch("rangeType",&rawaida.rangeType,"rangeType/S");
     rawtree->Branch("adcData",&rawaida.adcData,"adcData/I");
 }
-

@@ -89,6 +89,7 @@ int main(int argc, char* argv[]){
       cout<<inputfiles[i]<<endl;
   }
 
+  TH1F* tsCorrHisto;
 
   for (Int_t i=0;i<nfiles;i++){
       //! Program start here
@@ -135,10 +136,12 @@ int main(int argc, char* argv[]){
       runtime[i+1] = runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
       runtime[0] += runtime[i+1];
       cout<<"nhits"<< aidaunpkg->GetHitNumber()<<endl;
+      if (i==0) tsCorrHisto = (TH1F*) aidaunpkg->GetTSCorrHist()->Clone();
+      else tsCorrHisto->Add(aidaunpkg->GetTSCorrHist());
       delete aidaunpkg;
   }
-
   aidatree->Write();
+  tsCorrHisto->Write();
   runtime.Write("runtime");
   ofile->Close();
 

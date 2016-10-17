@@ -37,6 +37,4 @@ DEPENDPATH += "$(ROOTSYS)/include"
 LIBS +=-L$(TARTSYS)/lib -lanaeurica -lananadeko -lanacore -lanabrips -lXMLParser
 INCLUDEPATH +=$(TARTSYS)/include
 
-#---lib local
-LIBS +=-L/home/phong/lib -lAIDA
 

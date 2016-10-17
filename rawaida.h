@@ -7,12 +7,13 @@
 #ifndef rawaida_h
 #define rawaida_h
 
-#include "Riostream.h"
+#include <iostream>
 #include <TROOT.h>
 #include <TChain.h>
 #include <TFile.h>
 #include <TMath.h>
 #include <TString.h>
+using namespace std;
 
 class rawmidas_info{
 public:

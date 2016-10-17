@@ -36,10 +36,10 @@ include(${ROOT_USE_FILE})
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS})
 
-ROOT_GENERATE_DICTIONARY(G__AIDA AIDA.h LINKDEF AIDALinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__AIDA2tree AIDA.h LINKDEF AIDALinkDef.h)
 
 #---Create a shared library with geneated dictionary
-add_library(AIDA2 SHARED AIDA.cpp G__AIDA.cxx) # Link2Dictionary!
+add_library(AIDA2 SHARED AIDA.cpp G__AIDA2tree.cxx) # Link2Dictionary!
 target_link_libraries(AIDA2 ${ROOT_LIBRARIES})   # Link2Dictionary!
 
 #---Create  a main program using the library

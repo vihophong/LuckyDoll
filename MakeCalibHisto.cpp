@@ -58,6 +58,9 @@ int main(int argc, char* argv[]){
   long long int WindowBeta = 2500; //time unit: 10 ns
   long long int WindowDiscriminator = 0;
 
+  double nbins = 4000;
+  double min = 0;
+  double max = 24000;
 
   long long int TransientTime = 20000;
 
@@ -83,6 +86,10 @@ int main(int argc, char* argv[]){
    interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
    interface->Add("-m", " mode selection: 1: pulser spectra 2: source spectra", &Mode);
    interface->Add("-mult", " Multiplicity condition (<=) in X and Y strips (for source spectra mode)", &Mult);
+
+   interface->Add("-nbins","number of histogram bin (default 4000)",&nbins);
+   interface->Add("-min","minimum range of X (default 0)",&min);
+   interface->Add("-max","maximum range of X (default 24000)",&max);
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -134,9 +141,8 @@ int main(int argc, char* argv[]){
   ofile->cd();
 
   //! Book tree and histograms
-  TH2F* spectra=new TH2F ("spectra","spectra",NumDSSD*(NumStrX+NumStrY),0,NumDSSD*(NumStrX+NumStrY),4000,0,24000);
-  TH2F* calibspectra=new TH2F ("calibspectra","calibspectra",NumDSSD*(NumStrX+NumStrY),0,NumDSSD*(NumStrX+NumStrY),4000,0,24000);
-
+  TH2F* spectra=new TH2F ("spectra","spectra",NumDSSD*(NumStrX+NumStrY),0,NumDSSD*(NumStrX+NumStrY),nbins,min,max);
+  TH2F* calibspectra=new TH2F ("calibspectra","calibspectra",NumDSSD*(NumStrX+NumStrY),0,NumDSSD*(NumStrX+NumStrY),nbins,min,max);
 
 
   //! Read list of files

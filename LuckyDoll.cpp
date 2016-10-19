@@ -31,6 +31,7 @@ typedef struct {
     double EX;
     double EY;
     double x,y,z;// number of pixel for AIDA, or number of tube for BELEN
+    int nx, ny, nz;// multiplicity of hits in x and y strips, and dssd planes
     unsigned char ID; 	 // Detector type (BigRips, Aida ion, AIDA beta, BELEN, Clovers)
     //** other stuff pending to define **//
 } datatype;
@@ -114,7 +115,7 @@ int main(int argc, char* argv[]){
   TTree* tree=new TTree("aida","aida tree ion and beta)");
   if (FillFlag){
   //! Book tree and histograms
-      tree->Branch("aida",&aida,"T/l:Tfast/l:E/D:EX/D:EY/D:x/D:y/D:z/D:ID/b");
+      tree->Branch("aida",&aida,"T/l:Tfast/l:E/D:EX/D:EY/D:x/D:y/D:z/D:nx/I:ny/I:nz/I:ID/b");
   }
 
 
@@ -224,6 +225,9 @@ int main(int argc, char* argv[]){
                   aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
                   aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
                   aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
+                  aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
+                  aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
+                  aida.nz = (int)evts->GetAIDABeta()->GetMult();
               }
 
               if (FillFlag) tree->Fill();
@@ -241,6 +245,9 @@ int main(int argc, char* argv[]){
                   aida.x = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionX();
                   aida.y = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionY();
                   aida.z = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ();
+                  aida.nx = (int)evts->GetAIDAIon()->GetMultX((int)aida.z);
+                  aida.ny = (int)evts->GetAIDAIon()->GetMultY((int)aida.z);
+                  aida.nz = (int)evts->GetAIDAIon()->GetMult();
                   //if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()>0) cout<< "eeeed"<<aida.z<<endl;
                   if (FillFlag) tree->Fill();
               }else{

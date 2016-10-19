@@ -132,6 +132,8 @@ bool AIDA::BetaGetPos(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[])
                         cluster->SetYEnergy(ibeta_dssd_pre->second.second.second.first);
                         cluster->SetXMult(ibeta_dssd_pre->second.first.second.second);
                         cluster->SetYMult(ibeta_dssd_pre->second.second.second.second);
+                        //if (ibeta_dssd_pre->second.first.second.second!=ibeta_dssd_pre->second.second.second.second) cout<<"eurica!"<<cluster->GetXMultiplicity()<<"-"<<cluster->GetYMultiplicity()<<endl;
+
                         //Timing
                         int hitx = (int) round(ibeta_dssd_pre->second.first.first);
                         int hity = (int) round(ibeta_dssd_pre->second.second.first);

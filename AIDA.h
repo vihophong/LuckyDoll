@@ -278,6 +278,10 @@ public:
       memset(fmultx,0,sizeof(fmultx));
       memset(fmulty,0,sizeof(fmulty));
 
+      memset(fsumx,0,sizeof(fsumx));
+      memset(fsumy,0,sizeof(fsumy));
+
+
       memset(fnclustersz,0,sizeof(fnclustersz));
 
 
@@ -305,8 +309,13 @@ public:
       fhits.push_back(hit);
       //! newly added
       Int_t z=(Int_t)hit->GetZ();
-      if (hit->GetXY() < NumStrX) fmultx[z]++;
-      else fmulty[z]++;
+      if (hit->GetXY() < NumStrX) {
+          fmultx[z]++;
+          fsumx[z]+=hit->GetEnergy();
+      }else {
+          fmulty[z]++;
+          fsumy[z]+=hit->GetEnergy();
+      }
       fmult++;
     }
 
@@ -334,6 +343,16 @@ public:
     //! Set the Y strip multiplicity of the event
     void SetMultY(unsigned short multy[NumDSSD]){
         memcpy(fmulty,multy,NumDSSD*sizeof(unsigned short));
+    }
+
+    //! Set the X strip sum energy of the event
+    void SetSumX(double sumx[NumDSSD]){
+        memcpy(fsumx,sumx,NumDSSD*sizeof(double));
+    }
+
+    //! Set the Y strip sum energy of the event
+    void SetSumY(double sumy[NumDSSD]){
+        memcpy(fsumy,sumy,NumDSSD*sizeof(double));
     }
 
 
@@ -400,6 +419,11 @@ public:
     //! Returns the Y strip in dssd multiplicity of the event
     unsigned short GetMultY(short dssd){return fmulty[dssd];}
 
+    //! Returns the X strip in dssd sum energy of the event
+    double GetSumX(short dssd){return fsumx[dssd];}
+    //! Returns the Y strip in dssd sum energy of the event
+    double GetSumY(short dssd){return fsumy[dssd];}
+
 
     unsigned short* GetNClustersZ(){return fnclustersz;}
 
@@ -462,6 +486,12 @@ public:
     unsigned short fmultx[NumDSSD];
     //! y multiplicity
     unsigned short fmulty[NumDSSD];
+
+    //! x sum all energy
+    double fsumx[NumDSSD];
+    //! y sum all energy
+    double fsumy[NumDSSD];
+
 
     //! total clusters
     unsigned short fnclusters;

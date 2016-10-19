@@ -170,13 +170,17 @@ void manual_threshold()
 Double_t findThreshold(TH1F* spec,Int_t ncountsmax)
 {
     Int_t ntotal=0;
+    Double_t thr = 0;
     for (Int_t i=spec->GetNbinsX()+1;i>0;i--){
+    //for (Int_t i=spec->GetNbinsX();i>0;i--){
         ntotal+=spec->GetBinContent(i);
+        //if (i==spec->GetNbinsX()+1) cout<<ntotal<<endl;
         if (ntotal>ncountsmax) {
-            return spec->GetBinCenter(i);
+            thr = spec->GetBinCenter(i);
             break;
         }
     }
+    return thr+0.5;
 }
 
 void auto_threshold(TString inputfile,TString outputfile, Int_t maxrate,Int_t sleeptime)
@@ -238,12 +242,14 @@ void auto_threshold(TString inputfile,TString outputfile, Int_t maxrate,Int_t sl
                 histo[i]=(TH1F*) h2[ds]->ProjectionY(Form("%d",i),i+1,i+1);
                 histo[i]->Draw();
                 Double_t thr=findThreshold(histo[i],ncountmax);
+		
                 TMarker* mk=new TMarker(thr,histo[i]->GetBinContent(histo[i]->GetXaxis()->FindBin(thr)),1);
                 mk->SetMarkerStyle(23);
                 mk->SetMarkerSize(1.5);
                 mk->SetMarkerColor(2);
                 mk->Draw();
-                //if (thr>2000) thr=33000; //totally disable
+                if (thr>3000) thr=33000; //totally disable
+		cout<<"thr = "<<thr<<endl;
                 histo[i]->SetTitle(Form("%d",ds));
                 c1->Update();
                 str<<ds<<"\t"<<i<<"\t"<<"\t"<<thr<<endl;

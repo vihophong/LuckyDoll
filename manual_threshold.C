@@ -183,7 +183,7 @@ Double_t findThreshold(TH1F* spec,Int_t ncountsmax)
     return thr+0.5;
 }
 
-void auto_threshold(TString inputfile,TString outputfile, Int_t maxrate,Int_t sleeptime)
+void auto_threshold(TString inputfile,TString outputfile, Double_t maxrate,Int_t sleeptime, string rejectlist = "reject_list.txt")
 {
 
     TFile *infile=new TFile(inputfile);
@@ -191,13 +191,14 @@ void auto_threshold(TString inputfile,TString outputfile, Int_t maxrate,Int_t sl
     for (Int_t i=0;i<6;i++)
     h2[i]=(TH2F*) infile->Get(Form("dssd%d",i));
     TVectorD* runtime = (TVectorD*) infile->Get("runtime");
-    Int_t ncountmax=(Int_t)maxrate* (Double_t)runtime(0);
-    cout<<"Total run time: "<<(Double_t)runtime(0)<<" s"<<endl;
+    Double_t ncountmax=(Int_t) (maxrate*runtime(0));
+    cout<<"Total run time: "<<(Double_t)runtime(0)<<" s, max rate = "<<maxrate
+       << " max count = "<<ncountmax<<endl;
     cout<<"Start over (y=yes,anykey=no)?"<<endl;
     TString ss;
     cin>>ss;
     if (ss=="y"){
-        ofstream stemp("out.txt");
+        ofstream stemp(outputfile);
         stemp.close();
     }
     cout<<"Start dssd:"<<endl;
@@ -225,6 +226,20 @@ void auto_threshold(TString inputfile,TString outputfile, Int_t maxrate,Int_t sl
         }
     }
     */
+
+    //Scan for available channels:
+
+    std::ifstream ifs(rejectlist.c_str());
+    Int_t reject_list[6][256];
+    for (Int_t ds=0;ds<6;ds++)
+        for (Int_t i=0;i<256;i++) reject_list[ds][i]=1;
+    while (ifs.good()){
+        Int_t dssd,strip;
+        ifs>>dssd>>strip;
+        reject_list[dssd][strip] = 0;
+        cout<<"rejected strip "<< strip<<" in dssd "<<dssd<<endl;
+    }
+
     Int_t enable[6][256];
     for (Int_t ds=0;ds<6;ds++){
         for (Int_t i=0;i<256;i++){
@@ -248,8 +263,9 @@ void auto_threshold(TString inputfile,TString outputfile, Int_t maxrate,Int_t sl
                 mk->SetMarkerSize(1.5);
                 mk->SetMarkerColor(2);
                 mk->Draw();
-                if (thr>3000) thr=33000; //totally disable
-		cout<<"thr = "<<thr<<endl;
+                //if (thr>19800) thr=33000; //totally disable
+                if (reject_list[ds][i]==0) thr=33000; //disable reject files
+                cout<<"thr_ok= "<<thr<<endl;
                 histo[i]->SetTitle(Form("%d",ds));
                 c1->Update();
                 str<<ds<<"\t"<<i<<"\t"<<"\t"<<thr<<endl;

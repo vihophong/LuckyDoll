@@ -55,7 +55,7 @@ int main(int argc, char* argv[]){
   long long int WindowBeta = 2500; //time unit: 10 ns
   long long int WindowDiscriminator = 0;
 
-  int FillFlag = 0;
+  int FillFlag = 1;
   long long int TransientTime = 20000;
 
   char* InputAIDA = NULL;
@@ -63,6 +63,7 @@ int main(int argc, char* argv[]){
   char* CalibrationFile = NULL;
   char* ThresholdFile = NULL;
   char* MappingFile = NULL;
+  char* ECutFile = NULL;
 
   //Read in the command line arguments
   CommandLineInterface* interface = new CommandLineInterface();
@@ -77,9 +78,9 @@ int main(int argc, char* argv[]){
   interface->Add("-cal", "calibration file", &CalibrationFile);
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
-  interface->Add("-f", "fill data or not: 1 fill data 0 no fill", &FillFlag);
+  interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
   interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
-
+  interface->Add("-ecut", "specify energy cut file", &ECutFile);
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -103,6 +104,10 @@ int main(int argc, char* argv[]){
   if(OutFile == NULL){
     cout << "No output ROOT file given " << endl;
     return 2;
+  }
+  if(ECutFile == NULL){
+    cout << "No Energy cut file given " << endl;
+    //return 2;
   }
 
 
@@ -141,6 +146,20 @@ int main(int argc, char* argv[]){
   for(Int_t i=0;i<NumDSSD;i++){
       ecutX[i]=0.;
       ecutY[i]=0.;
+      if (i==0) ecutY[i]=250.;
+  }
+
+  std::ifstream ecut(ECutFile,std::ios::in);
+  Int_t dssd = 0;
+  if (!ecut.fail()){
+      std::cout<<"Reading energy cut from "<<ECutFile<<std::endl;
+      while (ecut.good()){
+          ecut>>dssd;
+          ecut>>ecutX[dssd]>>ecutY[dssd];
+      }
+      for(Int_t i=0;i<NumDSSD;i++){
+          cout<<"dssd No. "<<i<<" X energy cut = "<<ecutX[i]<<"| Y energy cut  = "<<ecutY[i]<<endl;
+      }
   }
 
   for (Int_t i=0;i<nfiles;i++){
@@ -153,6 +172,7 @@ int main(int argc, char* argv[]){
       evts->SetAIDATransientTime(TransientTime);
       evts->SetEventWindowION(WindowIon);
       evts->SetEventWindowBETA(WindowBeta);
+      evts->SetPulserInStream(false);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
       evts->Init((char*)inputfiles[i].c_str());
@@ -187,12 +207,13 @@ int main(int argc, char* argv[]){
                        evts->GetAIDAIon()->GetCluster(0)->GetHitPositionY()<<"\r"<<flush;
             time_last = time_end;
           }
-          if (evts->IsBETA()&&evts->GetAIDABeta()->GetMult()<64) {
+          if (evts->IsBETA()) {
               //!sort the timestamp
               vector < pair < unsigned long long,int > > tsvector;
               vector < pair < unsigned long long,int > > ::iterator itsvector;
               for (Int_t i = 0;i<evts->GetAIDABeta()->GetNClusters();i++){
                   tsvector.push_back(make_pair(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
+
                   /*
                   //! No time order
                   Double_t ex = evts->GetAIDABeta()->GetCluster(i)->GetXEnergy();
@@ -202,14 +223,23 @@ int main(int argc, char* argv[]){
                   aida.EX = ex;
                   aida.EY = ey;
                   //!If you need time ordered then we need to modify this
-                  aida.T = itsvector->first;
+                  aida.T = evts->GetAIDABeta()->GetTimestamp();
                   aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
                   aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
                   aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
                   aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
+                  //aida.nx=(int)evts->GetAIDABeta()->GetCluster(i)->GetXMultiplicity();
+                  //aida.ny=(int)evts->GetAIDABeta()->GetCluster(i)->GetYMultiplicity();
+                  //aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi(int(aida.z));
+
+                  aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
+                  aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
+                  aida.nz = aida.nx+aida.ny;
+                  if (FillFlag) tree->Fill();
                   */
               }
-              sort(tsvector.begin(),tsvector.end());
+
+              if (tsvector.size()>1) sort(tsvector.begin(),tsvector.end());
               //!fill tree according to the time stamp
               for (itsvector = tsvector.begin();itsvector<tsvector.end();++itsvector){
                   Int_t i = itsvector->second;
@@ -225,12 +255,19 @@ int main(int argc, char* argv[]){
                   aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
                   aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
                   aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
+
+                  //aida.nx=(int)evts->GetAIDABeta()->GetCluster(i)->GetXMultiplicity();
+                  //aida.ny=(int)evts->GetAIDABeta()->GetCluster(i)->GetYMultiplicity();
+                  //aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi(int(aida.z));
+
+
                   aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
                   aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
-                  aida.nz = (int)evts->GetAIDABeta()->GetMult();
+                  aida.nz = aida.nx+aida.ny;
+                  if (FillFlag) tree->Fill();
               }
 
-              if (FillFlag) tree->Fill();
+
           }else if (!evts->IsBETA()){
               int lastclusterID = evts->GetAIDAIon()->GetNClusters()-1;
               if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()==evts->GetAIDAIon()->GetMaxZ()){
@@ -245,9 +282,14 @@ int main(int argc, char* argv[]){
                   aida.x = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionX();
                   aida.y = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionY();
                   aida.z = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ();
+                  /*
+                  aida.nx=(int)evts->GetAIDAIon()->GetCluster(i)->GetXMultiplicity();
+                  aida.ny=(int)evts->GetAIDAIon()->GetCluster(i)->GetYMultiplicity();
+                  aida.nz = (int)evts->GetAIDAIon()->GetNClustersZi(int(aida.z));
+                  */
                   aida.nx = (int)evts->GetAIDAIon()->GetMultX((int)aida.z);
                   aida.ny = (int)evts->GetAIDAIon()->GetMultY((int)aida.z);
-                  aida.nz = (int)evts->GetAIDAIon()->GetMult();
+                  aida.nz = aida.nx+aida.ny;
                   //if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()>0) cout<< "eeeed"<<aida.z<<endl;
                   if (FillFlag) tree->Fill();
               }else{

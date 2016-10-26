@@ -95,7 +95,7 @@ public:
     //! Get the PULSER tree
     TTree* GetPulserTree(){return fmtrPULSER;}
 
-    void BookTree(TTree* treeIon, TTree *treeBeta, TTree *treePulser);
+    void BookTree(TTree* treeIon, TTree *treeBeta, TTree *treePulser, Int_t bufsize=16000);
 
     //! Close event
     bool CloseIonEvent();

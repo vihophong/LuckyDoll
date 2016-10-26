@@ -37,7 +37,7 @@ int main(int argc, char* argv[]){
   long long int WindowBeta = 2500; //time unit: 10 ns
   long long int WindowDiscriminator = 0;
 
-  int FillFlag = 0;
+  int FillFlag = 1;
   long long int TransientTime = 20000;
 
   char* InputAIDA = NULL;
@@ -45,6 +45,7 @@ int main(int argc, char* argv[]){
   char* CalibrationFile = NULL;
   char* ThresholdFile = NULL;
   char* MappingFile = NULL;
+  char* ECutFile = NULL;
 
   //Read in the command line arguments
   CommandLineInterface* interface = new CommandLineInterface();
@@ -59,8 +60,10 @@ int main(int argc, char* argv[]){
   interface->Add("-cal", "calibration file", &CalibrationFile);
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
-  interface->Add("-f", "fill data or not: 1 fill data 0 no fill", &FillFlag);
+  interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
   interface->Add("-tt", "aida transient time (20000?)", &TransientTime);
+  interface->Add("-ecut", "specify energy cut file", &ECutFile);
+
 
 
   interface->CheckFlags(argc, argv);
@@ -85,6 +88,10 @@ int main(int argc, char* argv[]){
   if(OutFile == NULL){
     cout << "No output ROOT file given " << endl;
     return 2;
+  }
+  if(ECutFile == NULL){
+    cout << "No Energy cut file given " << endl;
+    //return 2;
   }
 
 
@@ -119,6 +126,19 @@ int main(int argc, char* argv[]){
   for(Int_t i=0;i<NumDSSD;i++){
       ecutX[i]=0.;
       ecutY[i]=0.;
+  }
+
+  std::ifstream ecut(ECutFile,std::ios::in);
+  Int_t dssd = 0;
+  if (!ecut.fail()){
+      std::cout<<"Reading energy cut from "<<ECutFile<<std::endl;
+      while (ecut.good()){
+          ecut>>dssd;
+          ecut>>ecutX[dssd]>>ecutY[dssd];
+      }
+      for(Int_t i=0;i<NumDSSD;i++){
+          cout<<"dssd No. "<<i<<" X energy cut = "<<ecutX[i]<<"| Y energy cut  = "<<ecutY[i]<<endl;
+      }
   }
 
   for (Int_t i=0;i<nfiles;i++){

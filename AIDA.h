@@ -427,6 +427,8 @@ public:
 
     unsigned short* GetNClustersZ(){return fnclustersz;}
 
+    unsigned short GetNClustersZi(int dssd){return fnclustersz[dssd];}
+
     //! Returns the number of clusters
     unsigned short GetNClusters(){return fnclusters;}
 

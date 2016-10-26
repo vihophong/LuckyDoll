@@ -68,7 +68,7 @@ int main(int argc, char* argv[]){
   //! Book histogram
   TH2F* histo[NumDSSD];
   for (Int_t i=0;i<NumDSSD;i++){
-      histo[i]=new TH2F(Form("dssd%i",i),Form("dssd%i",i),256,0,256,4000,0,4000);
+      histo[i]=new TH2F(Form("dssd%i",i),Form("dssd%i",i),256,0,256,32800,0,32800);
   }
   //! Read list of files
   string inputfiles[1000];

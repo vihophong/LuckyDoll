@@ -20,6 +20,7 @@ BuildAIDAEvents::~BuildAIDAEvents()
 {
     //! error on this
     //delete aidaunpkg;
+
 }
 
 void BuildAIDAEvents::Init(char* aidafile)
@@ -69,26 +70,26 @@ void BuildAIDAEvents::Init(char* aidafile)
     fflag_trans = false;
 }
 
-void BuildAIDAEvents::BookTree(TTree *treeIon,TTree *treeBeta,TTree *treePulser)
+void BuildAIDAEvents::BookTree(TTree *treeIon,TTree *treeBeta,TTree *treePulser,Int_t bufsize)
 {
     //! initilize output
     fmtrION = treeIon;
-    fmtrION->Branch("adentry",&fADIonEntry,320000);
-    fmtrION->Branch("adTS",&fADtsION,320000);
-    fmtrION->Branch("aida",&flocalaidaION,320000);
+    fmtrION->Branch("adentry",&fADIonEntry,bufsize); //320000
+    fmtrION->Branch("adTS",&fADtsION,bufsize);
+    fmtrION->Branch("aida",&flocalaidaION,bufsize);
     fmtrION->BranchRef();
 
 
     fmtrBETA = treeBeta;
-    fmtrBETA->Branch("adentry",&fADBetaEntry,320000);
-    fmtrBETA->Branch("adTS",&fADtsBETA,320000);
-    fmtrBETA->Branch("aida",&flocalaidaBETA,320000);
+    fmtrBETA->Branch("adentry",&fADBetaEntry,bufsize);
+    fmtrBETA->Branch("adTS",&fADtsBETA,bufsize);
+    fmtrBETA->Branch("aida",&flocalaidaBETA,bufsize);
     fmtrBETA->BranchRef();
 
     fmtrPULSER = treePulser;
-    fmtrPULSER->Branch("adentry",&fADPulserEntry,320000);
-    fmtrPULSER->Branch("adTS",&fADtsBETA,320000);
-    fmtrPULSER->Branch("aida",&flocalaidaBETA,320000);
+    fmtrPULSER->Branch("adentry",&fADPulserEntry,bufsize);
+    fmtrPULSER->Branch("adTS",&fADtsBETA,bufsize);
+    fmtrPULSER->Branch("aida",&flocalaidaBETA,bufsize);
     fmtrPULSER->BranchRef();
 
     fflag_filldata=true;
@@ -192,6 +193,8 @@ bool BuildAIDAEvents::CloseBetaEvent()
             if (fflag_filldata) fmtrBETA->Fill();
             fADBetaEntry++;
             return true;
+        }else {
+            return false;
         }
     }
     if (mult>=64){

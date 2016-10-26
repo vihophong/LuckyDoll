@@ -17,6 +17,7 @@ AIDAUnpacker::AIDAUnpacker():midas(),rawaida(),finfile()
 AIDAUnpacker::~AIDAUnpacker(){
     //! error on this
     //delete corrTS;
+    finfile.close();
 }
 
 void AIDAUnpacker::Init(char *inputfile){

@@ -188,7 +188,7 @@ bool BuildAIDAEvents::CloseBetaEvent()
 
     if (mult<64&&!fflag_trans&&(hitx[0]+hity[0]<8)&&(hitx[1]+hity[1]<8)&&(hitx[2]+hity[2]<8)&&(hitx[3]+hity[3]<8)&&(hitx[4]+hity[4]<8)&&(hitx[5]+hity[5]<8))
     {
-        if (flocalaidaBETA->BetaGetPos(fcorrcut,fsumexcut,fsumeycut)){
+        if (flocalaidaBETA->BetaGetPosNew(fcorrcut,fsumexcut,fsumeycut)){
             flocalaidaBETA->SetTimestamp(fADtsBETA);
             if (fflag_filldata) fmtrBETA->Fill();
             fADBetaEntry++;

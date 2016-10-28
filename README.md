@@ -21,6 +21,8 @@ or
 or
 ./aida2tree
 or
-./aida2histo
+./aida2histcalib
+or
+./aida2histbkg
 
 then follow the instruction

@@ -26,3 +26,5 @@ or
 ./aida2histbkg
 
 then follow the instruction
+
+## Please see the manual for more detail:

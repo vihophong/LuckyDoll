@@ -207,7 +207,7 @@ void makePeaksTable(TString inputfile,TString thresholdfile,Int_t sleeptime)
     outspecs->Close();
 }
 
-void calcurve(TString infile7,TString infile6,TString infile5,TString outfile,Int_t sleeptime){
+void calcurve(TString infile7,TString infile6,TString infile5,TString outfile, Int_t sleeptime, Int_t mode = 0){
     std::ofstream str(outfile);
     std::ifstream ifs5(infile5);
     std::ifstream ifs6(infile6);
@@ -491,6 +491,10 @@ void calcurve(TString infile7,TString infile6,TString infile5,TString outfile,In
             if (i<768) kevperch[i]=vperch[i]*xecal/averagevperchX;
             else kevperch[i]=vperch[i]*xecal/averagevperchX;
             offset[i]=-choffset[i]*kevperch[i];
+	    if (mode!=0){
+		kevperch[i] = 20000./pow(2,15);
+		offset[i]=-choffset[i]*kevperch[i];
+	    }
             ngood++;
             //cout<<i<<"-"<<kevperch[i]<<"-"<<offset[i]<<endl;
         }else{

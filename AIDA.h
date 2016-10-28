@@ -2,6 +2,7 @@
 #define AIDA_H
 #include <iostream>
 #include <vector>
+#include <map>
 #include <cstdlib>
 #include <math.h>
 
@@ -10,7 +11,6 @@
 #include "TMath.h"
 #include "AIDAdefs.h"
 using namespace std;
-
 
 class AIDAHit : public TObject {
 public:
@@ -281,7 +281,6 @@ public:
       memset(fsumx,0,sizeof(fsumx));
       memset(fsumy,0,sizeof(fsumy));
 
-
       memset(fnclustersz,0,sizeof(fnclustersz));
 
 
@@ -474,6 +473,8 @@ public:
 
     //! Beta position
     bool BetaGetPos(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
+    //! Beta position new
+    bool BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Ion position
     bool IonGetPos();
 

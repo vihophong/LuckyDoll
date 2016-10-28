@@ -209,40 +209,13 @@ int main(int argc, char* argv[]){
           }
           if (evts->IsBETA()) {
               //!sort the timestamp
-              vector < pair < unsigned long long,int > > tsvector;
-              vector < pair < unsigned long long,int > > ::iterator itsvector;
-              for (Int_t i = 0;i<evts->GetAIDABeta()->GetNClusters();i++){
-                  tsvector.push_back(make_pair(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
-
-                  /*
-                  //! No time order
-                  Double_t ex = evts->GetAIDABeta()->GetCluster(i)->GetXEnergy();
-                  Double_t ey = evts->GetAIDABeta()->GetCluster(i)->GetYEnergy();
-                  aida.ID = IDbeta;
-                  aida.E = (ex+ey)/2;
-                  aida.EX = ex;
-                  aida.EY = ey;
-                  //!If you need time ordered then we need to modify this
-                  aida.T = evts->GetAIDABeta()->GetTimestamp();
-                  aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
-                  aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
-                  aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
-                  aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
-                  //aida.nx=(int)evts->GetAIDABeta()->GetCluster(i)->GetXMultiplicity();
-                  //aida.ny=(int)evts->GetAIDABeta()->GetCluster(i)->GetYMultiplicity();
-                  //aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi(int(aida.z));
-
-                  aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
-                  aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
-                  aida.nz = aida.nx+aida.ny;
-                  if (FillFlag) tree->Fill();
-                  */
+              std::multimap<unsigned long long, int> tsvector;
+              for (int i = 0;i<evts->GetAIDABeta()->GetNClusters();i++){
+                  tsvector.insert(std::make_pair(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
               }
-
-              if (tsvector.size()>1) sort(tsvector.begin(),tsvector.end());
               //!fill tree according to the time stamp
-              for (itsvector = tsvector.begin();itsvector<tsvector.end();++itsvector){
-                  Int_t i = itsvector->second;
+              for(auto &itsvector: tsvector){
+                  Int_t i = itsvector.second;
                   Double_t ex = evts->GetAIDABeta()->GetCluster(i)->GetXEnergy();
                   Double_t ey = evts->GetAIDABeta()->GetCluster(i)->GetYEnergy();
                   aida.ID = IDbeta;
@@ -250,7 +223,7 @@ int main(int argc, char* argv[]){
                   aida.EX = ex;
                   aida.EY = ey;
                   //!If you need time ordered then we need to modify this
-                  aida.T = itsvector->first;
+                  aida.T = itsvector.first;
                   aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
                   aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
                   aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
@@ -260,13 +233,11 @@ int main(int argc, char* argv[]){
                   //aida.ny=(int)evts->GetAIDABeta()->GetCluster(i)->GetYMultiplicity();
                   //aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi(int(aida.z));
 
-
                   aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
                   aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
                   aida.nz = aida.nx+aida.ny;
                   if (FillFlag) tree->Fill();
               }
-
 
           }else if (!evts->IsBETA()){
               int lastclusterID = evts->GetAIDAIon()->GetNClusters()-1;

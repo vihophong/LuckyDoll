@@ -65,7 +65,6 @@ int main(int argc, char* argv[]){
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
 
 
-
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
 

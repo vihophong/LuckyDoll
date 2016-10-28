@@ -28,3 +28,4 @@ or
 then follow the instruction
 
 ## Please see the manual for more detail:
+https://github.com/vihophong/LuckyDoll/blob/master/manual.pdf

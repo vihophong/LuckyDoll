@@ -168,7 +168,7 @@ bool BuildAIDAEvents::CloseIonEvent()
     //cout<<fADIonEntry<<"-"<<flocalaidaION->GetMult()<<endl;
     //fADIonEntry++;
     if (flocalaidaION->IonGetPos()) {
-        flocalaidaION->SetTimestamp(fADtsION);
+        flocalaidaION->SetTimestamp(flocalaidaION->GetHit(0)->GetTimestamp());
         if (fflag_filldata) fmtrION->Fill();
         fADIonEntry++;
         return true;
@@ -189,7 +189,7 @@ bool BuildAIDAEvents::CloseBetaEvent()
     if (mult<64&&!fflag_trans&&(hitx[0]+hity[0]<8)&&(hitx[1]+hity[1]<8)&&(hitx[2]+hity[2]<8)&&(hitx[3]+hity[3]<8)&&(hitx[4]+hity[4]<8)&&(hitx[5]+hity[5]<8))
     {
         if (flocalaidaBETA->BetaGetPosNew(fcorrcut,fsumexcut,fsumeycut)){
-            flocalaidaBETA->SetTimestamp(fADtsBETA);
+            flocalaidaBETA->SetTimestamp(flocalaidaBETA->GetHit(0)->GetTimestamp());
             if (fflag_filldata) fmtrBETA->Fill();
             fADBetaEntry++;
             return true;

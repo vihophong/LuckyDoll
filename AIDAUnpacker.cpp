@@ -199,8 +199,8 @@ bool AIDAUnpacker::GetNextHit(){
             prev_pkg=fcurrentpkg;
             rawtree->Fill();
             ncheck++;
-            rawaida.evt++;
         }
+        rawaida.evt++;
         return true;
     }else{
         return false;

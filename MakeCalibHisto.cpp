@@ -210,7 +210,7 @@ int main(int argc, char* argv[]){
           }
           if ((Mode==1) && evts->IsBETA() && evts->GetAIDABeta()->GetMult()>64) { //pulser mode
               for (Int_t i = 0;i<evts->GetAIDABeta()->GetMult();i++){
-                  int adc = evts->GetAIDABeta()->GetHit(i)->GetADC();
+                  int adc = evts->GetAIDABeta()->GetHit(i)->GetADC();	       
                   double energy = evts->GetAIDABeta()->GetHit(i)->GetEnergy();
                   short z =  evts->GetAIDABeta()->GetHit(i)->GetZ();
                   short xy = evts->GetAIDABeta()->GetHit(i)->GetXY();

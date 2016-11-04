@@ -120,7 +120,7 @@ int main(int argc, char* argv[]){
           }
           //!Fill histogram here!
           rawaida_info rawaida = aidaunpkg->GetAIDAraw();
-          if (rawaida.infoCode==0&&rawaida.rangeType==0&&rawaida.adcData>=0){
+          if (rawaida.infoCode==0&&rawaida.rangeType==0){
               histo[rawaida.dssdNo]->Fill(rawaida.stripNo,rawaida.adcData);
           }
           if (start==0) {

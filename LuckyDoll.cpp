@@ -95,11 +95,15 @@ int main(int argc, char* argv[]){
   }
   if(ThresholdFile == NULL){
     cout << "No Threshold table given " << endl;
+    ThresholdFile = new char[600];
+    strcpy(ThresholdFile,"/sssewqewwq/");
     return 1;
   }
   if(CalibrationFile == NULL){
     cout << "No Calibration table given " << endl;
-    //return 1;
+    CalibrationFile = new char[600];
+    strcpy(CalibrationFile,"/sssewqewwq/");
+    return 1;
   }
   if(OutFile == NULL){
     cout << "No output ROOT file given " << endl;

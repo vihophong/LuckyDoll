@@ -476,7 +476,7 @@ void AIDAUnpacker::read_threshold_table(char* inf)
     //clean up
     for (Int_t i=0;i<NumDSSD;i++){
         for (Int_t j=0;j<NumStrXY;j++){
-            dssd_thr[i][j]=0.;
+            dssd_thr[i][j]=-10000.;
         }
     }
     ifstream inpf(inf);

@@ -59,6 +59,8 @@ int main(int argc, char* argv[]){
   }
   if(ThresholdFile == NULL){
     cout << "No Threshold table given " << endl;
+    ThresholdFile = new char[600];
+    strcpy(ThresholdFile,"/sssewqewwq/");
     //return 1;
   }
   if(OutFile == NULL){

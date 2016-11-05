@@ -106,14 +106,13 @@ void BuildAIDAEvents::ReadCalibTable()
         }
     }
 
-    cout<<"Reading calibration file: "<<fcalibfile<<endl;
     ifstream inpf(fcalibfile);
     if (inpf.fail()){
         cout<<"No Calibration table is given"<<endl;
         return;
     }
 
-    cout<<"Start reading calibration table"<<fcalibfile<<endl;
+    cout<<"Start reading calibration table: "<<fcalibfile<<endl;
     Int_t dssd_index,strip_index;
     Double_t cal1,cal2;
     Int_t mm=0;

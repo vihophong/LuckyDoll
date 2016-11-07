@@ -141,6 +141,8 @@ void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
     hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);
     hit->SetXY(aidaraw.stripNo);
     hit->SetZ(aidaraw.dssdNo);
+    hit->SetFEE(aidaraw.feeNo);
+    hit->SetFEEChannel(aidaraw.chNo);
     flocalaidaION->AddHit(hit);
 }
 
@@ -156,6 +158,8 @@ void BuildAIDAEvents::AddAIDABetaHits(rawaida_info aidaraw){
     hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);
     hit->SetXY(aidaraw.stripNo);
     hit->SetZ(aidaraw.dssdNo);
+    hit->SetFEE(aidaraw.feeNo);
+    hit->SetFEEChannel(aidaraw.chNo);
     flocalaidaBETA->AddHit(hit);
 }
 

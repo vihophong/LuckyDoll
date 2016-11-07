@@ -20,7 +20,9 @@ public:
   }
   virtual ~AIDAHit(){}
   //! constructor with individual values
-  AIDAHit(short range, short id, int xy, int z, double en, int adc,unsigned short hitsadded, unsigned long long int ts){
+  AIDAHit(short range, short fee, short ch, short id, int xy, int z, double en, int adc,unsigned short hitsadded, unsigned long long int ts){
+    ffee = fee;
+    fch = ch;
     fid = id;
     fxy=xy;
     fz=z;
@@ -32,9 +34,11 @@ public:
   }
   //! Clear the music information
   void Clear(Option_t *option = ""){
-      fid = 0;
-      fxy = 0;
-      fz = 0;
+      fch = -1;
+      ffee = -1;
+      fid = -1;
+      fxy = -1;
+      fz = -1;
       fadc = -9999;
       fen = -9999.;
       fhitsadded = 0;
@@ -58,6 +62,11 @@ public:
       fz = z;
   }
 
+  //! Set FEE number
+  void SetFEE(short fee){ffee = fee;}
+  //! Set channel number
+  void SetFEEChannel(short ch){fch = ch;}
+
   //! Set the energy
   void SetEnergy(double energy){fen = energy;}
 
@@ -79,6 +88,11 @@ public:
   short GetXY(){return fxy;}
   //! Get Z position in DSSD
   short GetZ(){return fz;}
+
+  //! Get Fee number
+  short GetFEE(){return ffee;}
+  //! Get Fee channel number
+  short GetFEEChannel(){return fch;}
 
   //! Get the energy
   double GetEnergy(){return fen;}
@@ -113,14 +127,18 @@ protected:
   //! translate into the DSSDs coordinator
   short fxy;
   short fz;
+  //! FEE information
+  short ffee;
+  short fch;
+
   //! the energy lab system
   double fen;
   //! the raw adc value
   int fadc;
   //! the timestamp
   unsigned long long fts;
+  //! the fast timestamp
   unsigned long long ffastts;
-
 
   //! current hits
   unsigned short fhitsadded;
@@ -224,7 +242,7 @@ protected:
   TVector3 fpos;
 
   //! store the hit number
-  vector<short*> fhitsno;
+  //vector<short*> fhitsno;
 
   //! the energy lab system
   double fsumenx;
@@ -479,6 +497,7 @@ public:
     bool IonGetPos();
 
   protected:
+    //! aida time stamp (ealiest timestamp within event)
     unsigned long long faidats;
     //! type of event: 0 beta  1 ion
     short ftype;

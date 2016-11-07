@@ -169,7 +169,7 @@ public:
     fcts = ts;
   }
   //! Clear the music information
-  void Clear(Option_t *option = ""){
+  void Clear(){
       fpos.SetXYZ(-1,-1,-1);
       fsumenx=-9999.;
       fsumeny=-9999.;

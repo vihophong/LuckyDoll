@@ -287,6 +287,7 @@ public:
       fmult = 0;
       fnclusters = 0;
       fmaxz = -1;
+      fmultz = 0;
       /*
       for (int i=0;i<NumDSSD;i++){
           fmultx[i]=0;
@@ -379,6 +380,7 @@ public:
       fclusters.push_back(cluster);
       int Z=(int) cluster->GetHitPositionZ();
       fnclustersz[Z]++;
+      if (fnclustersz[Z]==1) fmultz++;
       fnclusters++;
     }
 
@@ -425,6 +427,9 @@ public:
     unsigned long long GetTimestamp(){return faidats;}
     //! Returns the multiplicity of the event
     unsigned short GetMult(){return fmult;}
+
+    //! Returns the number of dssd with cluster
+    unsigned short GetZMult(){return fmultz;}
 
     //! Returns the X strip multiplicity of the event
     unsigned short* GetMultXs(){return fmultx;}
@@ -523,6 +528,9 @@ public:
 
     //! max hit position
     unsigned short fmaxz;
+
+    //! number of dssd with a cluster
+    unsigned short fmultz;
 
     //!Threshold table
     Double_t fdssd_thr[NumDSSD][NumStrXY];

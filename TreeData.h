@@ -4,13 +4,13 @@
 #include <TFile.h>
 #include <string.h>
 
-#ifndef TreeData_h
-#define TreeData_h
-class TreeData  {
+#ifndef BrikenTreeData_h
+#define BrikenTreeData_h
+class BrikenTreeData  {
 
 public:
-   TreeData() { }
-   ~TreeData() {}
+   BrikenTreeData() { }
+   ~BrikenTreeData() {}
    Double_t        E;
    ULong64_t       T;
    UShort_t        Id;

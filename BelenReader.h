@@ -133,9 +133,9 @@ protected:
     TFile* finfile;
 
     //! a tree of input root files data
-    TreeData* ftreedataNeuron;
-    TreeData* ftreedataGamma;
-    TreeData* ftreedataAnc;
+    BrikenTreeData* ftreedataNeuron;
+    BrikenTreeData* ftreedataGamma;
+    BrikenTreeData* ftreedataAnc;
 
     //! input tree
     TTree* ftree;

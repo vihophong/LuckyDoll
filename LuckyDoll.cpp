@@ -150,7 +150,7 @@ int main(int argc, char* argv[]){
   for(Int_t i=0;i<NumDSSD;i++){
       ecutX[i]=0.;
       ecutY[i]=0.;
-      if (i==0) ecutY[i]=250.;
+      //if (i==0) ecutY[i]=250.;
   }
 
   std::ifstream ecut(ECutFile,std::ios::in);
@@ -241,7 +241,7 @@ int main(int argc, char* argv[]){
 
                   aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
                   aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
-                  aida.nz = aida.nx+aida.ny;
+                  aida.nz = (int)evts->GetAIDABeta()->GetZMult();
                   if (FillFlag) tree->Fill();
               }
 
@@ -266,7 +266,7 @@ int main(int argc, char* argv[]){
                   */
                   aida.nx = (int)evts->GetAIDAIon()->GetMultX((int)aida.z);
                   aida.ny = (int)evts->GetAIDAIon()->GetMultY((int)aida.z);
-                  aida.nz = aida.nx+aida.ny;
+                  aida.nz = (int)evts->GetAIDAIon()->GetZMult();
                   //if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()>0) cout<< "eeeed"<<aida.z<<endl;
                   if (FillFlag) tree->Fill();
               }else{

@@ -19,6 +19,7 @@ BelenReader::BelenReader():rr()
         fHe3Id2posZ[i]=0;
         fHe3Id2diameter[i]=0;
         fHe3Id2ring[i]=0;
+        fHe3Id2length[i]=0;
     }
 
     for (Int_t i=0;i<MaxIndex1;i++){
@@ -50,10 +51,7 @@ void BelenReader::Init(char* belenfile){
     flocalNeutron = new BELENHit;
     flocalGamma = new CloverHit;
 
-    fsingleAncAIDAPL = new BELENHit;
-    fsingleAncAIDAPL = new BELENHit;
-    fsingleAncdE = new BELENHit;
-    fsingleAncF11PL = new BELENHit;
+    flocalAnc = new BELENHit;
 
     finfile = new TFile(belenfile);
     ftree = (TTree*) finfile->Get("BelenTree");
@@ -75,6 +73,7 @@ void BelenReader::Init(char* belenfile){
 }
 
 void BelenReader::ClearAncHits(){
+    /*s
     for (unsigned int idx=0;idx<flocalAncUpstreamPL.size();idx++){
         delete flocalAncUpstreamPL[idx];
     }
@@ -91,10 +90,8 @@ void BelenReader::ClearAncHits(){
     flocalAncAIDAPL.clear();
     flocalAncdE.clear();
     flocalAncF11PL.clear();
-    fsingleAncUpstreamPL->Clear();
-    fsingleAncAIDAPL->Clear();
-    fsingleAncdE->Clear();
-    fsingleAncF11PL->Clear();
+    */
+    flocalAnc->Clear();
 }
 
 void BelenReader::GetGeoMapping(){
@@ -108,17 +105,18 @@ void BelenReader::GetGeoMapping(){
     Int_t id,index1,index2;
     UShort_t ring;
     Double_t x,y,z;
-    Double_t d;
+    Double_t d,length;
     Int_t mm=0;
 
     while (inpf.good()){
-        inpf>>id>>index1>>index2>>d>>x>>y>>z>>ring;
+        inpf>>id>>index1>>index2>>d>>x>>y>>z>>ring>>length;
         if (id<=500){//for he3
             fHe3Id2posX[id]=x;
             fHe3Id2posY[id]=y;
             fHe3Id2posZ[id]=z;
             fHe3Id2diameter[id]=d;
             fHe3Id2ring[id]=ring;
+            fHe3Id2length[id]=length;
         }else if(id>500){ //for clover
             fCrystalId2posX[index1][index2]=x;
             fCrystalId2posY[index1][index2]=y;
@@ -150,10 +148,13 @@ void BelenReader::BookTree(TTree* treeNeutron, TTree *treeGamma, TTree *treeAnc,
     fmtrAnc = treeAnc;
     //fmtrAnc->Branch("blentry",&fBLAncEntry,bufsize);
     //fmtrAnc->Branch("blTS",&fBLtsAnc,bufsize);
+    /*
     fmtrAnc->Branch("f11",&flocalAncF11PL,bufsize);
     fmtrAnc->Branch("uveto",&flocalAncUpstreamPL,bufsize);
     fmtrAnc->Branch("dE",&flocalAncdE,bufsize);
     fmtrAnc->Branch("dveto",&flocalAncAIDAPL,bufsize);
+    */
+    fmtrAnc->Branch("anc",&flocalAnc,bufsize);
     fmtrAnc->BranchRef();
 
     fflag_filldata=true;
@@ -202,7 +203,8 @@ bool BelenReader::GetNextEvent(){
     }
     else if (ftype==3){
         //clear hits first!
-        ClearAncHits();
+        //ClearAncHits();
+        /*
         BELENHit* hit = new BELENHit();
         hit->SetEnergy(fE);
         hit->SetTimestamp(fT);
@@ -210,19 +212,35 @@ bool BelenReader::GetNextEvent(){
         hit->SetID(fIndex2);
         hit->SetRing(0);
         hit->SetPos(0,0,0);
+        */
+        flocalAnc->SetEnergy(fE);
+        flocalAnc->SetTimestamp(fT);
+        flocalAnc->SetDaqID(fId);
+        flocalAnc->SetID(fIndex2);
         if (fIndex1==Index1UPlastic){
-            fsingleAncAIDAPL = ;
-            hit->SetType(ScintillatorType);
-            flocalAncUpstreamPL.push_back(hit);
+            flocalAnc->SetPos(0,0,1);
+            flocalAnc->SetRing(2);
+            flocalAnc->SetType(ScintillatorType);
+            //hit->SetType(ScintillatorType);
+            //flocalAncUpstreamPL.push_back(hit);
         }else if(fIndex1==Index1F11){
-            hit->SetType(ScintillatorType);
-            flocalAncF11PL.push_back(hit);
+            flocalAnc->SetRing(1);
+            flocalAnc->SetType(ScintillatorType);
+            flocalAnc->SetPos(0,0,1);
+            //hit->SetType(ScintillatorType);
+            //flocalAncF11PL.push_back(hit);
         }else if (fIndex1==Index1AIDAPL){
-            hit->SetType(ScintillatorType);
-            flocalAncAIDAPL.push_back(hit);
+            flocalAnc->SetRing(4);
+            flocalAnc->SetType(SilliconType);
+            flocalAnc->SetPos(0,0,4);
+            //hit->SetType(ScintillatorType);
+            //flocalAncAIDAPL.push_back(hit);
         }else if (fIndex1==Index1dE){
-            hit->SetType(SilliconType);
-            flocalAncdE.push_back(hit);
+            flocalAnc->SetRing(3);
+            flocalAnc->SetType(SilliconType);
+            flocalAnc->SetPos(0,0,3);
+            //hit->SetType(SilliconType);
+            //flocalAncdE.push_back(hit);
         }
         if (fflag_filldata) fmtrAnc->Fill();
         fBLAncEntry++;
@@ -271,6 +289,7 @@ void BelenReader::PerturbateHe3(UShort_t He3Id){
     genRndCircle(x,y,a,b,fposX,fposY,r);
     fposX = x;
     fposY = y;
+    fposZ = rr.Rndm()*fHe3Id2length[He3Id]+fposZ-fHe3Id2length[He3Id]/2;
 }
 
 void BelenReader::PerturbateClover(UShort_t Index1, UShort_t Index2){

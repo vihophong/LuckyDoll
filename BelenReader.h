@@ -129,6 +129,7 @@ protected:
     Double_t fHe3Id2posZ[MaxID];
     Double_t fHe3Id2diameter[MaxID];
     UShort_t fHe3Id2ring[MaxID];
+    Double_t fHe3Id2length[MaxID];
 
     Double_t fCrystalId2posX[MaxIndex1][MaxIndex2];
     Double_t fCrystalId2posY[MaxIndex1][MaxIndex2];
@@ -144,10 +145,7 @@ protected:
     std::vector<BELENHit*> flocalAncdE;
     std::vector<BELENHit*> flocalAncF11PL;
     //! ancillary single hit
-    BELENHit* fsingleAncUpstreamPL;
-    BELENHit* fsingleAncAIDAPL;
-    BELENHit* fsingleAncdE;
-    BELENHit* fsingleAncF11PL;
+    BELENHit* flocalAnc;
 
 
     //! input files

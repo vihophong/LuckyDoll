@@ -18,14 +18,16 @@ BelenReader::BelenReader():rr()
         fHe3Id2posY[i]=0;
         fHe3Id2posZ[i]=0;
         fHe3Id2diameter[i]=0;
+        fHe3Id2ring[i]=0;
     }
 
-    for (Int_t i=0;i<MaxID;i++){
-        fCrystalId2posX[i]=0;
-        fCrystalId2posY[i]=0;
-        fCrystalId2posZ[i]=0;
+    for (Int_t i=0;i<MaxIndex1;i++){
+        for (Int_t j=0;j<MaxIndex2;j++){
+            fCrystalId2posX[i][j]=0;
+            fCrystalId2posY[i][j]=0;
+            fCrystalId2posZ[i][j]=0;
+        }
     }
-
 
     ftreedataNeuron = NULL;
     ftreedataGamma = NULL;
@@ -37,7 +39,6 @@ BelenReader::~BelenReader()
 {
     delete flocalNeutron;
     delete flocalGamma;
-    delete flocalAnc;
 }
 
 
@@ -48,7 +49,11 @@ void BelenReader::Init(char* belenfile){
 
     flocalNeutron = new BELENHit;
     flocalGamma = new CloverHit;
-    flocalAnc = new BELENHit;
+
+    fsingleAncAIDAPL = new BELENHit;
+    fsingleAncAIDAPL = new BELENHit;
+    fsingleAncdE = new BELENHit;
+    fsingleAncF11PL = new BELENHit;
 
     finfile = new TFile(belenfile);
     ftree = (TTree*) finfile->Get("BelenTree");
@@ -65,11 +70,34 @@ void BelenReader::Init(char* belenfile){
     fBLNeuEntry = 0;
     fBLGamEntry = 0;
     fBLAncEntry = 0;
-    GetMapping();
+    GetGeoMapping();
     //if (!GetNextEvent()) exit(1);
 }
 
-void BelenReader::GetMapping(){
+void BelenReader::ClearAncHits(){
+    for (unsigned int idx=0;idx<flocalAncUpstreamPL.size();idx++){
+        delete flocalAncUpstreamPL[idx];
+    }
+    for (unsigned int idx=0;idx<flocalAncAIDAPL.size();idx++){
+        delete flocalAncAIDAPL[idx];
+    }
+    for (unsigned int idx=0;idx<flocalAncdE.size();idx++){
+        delete flocalAncdE[idx];
+    }
+    for (unsigned int idx=0;idx<flocalAncF11PL.size();idx++){
+        delete flocalAncF11PL[idx];
+    }
+    flocalAncUpstreamPL.clear();
+    flocalAncAIDAPL.clear();
+    flocalAncdE.clear();
+    flocalAncF11PL.clear();
+    fsingleAncUpstreamPL->Clear();
+    fsingleAncAIDAPL->Clear();
+    fsingleAncdE->Clear();
+    fsingleAncF11PL->Clear();
+}
+
+void BelenReader::GetGeoMapping(){
     std::ifstream inpf(fmappingfile);
     if (inpf.fail()){
         cout<<"No BELEN Mapping file is given"<<endl;
@@ -77,17 +105,25 @@ void BelenReader::GetMapping(){
     }
     cout<<"Start reading BELEN Mapping file: "<<fmappingfile<<endl;
 
-    Int_t He3id,daqId;
+    Int_t id,index1,index2;
+    UShort_t ring;
     Double_t x,y,z;
     Double_t d;
     Int_t mm=0;
 
     while (inpf.good()){
-        inpf>>He3id>>daqId>>d>>x>>y>>z;
-        fHe3Id2posX[daqId]=x;
-        fHe3Id2posY[daqId]=y;
-        fHe3Id2posZ[daqId]=z;
-        fHe3Id2diameter[daqId]=d;
+        inpf>>id>>index1>>index2>>d>>x>>y>>z>>ring;
+        if (id<=500){//for he3
+            fHe3Id2posX[id]=x;
+            fHe3Id2posY[id]=y;
+            fHe3Id2posZ[id]=z;
+            fHe3Id2diameter[id]=d;
+            fHe3Id2ring[id]=ring;
+        }else if(id>500){ //for clover
+            fCrystalId2posX[index1][index2]=x;
+            fCrystalId2posY[index1][index2]=y;
+            fCrystalId2posZ[index1][index2]=z;
+        }
         //cout<<He3id<<"-"<<daqId<<"-"<<d<<"-"<<x<<"-"<<y<<"-"<<z<<endl;
         mm++;
     }
@@ -98,22 +134,26 @@ void BelenReader::GetMapping(){
 void BelenReader::BookTree(TTree* treeNeutron, TTree *treeGamma, TTree *treeAnc, Int_t bufsize){
     //! initilize output
     fmtrNeutron = treeNeutron;
-    fmtrNeutron->Branch("blentry",&fBLNeuEntry,bufsize); //320000
-    fmtrNeutron->Branch("blTS",&fBLtsNeutron,bufsize);
-    fmtrNeutron->Branch("belen",&flocalNeutron,bufsize);
+    //fmtrNeutron->Branch("blentry",&fBLNeuEntry,bufsize); //320000
+    //fmtrNeutron->Branch("blTS",&fBLtsNeutron,bufsize);
+    //fmtrNeutron->Branch("neutron",&flocalNeutron,bufsize);
+    fmtrNeutron->Branch("neutron",&flocalNeutron,bufsize);
     fmtrNeutron->BranchRef();
 
 
     fmtrGamma = treeGamma;
-    fmtrGamma->Branch("blentry",&fBLGamEntry,bufsize);
-    fmtrGamma->Branch("blTS",&fBLtsGamma,bufsize);
-    fmtrGamma->Branch("belen",&flocalGamma,bufsize);
+    //fmtrGamma->Branch("blentry",&fBLGamEntry,bufsize);
+    //fmtrGamma->Branch("blTS",&fBLtsGamma,bufsize);
+    fmtrGamma->Branch("gamma",&flocalGamma,bufsize);
     fmtrGamma->BranchRef();
 
     fmtrAnc = treeAnc;
-    fmtrAnc->Branch("blentry",&fBLAncEntry,bufsize);
-    fmtrAnc->Branch("blTS",&fBLtsAnc,bufsize);
-    fmtrAnc->Branch("belen",&flocalAnc,bufsize);
+    //fmtrAnc->Branch("blentry",&fBLAncEntry,bufsize);
+    //fmtrAnc->Branch("blTS",&fBLtsAnc,bufsize);
+    fmtrAnc->Branch("f11",&flocalAncF11PL,bufsize);
+    fmtrAnc->Branch("uveto",&flocalAncUpstreamPL,bufsize);
+    fmtrAnc->Branch("dE",&flocalAncdE,bufsize);
+    fmtrAnc->Branch("dveto",&flocalAncAIDAPL,bufsize);
     fmtrAnc->BranchRef();
 
     fflag_filldata=true;
@@ -129,40 +169,64 @@ bool BelenReader::GetNextEvent(){
     ftype = ftreedataNeuron->type + ftreedataGamma->type + ftreedataAnc->type;
     fIndex1 = ftreedataNeuron->Index1 + ftreedataGamma->Index1 + ftreedataAnc->Index1;
     fIndex2 = ftreedataNeuron->Index2 + ftreedataGamma->Index2 + ftreedataAnc->Index2;
+
     fInfoFlag = ftreedataNeuron->InfoFlag + ftreedataGamma->InfoFlag + ftreedataAnc->InfoFlag;
     fName = ftreedataNeuron->Name + ftreedataGamma->Name + ftreedataAnc->Name;
 
     fcurentry++;
-
-    //! fill data if nessacry
-
+    //! fill data if needed
     if (ftype==1){
         flocalNeutron->SetEnergy(fE);
         flocalNeutron->SetTimestamp(fT);
-        flocalNeutron->SetID(fId);
-        PertubateHe3(fId);
+        flocalNeutron->SetDaqID(fId);
+        Int_t id = atoi(fName.substr(2,3).c_str());
+        flocalNeutron->SetID(id);
+        flocalNeutron->SetRing(fIndex1);
+        flocalNeutron->SetType(fIndex2);
+        PerturbateHe3(id);
         flocalNeutron->SetPos(fposX,fposY,fposZ);
-
         if (fflag_filldata) fmtrNeutron->Fill();
         fBLNeuEntry++;
     }else if (ftype==2){
         flocalGamma->SetEnergy(fE);
         flocalGamma->SetTimestamp(fT);
-        flocalGamma->SetID(fId);
-        PertubateClover(fId);
+        flocalGamma->SetDaqID(fId);
+        if (fIndex1==Index1Clover1) flocalGamma->SetClover(1);
+        else if (fIndex1==Index1Clover2) flocalGamma->SetClover(2);
+        flocalGamma->SetCloverLeaf(fIndex2);
+        flocalGamma->SetID((flocalGamma->GetClover()-1)*2 + flocalGamma->GetCloverLeaf());
+        PerturbateClover(fIndex1,fIndex2);
         flocalGamma->SetPos(fposX,fposY,fposZ);
-
         if (fflag_filldata) fmtrGamma->Fill();
         fBLGamEntry++;
     }
     else if (ftype==3){
-        flocalAnc->SetEnergy(fE);
-        flocalAnc->SetTimestamp(fT);
-        flocalAnc->SetID(fId);
+        //clear hits first!
+        ClearAncHits();
+        BELENHit* hit = new BELENHit();
+        hit->SetEnergy(fE);
+        hit->SetTimestamp(fT);
+        hit->SetDaqID(fId);
+        hit->SetID(fIndex2);
+        hit->SetRing(0);
+        hit->SetPos(0,0,0);
+        if (fIndex1==Index1UPlastic){
+            fsingleAncAIDAPL = ;
+            hit->SetType(ScintillatorType);
+            flocalAncUpstreamPL.push_back(hit);
+        }else if(fIndex1==Index1F11){
+            hit->SetType(ScintillatorType);
+            flocalAncF11PL.push_back(hit);
+        }else if (fIndex1==Index1AIDAPL){
+            hit->SetType(ScintillatorType);
+            flocalAncAIDAPL.push_back(hit);
+        }else if (fIndex1==Index1dE){
+            hit->SetType(SilliconType);
+            flocalAncdE.push_back(hit);
+        }
         if (fflag_filldata) fmtrAnc->Fill();
         fBLAncEntry++;
     }
-
     if (fcurentry>fnentries) return false;
     return true;
 }
@@ -194,7 +258,7 @@ bool BelenReader::GetNextAncEvent(){
     return true;
 }
 
-void BelenReader::PertubateHe3(UShort_t He3Id){
+void BelenReader::PerturbateHe3(UShort_t He3Id){
     //!there is nothing here for the moment!
     fposX = fHe3Id2posX[He3Id];
     fposY = fHe3Id2posY[He3Id];
@@ -209,12 +273,10 @@ void BelenReader::PertubateHe3(UShort_t He3Id){
     fposY = y;
 }
 
-void BelenReader::PertubateClover(UShort_t CrystalId){
+void BelenReader::PerturbateClover(UShort_t Index1, UShort_t Index2){
     //!there is nothing here for the moment!
-    fposX = fCrystalId2posX[CrystalId];
-    fposY = fCrystalId2posZ[CrystalId];
-    fposZ = fCrystalId2posZ[CrystalId];
+    fposX = fCrystalId2posX[Index1][Index2];
+    fposY = fCrystalId2posZ[Index1][Index2];
+    fposZ = fCrystalId2posZ[Index1][Index2];
     //! pertubating
 }
-
-

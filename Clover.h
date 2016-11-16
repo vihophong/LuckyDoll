@@ -21,11 +21,14 @@ public:
     }
     void Clear(){
         fid = -1;
+        fdaqid = -1;
         fpos.SetXYZ(-1,-1,-1);
         fts = 0;
         fadc = -1;
         fen = -1;
         fhitsadded = 0;
+        fclover = -1;
+        fcloverleaf = -1;
     }
     //! Set the energy
     void SetEnergy(double energy){fen = energy;}
@@ -33,13 +36,19 @@ public:
     //! Set the raw ADC value
     void SetADC(int adc){fadc = adc;}
 
-    //! Set the counter ID
+    //! Set the ID
     void SetID(short id){fid = id;}
+    //! Set the Daq ID
+    void SetDaqID(short daqid){fdaqid = daqid;}
+    //! Set the clover
+    void SetClover(short clover){fclover = clover;}
+    //! Set the clover leaf
+    void SetCloverLeaf(short cloverleaf){fcloverleaf = cloverleaf;}
 
     //! Set the timestamp
     void SetTimestamp(unsigned long long int ts){fts = ts;}
 
-    //! Set the He3 position
+    //! Set the Clover position
     void SetPos(Double_t x, Double_t y, Double_t z){fpos.SetXYZ(x,y,z);}
     //! Set current hits
     void SetHitsAdded(unsigned short hitsadded){fhitsadded = hitsadded;}
@@ -47,6 +56,13 @@ public:
 
     //! Get the ID
     short GetID(){return fid;}
+    //! Get the Daq ID
+    short GetDaqID(){return fdaqid;}
+    //! Get the clover
+    short GetClover(){return fclover;}
+    //! Get the clover leaf
+    short GetCloverLeaf(){return fcloverleaf;}
+
     //! Get the energy
     double GetEnergy(){return fen;}
     //! Get the timestamp
@@ -54,7 +70,7 @@ public:
     //! Get the raw ADC value
     int GetADC(){return fadc;}
 
-    //! Get 3He position
+    //! Get clover position
     TVector3 GetPosition(){return fpos;}
 
     //! Get current hits
@@ -63,6 +79,9 @@ public:
     //! Printing information
     void Print(Option_t *option = "") const {
       cout << "ID " << fid;
+      cout << "daq ID " << fdaqid;
+      cout << "clover leaf"<<fcloverleaf;
+      cout << "clover no."<<fclover;
       cout << "\tX pos " << fpos.X();
       cout << "\tY pos " << fpos.Y();
       cout << "\tZ pos " << fpos.Z();
@@ -74,12 +93,18 @@ public:
     }
 
 protected:
-    //! current hits
+    //! current hits (for addback)
     unsigned short fhitsadded;
-    //! Position of 3He counter
+    //! Position of the clover which respect to the center hole (in cm)
     TVector3 fpos;
-    //! ID number of 3He counter
+    //! ID number of the clover counter
     short fid;
+    short fdaqid;
+    //! clover number 1: left side clover, 2: right side clover
+    short fclover;
+    //! leaf in the clover 1: black 2: red 3: green 4: blue
+    short fcloverleaf;
+
     //! ADC value
     int fadc;
     //! Energy calibrated value
@@ -176,7 +201,6 @@ protected:
     unsigned short fmultAB;
     //! vector with the hits after addback
     vector<CloverHit*> fhitsAB;
-
 
     /// \cond CLASSIMP
     ClassDef(Clover,1);

@@ -19,20 +19,25 @@
 #include "TROOT.h"
 #include "TLatex.h"
 
+#define MaxID 1000
+#define MaxIndex1 30
+#define MaxIndex2 10
+#define belenClockResolution 20 //in ns
+
 class BelenReader
 {
 public:
     BelenReader();
     virtual ~BelenReader();
 
-    //! set mapping files
-    void SetMapping(char* mapf){fmappingfile = mapf;}
-    //! se mapping (currently being called by Init)
-    void GetMapping();
+    //! set geometry mapping files
+    void SetGeoMapping(char* mapf){fmappingfile = mapf;}
+    //! Get geometry mapping (currently being called by Init)
+    void GetGeoMapping();
     //! initialization
     void Init(char* belenfile);
     //! book tree if we want to store files
-    void BookTree(TTree* treeNeutron, TTree *treeGamma, TTree *treeAnc, Int_t bufsize=32000);
+    void BookTree(TTree* treeNeutron, TTree *treeGamma, TTree *treeAnc, Int_t bufsize=320000);
     //! close file reader
     void CloseReader(){finfile->Close();}
 
@@ -62,7 +67,10 @@ public:
     //! gamma hits
     CloverHit* GetGamma(){return flocalGamma;}
     //! ancillary hits
-    BELENHit* GetAnc(){return flocalAnc;}
+    std::vector<BELENHit*> GetAncAIDAPL(){return flocalAncAIDAPL;}
+    std::vector<BELENHit*> GetAncUpstreamPL(){return flocalAncUpstreamPL;}
+    std::vector<BELENHit*> GetAncdE(){return flocalAncdE;}
+    std::vector<BELENHit*> GetAncF11PL(){return flocalAncF11PL;}
 
     //! Get event type, return 1 if neutron, 2 if gamma and 3 if ancillary!
     Double_t GetEnergy(){return fE;}
@@ -75,9 +83,12 @@ public:
     std::string GetName(){return fName;}
 
 
+    //! clear Ancillary hits and free memory!
+    void ClearAncHits();
+
     //! special function from MC simulation!
-    void PertubateHe3(UShort_t He3Id);
-    void PertubateClover(UShort_t CrystalId);
+    void PerturbateHe3(UShort_t He3Id);
+    void PerturbateClover(UShort_t Index1,UShort_t Index2);
 
 protected:
     //! mapping file
@@ -117,17 +128,27 @@ protected:
     Double_t fHe3Id2posY[MaxID];
     Double_t fHe3Id2posZ[MaxID];
     Double_t fHe3Id2diameter[MaxID];
+    UShort_t fHe3Id2ring[MaxID];
 
-    Double_t fCrystalId2posX[MaxID];
-    Double_t fCrystalId2posY[MaxID];
-    Double_t fCrystalId2posZ[MaxID];
+    Double_t fCrystalId2posX[MaxIndex1][MaxIndex2];
+    Double_t fCrystalId2posY[MaxIndex1][MaxIndex2];
+    Double_t fCrystalId2posZ[MaxIndex1][MaxIndex2];
 
     //! neutron hits
     BELENHit* flocalNeutron;
     //! gamma hits
     CloverHit* flocalGamma;
     //! ancillary hits
-    BELENHit* flocalAnc;
+    std::vector<BELENHit*> flocalAncUpstreamPL;
+    std::vector<BELENHit*> flocalAncAIDAPL;
+    std::vector<BELENHit*> flocalAncdE;
+    std::vector<BELENHit*> flocalAncF11PL;
+    //! ancillary single hit
+    BELENHit* fsingleAncUpstreamPL;
+    BELENHit* fsingleAncAIDAPL;
+    BELENHit* fsingleAncdE;
+    BELENHit* fsingleAncF11PL;
+
 
     //! input files
     TFile* finfile;

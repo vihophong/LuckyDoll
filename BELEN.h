@@ -18,14 +18,18 @@ public:
     BELENHit(){
         Clear();
     }
-    BELENHit(Double_t posx, Double_t posy, Double_t posz, short id, unsigned long long ts, int adc, int en, unsigned short hitsadded)
+    BELENHit(Double_t posx, Double_t posy, Double_t posz, short daqid, short id, short ring,short type, unsigned long long ts, int adc, int en, unsigned short hitsadded)
     {
+        fdaqid = daqid;
         fid = id;
+        fring = ring;
+        ftype = type;
         fts = ts;
         fadc = adc;
         fen = en;
-        fhe3pos.SetXYZ(posx,posy,posz);
+        fpos.SetXYZ(posx,posy,posz);
         fhitsadded = hitsadded;
+
     }
 
     //! Set the energy
@@ -36,34 +40,49 @@ public:
 
     //! Set the counter ID
     void SetID(short id){fid = id;}
+    //! Set the counter daq ID
+    void SetDaqID(short daqid){fdaqid = daqid;}
+    //! Set the counter ring
+    void SetRing(short ring){fring = ring;}
+    //! Set the counter type
+    void SetType(short type){ftype = type;}
 
     //! Set the timestamp
     void SetTimestamp(unsigned long long int ts){fts = ts;}
 
     //! Set the He3 position
-    void SetPos(Double_t x, Double_t y, Double_t z){fhe3pos.SetXYZ(x,y,z);}
+    void SetPos(Double_t x, Double_t y, Double_t z){fpos.SetXYZ(x,y,z);}
     //! Set current hits
     void SetHitsAdded(unsigned short hitsadded){fhitsadded = hitsadded;}
 
 
     //! Get the ID
     short GetID(){return fid;}
+    //! Get the ID
+    short GetDaqID(){return fdaqid;}
+    //! Get the ring (my precious!)
+    short GetMyPrecious(){return fring;}
+    //! Get the type
+    short GetType(){return ftype;}
+
     //! Get the energy
     double GetEnergy(){return fen;}
     //! Get the timestamp
     unsigned long long int GetTimestamp(){return fts;}
     //! Get the raw ADC value
     int GetADC(){return fadc;}
-
     //! Get 3He position
-    TVector3 GetPosition(){return fhe3pos;}
+    TVector3 GetPosition(){return fpos;}
 
     //! Get current hits
     unsigned short GetHitsAdded(){return fhitsadded;}
 
     void Clear(){
         fid = -1;
-        fhe3pos.SetXYZ(-1,-1,-1);
+        fring = -1;
+        ftype = -1;
+        fdaqid = -1;
+        fpos.SetXYZ(-1,-1,-1);
         fts = 0;
         fadc = -1;
         fen = -1;
@@ -73,9 +92,12 @@ public:
     //! Printing information
     void Print(Option_t *option = "") const {
       cout << "ID " << fid;
-      cout << "\tX pos " << fhe3pos.X();
-      cout << "\tY pos " << fhe3pos.Y();
-      cout << "\tZ pos " << fhe3pos.Z();
+      cout << "daq ID " << fdaqid;
+      cout << "ring " << fring;
+      cout << "type" <<ftype;
+      cout << "\tX pos " << fpos.X();
+      cout << "\tY pos " << fpos.Y();
+      cout << "\tZ pos " << fpos.Z();
       cout << "\tadc " << fadc;
       cout << "\tenergy " << fen;
       cout << "\ttimestamp " << fts;
@@ -88,9 +110,16 @@ protected:
     //! current hits
     unsigned short fhitsadded;
     //! Position of 3He counter
-    TVector3 fhe3pos;
-    //! ID number of 3He counter
+    TVector3 fpos;
+    //! daq ID number of 3He counter
+    short fdaqid;
+    //! physical ID number of 3He counter
     short fid;
+    //! ring number of the 3He counter
+    short fring;
+    //! type of tube: 0: riken, 1: upc 1 inch 2: ornl 1 inch 3: ornl 2 inch
+    short ftype;
+
     //! ADC value
     int fadc;
     //! Energy calibrated value

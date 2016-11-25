@@ -13,7 +13,7 @@
 #include "TClonesArray.h"
 #include "CommandLineInterface.h"
 #include "AIDAUnpacker.h"
-#include "BuildAIDAEvents.h"
+#include "BuildAIDAEventsNew.h"
 #include "AIDA.h"
 #include "TVectorD.h"
 
@@ -23,7 +23,25 @@ bool signal_received = false;
 void signalhandler(int sig);
 double get_time();
 
+
+typedef struct {
+    unsigned long long T; 	 // Calibrated time
+    unsigned long long Tfast;
+    double E; 	 // Energy
+    double EX;
+    double EY;
+    double x,y,z;// number of pixel for AIDA, or number of tube for BELEN
+    int nx, ny, nz;// multiplicity of hits in x and y strips, and dssd planes
+    unsigned char ID; 	 // Detector type (BigRips, Aida ion, AIDA beta, BELEN, Clovers)
+    //** other stuff pending to define **//
+} datatype;
+
+
+const unsigned char IDion = 4;
+const unsigned char IDbeta = 5;
+
 int main(int argc, char* argv[]){
+
   //! Program start time
   double time_start = get_time();
   TStopwatch timer;
@@ -38,7 +56,7 @@ int main(int argc, char* argv[]){
   long long int WindowDiscriminator = 0;
 
   int FillFlag = 1;
-  long long int TransientTime = 20000;
+  long long int TransientTime = 10000;
 
   char* InputAIDA = NULL;
   char* OutFile = NULL;
@@ -79,13 +97,13 @@ int main(int argc, char* argv[]){
     cout << "No Threshold table given " << endl;
     ThresholdFile = new char[600];
     strcpy(ThresholdFile,"/sssewqewwq/");
-    //return 1;
+    return 1;
   }
   if(CalibrationFile == NULL){
     cout << "No Calibration table given " << endl;
     CalibrationFile = new char[600];
     strcpy(CalibrationFile,"/sssewqewwq/");
-    //return 1;
+    return 1;
   }
   if(OutFile == NULL){
     cout << "No output ROOT file given " << endl;
@@ -96,21 +114,32 @@ int main(int argc, char* argv[]){
     //return 2;
   }
 
+
   cout<<"output file: "<<OutFile<< endl;
 
   TFile* ofile = new TFile(OutFile,"recreate");
   ofile->cd();
 
+  TTree* treebeta=new TTree("beta","aida beta");
+  AIDA* aidabeta = new AIDA;
+  if (FillFlag){
   //! Book tree and histograms
-  TTree* treeion=new TTree("ion","tree ion");
-  TTree* treebeta=new TTree("beta","tree beta");
-  TTree* treepulser=new TTree("pulser","tree pulser");
+      treebeta->Branch("aida",&aidabeta);
+  }
+
+  TTree* treeion=new TTree("ion","aida ion");
+  AIDA* aidaion = new AIDA;
+  if (FillFlag){
+  //! Book tree and histograms
+      treeion->Branch("aida",&aidaion);
+  }
 
   //! Read list of files
   string inputfiles[1000];
   ifstream inf(InputAIDA);
   Int_t nfiles;
   inf>>nfiles;
+
 
   Int_t implantationrate = 0;
 
@@ -127,6 +156,7 @@ int main(int argc, char* argv[]){
   for(Int_t i=0;i<NumDSSD;i++){
       ecutX[i]=0.;
       ecutY[i]=0.;
+      //if (i==0) ecutY[i]=250.;
   }
 
   std::ifstream ecut(ECutFile,std::ios::in);
@@ -145,7 +175,6 @@ int main(int argc, char* argv[]){
   for (Int_t i=0;i<nfiles;i++){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
       evts->SetVerbose(Verbose);
-      if (FillFlag) evts->BookTree(treeion,treebeta,treepulser);
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
@@ -153,6 +182,7 @@ int main(int argc, char* argv[]){
       evts->SetAIDATransientTime(TransientTime);
       evts->SetEventWindowION(WindowIon);
       evts->SetEventWindowBETA(WindowBeta);
+      evts->SetPulserInStream(false);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
       evts->Init((char*)inputfiles[i].c_str());
@@ -187,6 +217,15 @@ int main(int argc, char* argv[]){
                        evts->GetAIDAIon()->GetCluster(0)->GetHitPositionY()<<"\r"<<flush;
             time_last = time_end;
           }
+          if (evts->IsBETA()) {
+              aidabeta->Clear();
+              evts->GetAIDABeta()->Copy(*aidabeta);
+              if (FillFlag) treebeta->Fill();
+          }else if (!evts->IsBETA()){
+              aidaion->Clear();
+              evts->GetAIDAIon()->Copy(*aidaion);
+              if (FillFlag) treeion->Fill();
+          }
 
           //!Get run time
           if (evts->IsBETA()&&start==0) {
@@ -215,13 +254,11 @@ int main(int argc, char* argv[]){
       delete evts;
   }
   if (FillFlag){
-      treeion->Write();
       treebeta->Write();
-      treepulser->Write();
+      treeion->Write();
       runtime.Write("runtime");
   }
   ofile->Close();
-
 
   cout<<"\n**********************SUMMARY**********************\n"<<endl;
   cout<<"Total run length = "<<runtime[0]<< " seconds"<<endl;
@@ -236,6 +273,7 @@ int main(int argc, char* argv[]){
   cout << "\nProgram Run time: " << time_end - time_start << " s." << endl;
   timer.Stop();
   cout << "CPU time: " << timer.CpuTime() << "\tReal time: " << timer.RealTime() << endl;
+
   return 0;
 }
 

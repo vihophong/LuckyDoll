@@ -17,9 +17,10 @@
 
 #####################################################################################################################
 
+
 # CMakeLists.txt for event package. It creates a library with dictionary and a main program
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(aidapartialnew)
+project(aidasimple)
 
 # You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
 #   - ROOT built with classic configure/make use the provided $ROOTSYS/etc/cmake/FindROOT.cmake
@@ -35,12 +36,12 @@ include(${ROOT_USE_FILE})
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS})
 
-ROOT_GENERATE_DICTIONARY(G__AIDApartial AIDA.h LINKDEF AIDALinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__AIDAsimplenew AIDA.h LINKDEF AIDALinkDef.h)
 
 #---Create a shared library with geneated dictionary
-add_library(AIDApartial SHARED AIDA.cpp G__AIDApartial.cxx) # Link2Dictionary!
-target_link_libraries(AIDApartial ${ROOT_LIBRARIES})   # Link2Dictionary!
+add_library(AIDAsnew SHARED AIDA.cpp G__AIDAsimplenew.cxx) # Link2Dictionary!
+target_link_libraries(AIDAsnew ${ROOT_LIBRARIES})   # Link2Dictionary!
 
 #---Create  a main program using the library
-add_executable(aidapartial LuckyDollPartial.cpp AIDAUnpacker.cpp BuildAIDAEvents.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEvents.h CommandLineInterface.h rawaida.h)
-target_link_libraries(aidapartial AIDApartial)
+add_executable(aida LuckyDoll.cpp AIDAUnpacker.cpp BuildAIDAEventsNew.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEventsNew.h CommandLineInterface.h rawaida.h)
+target_link_libraries(aida AIDAsnew)

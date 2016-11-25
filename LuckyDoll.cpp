@@ -51,7 +51,7 @@ int main(int argc, char* argv[]){
 
   cout << "AIDA event builder" << endl;
   int Verbose = 0;
-  long long int WindowIon = 2500; //time unit: 10 ns
+  long long int WindowIon = 5000; //time unit: 10 ns
   long long int WindowBeta = 2500; //time unit: 10 ns
   long long int WindowDiscriminator = 0;
 
@@ -69,7 +69,7 @@ int main(int argc, char* argv[]){
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
-  interface->Add("-wi", "Ion event building window (default: 2500*10ns)", &WindowIon);
+  interface->Add("-wi", "Ion event building window (default: 5000*10ns)", &WindowIon);
   interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
   interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);

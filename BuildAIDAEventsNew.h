@@ -27,6 +27,8 @@ public:
 
     //! Set file path containing a Threshold table
     void SetThresholdFile(char* thrf){fthresholdfile = thrf;}
+    //! Read Threshold
+    void read_threshold_table(char* inf);
 
     //! Set file path containing a Calibration table
     void SetCalibFile(char* calf){fcalibfile = calf;ReadCalibTable();}
@@ -154,6 +156,17 @@ private:
 
     AIDA* flocalaidaBETA;
     AIDA* flocalaidaION;
+
+
+    //! new stuff
+    bool fflag_firsthit;
+    unsigned long long flastts;
+    unsigned long long fwindowHits;
+    bool fflag_ision;
+    bool flag_threhold;
+    Double_t dssd_thr[NumDSSD][NumStrXY];
+    bool fflag_addFirstHit;
+
 
     //! stuff for the merger
     unsigned long long fcurrentionts;

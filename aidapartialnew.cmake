@@ -17,6 +17,7 @@
 
 #####################################################################################################################
 
+
 # CMakeLists.txt for event package. It creates a library with dictionary and a main program
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(aidapartialnew)
@@ -35,12 +36,12 @@ include(${ROOT_USE_FILE})
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS})
 
-ROOT_GENERATE_DICTIONARY(G__AIDApartial AIDA.h LINKDEF AIDALinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__AIDApartialnew AIDA.h LINKDEF AIDALinkDef.h)
 
 #---Create a shared library with geneated dictionary
-add_library(AIDApartial SHARED AIDA.cpp G__AIDApartial.cxx) # Link2Dictionary!
-target_link_libraries(AIDApartial ${ROOT_LIBRARIES})   # Link2Dictionary!
+add_library(AIDApartialnew SHARED AIDA.cpp G__AIDApartialnew.cxx) # Link2Dictionary!
+target_link_libraries(AIDApartialnew ${ROOT_LIBRARIES})   # Link2Dictionary!
 
 #---Create  a main program using the library
-add_executable(aidapartial LuckyDollPartial.cpp AIDAUnpacker.cpp BuildAIDAEvents.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEvents.h CommandLineInterface.h rawaida.h)
-target_link_libraries(aidapartial AIDApartial)
+add_executable(aidapartialnew LuckyDollPartialNew.cpp AIDAUnpacker.cpp BuildAIDAEventsNew.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEventsNew.h CommandLineInterface.h rawaida.h)
+target_link_libraries(aidapartialnew AIDApartialnew)

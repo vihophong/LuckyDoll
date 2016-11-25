@@ -143,7 +143,6 @@ int main(int argc, char* argv[]){
     std::multimap < unsigned long long, cloverSimpleStruct>::iterator cloverMap_it;
 
 
-
     //! READ AIDA
     //! *****************************
 
@@ -313,11 +312,6 @@ int main(int argc, char* argv[]){
         delete evts;
     }
 
-
-
-
-
-
     //! READ BELEN
     //! *****************************
     //! Read list of files
@@ -337,7 +331,7 @@ int main(int argc, char* argv[]){
 
     for (Int_t i=0;i<nfiles;i++){
         BelenReader* blrd = new BelenReader;
-        blrd->SetMapping(MappingFile);
+        blrd->SetGeoMapping(MappingFile);
         //if (FillFlag) blrd->BookTree(treeneutron,treegamma,treeanc);
         blrd->Init((char*)inputfiles[i].c_str());
 

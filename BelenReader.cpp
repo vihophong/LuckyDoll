@@ -195,7 +195,7 @@ bool BelenReader::GetNextEvent(){
         if (fIndex1==Index1Clover1) flocalGamma->SetClover(1);
         else if (fIndex1==Index1Clover2) flocalGamma->SetClover(2);
         flocalGamma->SetCloverLeaf(fIndex2);
-        flocalGamma->SetID((flocalGamma->GetClover()-1)*2 + flocalGamma->GetCloverLeaf());
+        flocalGamma->SetID((flocalGamma->GetClover()-1)*4 + flocalGamma->GetCloverLeaf());
         PerturbateClover(fIndex1,fIndex2);
         flocalGamma->SetPos(fposX,fposY,fposZ);
         if (fflag_filldata) fmtrGamma->Fill();
@@ -231,7 +231,7 @@ bool BelenReader::GetNextEvent(){
             //flocalAncF11PL.push_back(hit);
         }else if (fIndex1==Index1AIDAPL){
             flocalAnc->SetRing(4);
-            flocalAnc->SetType(SilliconType);
+            flocalAnc->SetType(ScintillatorType);
             flocalAnc->SetPos(0,0,4);
             //hit->SetType(ScintillatorType);
             //flocalAncAIDAPL.push_back(hit);

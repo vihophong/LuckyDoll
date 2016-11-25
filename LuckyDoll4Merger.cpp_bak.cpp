@@ -120,11 +120,19 @@ int main(int argc, char* argv[]){
   TFile* ofile = new TFile(OutFile,"recreate");
   ofile->cd();
 
-  datatype aida;
-  TTree* tree=new TTree("aida","aida tree ion and beta)");
+
+  TTree* treeBeta=new TTree("beta","beta");
+  AIDACluster* clusterBeta;
   if (FillFlag){
   //! Book tree and histograms
-      tree->Branch("aida",&aida,"T/l:Tfast/l:E/D:EX/D:EY/D:x/D:y/D:z/D:nx/I:ny/I:nz/I:ID/b");
+      treeBeta->Branch("ion",&clusterBeta);
+  }
+
+  TTree* treeIon=new TTree("ion","ion");
+  AIDACluster* clusterIon;
+  if (FillFlag){
+  //! Book tree and histograms
+      treeIon->Branch("ion",&clusterIon);
   }
 
   //! Read list of files
@@ -221,53 +229,17 @@ int main(int argc, char* argv[]){
               //!fill tree according to the time stamp
               for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){
                   Int_t i = tsvector_it->second;
-                  Double_t ex = evts->GetAIDABeta()->GetCluster(i)->GetXEnergy();
-                  Double_t ey = evts->GetAIDABeta()->GetCluster(i)->GetYEnergy();
-                  aida.ID = IDbeta;
-                  aida.E = (ex+ey)/2;
-                  aida.EX = ex;
-                  aida.EY = ey;
-                  //!If you need time ordered then we need to modify this
-                  aida.T = tsvector_it->first;
-                  aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
-                  aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
-                  aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
-                  aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
-
-                  //aida.nx=(int)evts->GetAIDABeta()->GetCluster(i)->GetXMultiplicity();
-                  //aida.ny=(int)evts->GetAIDABeta()->GetCluster(i)->GetYMultiplicity();
-                  //aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi(int(aida.z));
-
-                  aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
-                  aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
-                  aida.nz = (int)evts->GetAIDABeta()->GetClustersMultZ();
-                  if (FillFlag) tree->Fill();
+                  //if (FillFlag) tree->Fill();
               }
 
           }else if (!evts->IsBETA()){
               int lastclusterID = evts->GetAIDAIon()->GetNClusters()-1;
               if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()==evts->GetAIDAIon()->GetMaxZ()){
-                  Double_t ex = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetXEnergy();
-                  Double_t ey = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetYEnergy();
-                  aida.ID = IDion;
-                  aida.E = (ex+ey)/2;
-                  aida.EX = ex;
-                  aida.EY = ey;
-                  aida.T = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetTimestamp() * ClockResolution;
-                  aida.Tfast = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetFastTimestamp() * ClockResolution;
-                  aida.x = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionX();
-                  aida.y = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionY();
-                  aida.z = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ();
-                  /*
-                  aida.nx=(int)evts->GetAIDAIon()->GetCluster(i)->GetXMultiplicity();
-                  aida.ny=(int)evts->GetAIDAIon()->GetCluster(i)->GetYMultiplicity();
-                  aida.nz = (int)evts->GetAIDAIon()->GetNClustersZi(int(aida.z));
-                  */
-                  aida.nx = (int)evts->GetAIDAIon()->GetMultX((int)aida.z);
-                  aida.ny = (int)evts->GetAIDAIon()->GetMultY((int)aida.z);
-                  aida.nz = (int)evts->GetAIDAIon()->GetClustersMultZ();
+
                   //if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()>0) cout<< "eeeed"<<aida.z<<endl;
-                  if (FillFlag) tree->Fill();
+                  //if (FillFlag) tree->Fill();
+                  clusterIon = (AIDACluster*) evts->GetAIDAIon()->CloneCluster(lastclusterID);
+                  if (FillFlag) treeIon->Fill();
               }else{
                   cout<<"Somethings wrong with clustering?"<<endl;
               }
@@ -300,7 +272,7 @@ int main(int argc, char* argv[]){
       delete evts;
   }
   if (FillFlag){
-      tree->Write();
+      treeIon->Write();
       runtime.Write("runtime");
   }
   ofile->Close();

@@ -20,7 +20,7 @@
 
 # CMakeLists.txt for event package. It creates a library with dictionary and a main program
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(aidasimple)
+project(merger)
 
 # You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
 #   - ROOT built with classic configure/make use the provided $ROOTSYS/etc/cmake/FindROOT.cmake
@@ -36,24 +36,29 @@ include(${ROOT_USE_FILE})
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS})
 
-ROOT_GENERATE_DICTIONARY(G__TreeData TreeData.h LINKDEF TreeDataLinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__Beam Beam.h LINKDEF BeamLinkDef.h)
 ROOT_GENERATE_DICTIONARY(G__BELEN BELEN.h LINKDEF BELENLinkDef.h)
 ROOT_GENERATE_DICTIONARY(G__Clover Clover.h LINKDEF CloverLinkDef.h)
-ROOT_GENERATE_DICTIONARY(G__AIDAsimple AIDA.h LINKDEF AIDALinkDef.h)
-
+ROOT_GENERATE_DICTIONARY(G__AIDAmerge AIDA.h LINKDEF AIDALinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__DataStruct DataStruct.h LINKDEF DataStructLinkDef.h)
 #---Create a shared library with geneated dictionary
-add_library(TreeData SHARED TreeData.h G__TreeData.cxx) # Link2Dictionary!
+
 add_library(BELEN SHARED BELEN.cpp G__BELEN.cxx) # Link2Dictionary!
 add_library(Clover SHARED Clover.cpp G__Clover.cxx) # Link2Dictionary!
-add_library(AIDAs SHARED AIDA.cpp G__AIDAsimple.cxx) # Link2Dictionary!
-target_link_libraries(TreeData ${ROOT_LIBRARIES})   # Link2Dictionary!
+add_library(AIDAmerge SHARED AIDA.cpp G__AIDAmerge.cxx) # Link2Dictionary!
+add_library(Beam SHARED Beam.cpp G__Beam.cxx) # Link2Dictionary!
+add_library(DataStruct SHARED DataStruct.cpp G__DataStruct.cxx) # Link2Dictionary!
 target_link_libraries(BELEN ${ROOT_LIBRARIES})   # Link2Dictionary!
 target_link_libraries(Clover ${ROOT_LIBRARIES})   # Link2Dictionary!
-target_link_libraries(AIDAs ${ROOT_LIBRARIES})   # Link2Dictionary!
+target_link_libraries(AIDAmerge ${ROOT_LIBRARIES})   # Link2Dictionary!
+target_link_libraries(Beam ${ROOT_LIBRARIES})   # Link2Dictionary!
+target_link_libraries(DataStruct ${ROOT_LIBRARIES})   # Link2Dictionary!
 
 #---Create  a main program using the library
-add_executable(belen LuckyDollMergerSimple.cpp AIDAUnpacker.cpp BuildAIDAEvents.cpp BelenReader.cpp  CommandLineInterface.cpp BelenReader.h CommandLineInterface.h AIDAUnpacker.h BuildAIDAEvents.h CommandLineInterface.h rawaida.h)
-target_link_libraries(belen TreeData)
-target_link_libraries(belen BELEN)
-target_link_libraries(belen Clover)
-target_link_libraries(aida AIDAs)
+add_executable(merger LuckyDollMerger.cpp  CommandLineInterface.cpp Merger.cpp CommandLineInterface.h Merger.h CommandLineInterface.h)
+target_link_libraries(merger BELEN)
+target_link_libraries(merger Clover)
+target_link_libraries(merger Beam)
+target_link_libraries(merger AIDAmerge)
+target_link_libraries(merger DataStruct)
+

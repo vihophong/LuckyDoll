@@ -19,7 +19,7 @@ public:
     CloverHit(){
         Clear();
     }
-    void Clear(){
+    virtual void Clear(){
         fid = -1;
         fdaqid = -1;
         fpos.SetXYZ(-1,-1,-1);
@@ -30,6 +30,19 @@ public:
         fclover = -1;
         fcloverleaf = -1;
     }
+
+    virtual void Copy(CloverHit& obj){
+        obj.SetID(fid);
+        obj.SetClover(fclover);
+        obj.SetCloverLeaf(fcloverleaf);
+        obj.SetDaqID(fdaqid);
+        obj.SetTimestamp(fts);
+        obj.SetPos(fpos.X(),fpos.Y(),fpos.Z());
+        obj.SetADC(fadc);
+        obj.SetEnergy(fen);
+        obj.SetHitsAdded(fhitsadded);
+    }
+
     //! Set the energy
     void SetEnergy(double energy){fen = energy;}
 
@@ -66,7 +79,7 @@ public:
     //! Get the energy
     double GetEnergy(){return fen;}
     //! Get the timestamp
-    unsigned long long int GetTimestamp(){return fts;}
+    unsigned long long GetTimestamp(){return fts;}
     //! Get the raw ADC value
     int GetADC(){return fadc;}
 
@@ -125,7 +138,8 @@ public:
         Clear();
     }
     //! Clear the music information
-    void Clear(Option_t *option = ""){
+    virtual void Clear(Option_t *option = ""){
+      ftsclover = 0;
       fmult = 0;
       fmultAB = 0;
       //! Dealocating memory
@@ -168,6 +182,8 @@ public:
           fhits.push_back(*hit);
       }
     }
+    //! Set timestamp
+    void SetTimeStamp(unsigned long long ts){ftsclover = ts;}
 
 
     //! Returns the multiplicity of the event
@@ -182,6 +198,13 @@ public:
     vector<CloverHit*> GetHitsAB(){return fhitsAB;}
     //! Returns the hit number n after addback
     CloverHit* GetHitAB(int n){return fhitsAB.at(n);}
+    //! Get timestamp
+    unsigned long long GetTimeStamp(){return ftsclover;}
+
+    //! Simple addback
+    void PerformAddback(){
+
+    }
 
     //! Printing information
     void Print(Option_t *option = "") const {
@@ -193,6 +216,8 @@ public:
         fhitsAB.at(i)->Print();
     }
 protected:
+    //! time
+    unsigned long long ftsclover;
     //! multiplicity
     unsigned short fmult;
     //! vector with the hits

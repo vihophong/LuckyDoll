@@ -236,7 +236,6 @@ int main(int argc, char* argv[]){
   cout << "\nProgram Run time: " << time_end - time_start << " s." << endl;
   timer.Stop();
   cout << "CPU time: " << timer.CpuTime() << "\tReal time: " << timer.RealTime() << endl;
-
   return 0;
 }
 

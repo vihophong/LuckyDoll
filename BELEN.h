@@ -31,6 +31,28 @@ public:
         fhitsadded = hitsadded;
 
     }
+    virtual void Clear(){
+        fid = -1;
+        fring = -1;
+        ftype = -1;
+        fdaqid = -1;
+        fpos.SetXYZ(-1,-1,-1);
+        fts = 0;
+        fadc = -1;
+        fen = -1;
+        fhitsadded = 0;
+    }
+    virtual void Copy(BELENHit& obj){
+        obj.SetID(fid);
+        obj.SetRing(fring);
+        obj.SetType(ftype);
+        obj.SetDaqID(fdaqid);
+        obj.SetTimestamp(fts);
+        obj.SetPos(fpos.X(),fpos.Y(),fpos.Z());
+        obj.SetADC(fadc);
+        obj.SetEnergy(fen);
+        obj.SetHitsAdded(fhitsadded);
+    }
 
     //! Set the energy
     void SetEnergy(double energy){fen = energy;}
@@ -76,18 +98,6 @@ public:
 
     //! Get current hits
     unsigned short GetHitsAdded(){return fhitsadded;}
-
-    void Clear(){
-        fid = -1;
-        fring = -1;
-        ftype = -1;
-        fdaqid = -1;
-        fpos.SetXYZ(-1,-1,-1);
-        fts = 0;
-        fadc = -1;
-        fen = -1;
-        fhitsadded = 0;
-    }
 
     //! Printing information
     void Print(Option_t *option = "") const {
@@ -141,7 +151,7 @@ public:
         Clear();
     }
     //! clear BELEN info
-    void Clear(){
+    virtual void Clear(){
         fmult = 0;
         //! Dealocating memory
         for (size_t idx=0;idx<fhits.size();idx++){

@@ -20,7 +20,7 @@
 
 # CMakeLists.txt for event package. It creates a library with dictionary and a main program
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(mergerbeam)
+project(builddecay)
 
 # You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
 #   - ROOT built with classic configure/make use the provided $ROOTSYS/etc/cmake/FindROOT.cmake
@@ -36,29 +36,28 @@ include(${ROOT_USE_FILE})
 include_directories(${CMAKE_SOURCE_DIR} ${ROOT_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS})
 
-ROOT_GENERATE_DICTIONARY(G__Beam1 Beam.h LINKDEF BeamLinkDef.h)
-ROOT_GENERATE_DICTIONARY(G__BELEN1 BELEN.h LINKDEF BELENLinkDef.h)
-ROOT_GENERATE_DICTIONARY(G__Clover1 Clover.h LINKDEF CloverLinkDef.h)
-ROOT_GENERATE_DICTIONARY(G__AIDAmerge1 AIDA.h LINKDEF AIDALinkDef.h)
-ROOT_GENERATE_DICTIONARY(G__DataStruct1 DataStruct.h LINKDEF DataStructLinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__Beam Beam.h LINKDEF BeamLinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__BELEN BELEN.h LINKDEF BELENLinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__Clover Clover.h LINKDEF CloverLinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__AIDAmerge AIDA.h LINKDEF AIDALinkDef.h)
+ROOT_GENERATE_DICTIONARY(G__DataStruct DataStruct.h LINKDEF DataStructLinkDef.h)
 #---Create a shared library with geneated dictionary
-
-add_library(BELEN1 SHARED BELEN.cpp G__BELEN1.cxx) # Link2Dictionary!
-add_library(Clover1 SHARED Clover.cpp G__Clover1.cxx) # Link2Dictionary!
-add_library(AIDAmerge1 SHARED AIDA.cpp G__AIDAmerge1.cxx) # Link2Dictionary!
-add_library(Beam1 SHARED Beam.cpp G__Beam1.cxx) # Link2Dictionary!
-add_library(DataStruct1 SHARED DataStruct.cpp G__DataStruct1.cxx) # Link2Dictionary!
-target_link_libraries(BELEN1 ${ROOT_LIBRARIES})   # Link2Dictionary!
-target_link_libraries(Clover1 ${ROOT_LIBRARIES})   # Link2Dictionary!
-target_link_libraries(AIDAmerge1 ${ROOT_LIBRARIES})   # Link2Dictionary!
-target_link_libraries(Beam1 ${ROOT_LIBRARIES})   # Link2Dictionary!
-target_link_libraries(DataStruct1 ${ROOT_LIBRARIES})   # Link2Dictionary!
+add_library(BELEN SHARED BELEN.cpp G__BELEN.cxx) # Link2Dictionary!
+add_library(Clover SHARED Clover.cpp G__Clover.cxx) # Link2Dictionary!
+add_library(AIDAmerge SHARED AIDA.cpp G__AIDAmerge.cxx) # Link2Dictionary!
+add_library(Beam SHARED Beam.cpp G__Beam.cxx) # Link2Dictionary!
+add_library(DataStruct SHARED DataStruct.cpp G__DataStruct.cxx) # Link2Dictionary!
+target_link_libraries(BELEN ${ROOT_LIBRARIES})   # Link2Dictionary!
+target_link_libraries(Clover ${ROOT_LIBRARIES})   # Link2Dictionary!
+target_link_libraries(AIDAmerge ${ROOT_LIBRARIES})   # Link2Dictionary!
+target_link_libraries(Beam ${ROOT_LIBRARIES})   # Link2Dictionary!
+target_link_libraries(DataStruct ${ROOT_LIBRARIES})   # Link2Dictionary!
 
 #---Create  a main program using the library
-add_executable(mergerbeam LuckyDollMergerBeam.cpp  CommandLineInterface.cpp Merger.cpp CommandLineInterface.h Merger.h CommandLineInterface.h)
-target_link_libraries(mergerbeam BELEN1)
-target_link_libraries(mergerbeam Clover1)
-target_link_libraries(mergerbeam Beam1)
-target_link_libraries(mergerbeam AIDAmerge1)
-target_link_libraries(mergerbeam DataStruct1)
+add_executable(builddecay LuckyDollBuildDecay.cpp CommandLineInterface.cpp BuildDecay.cpp CommandLineInterface.h BuildDecay.h CommandLineInterface.h)
+target_link_libraries(builddecay BELEN)
+target_link_libraries(builddecay Clover)
+target_link_libraries(builddecay Beam)
+target_link_libraries(builddecay AIDAmerge)
+target_link_libraries(builddecay DataStruct)
 

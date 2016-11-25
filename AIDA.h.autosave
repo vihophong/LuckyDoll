@@ -288,7 +288,8 @@ public:
       //for (Int_t i=0;i<NumDSSD;i++){
       //    for (Int_t j=0;j<NumStrXY;j++){
       //        fdssd_thr[i][j] = 0.;
-      //        fdssd_cal[i][j][0] = 0.;
+      //        fdssd_cal[i][j[  5%] Generating G__AIDAsimple.cxx, G__AIDAsimple_rdict.pcm, libAIDAsimple.rootmap
+][0] = 0.;
       //        fdssd_cal[i][j][1] = 1.;
       //    }
       //}

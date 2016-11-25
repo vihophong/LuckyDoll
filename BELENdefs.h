@@ -5,3 +5,4 @@
 #define Index1AIDAPL 13
 #define ScintillatorType 1
 #define SilliconType 2
+#define BRIKENClockResolution 20

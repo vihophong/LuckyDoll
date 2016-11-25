@@ -247,7 +247,7 @@ bool AIDA::BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut
                     double E_Y = 0;
                     double E_Y_ch = 0;
                     nClusterY[z] = 0;//ok...
-                    //! loop through the y axis
+                    //! loop through the  y axis
                     for(yhitmaps_it = yhitmaps[z].begin(); yhitmaps_it != yhitmaps[z].end(); yhitmaps_it++){
                         short y = yhitmaps_it->first;
                         double yen = yhitmaps_it->second->GetEnergy();
@@ -443,7 +443,7 @@ bool AIDA::BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut
                                 cluster->SetXMult(nStripInClusterX);
                                 cluster->SetYMult(nStripInClusterY);
                                 //cout<<"x"<<posX <<"y"<<posY<<"e" <<(E_Y/E_X-1)*(E_Y/E_X-1)<<endl;
-
+ 
                                 //! Timming
                                 short posXint = (short) round(posX);
                                 short posYint = (short) round(posY);
@@ -485,6 +485,8 @@ bool AIDA::BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut
         }//x
     }//z
 
+    Int_t maxZ=-1;
+
     for (int z = 0;z < NumDSSD;z++){
         Int_t mult_z = 0;
         //Record number of cluster here
@@ -498,6 +500,7 @@ bool AIDA::BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut
                 {
                     if (mult_z<maxNposBeta && cluster->GetXEnergy()>sumexcut[z] && cluster->GetYEnergy()>sumeycut[z]){
                         this->AddCluster(cluster);
+                        maxZ = z;
                     }else{
                         //! Deallocating memory
                         delete cluster;
@@ -513,7 +516,11 @@ bool AIDA::BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut
         }//if condition
     }//all z
 
-    if(this->GetNClusters()>0) return true;
+
+    if(this->GetNClusters()>0) {
+        this->SetMaxZ(maxZ);
+        return true;
+    }
     return false;
 
 }
@@ -523,6 +530,10 @@ bool AIDA::IonGetPos()
     int maxmult=1;
     Double_t dssdL_E_X[NumDSSD][NumStrX][maxmult];
     Double_t dssdL_E_Y[NumDSSD][NumStrY][maxmult];
+
+    unsigned long long dssdL_T_X[NumDSSD][NumStrX][maxmult];
+    unsigned long long dssdL_T_Y[NumDSSD][NumStrX][maxmult];
+
     int mult_strip_x[NumDSSD][NumStrX];
     int mult_strip_y[NumDSSD][NumStrX];
     for (int i=0;i<NumDSSD;i++){
@@ -532,6 +543,8 @@ bool AIDA::IonGetPos()
             for (int k=0;k<maxmult;k++){
                 dssdL_E_X[i][j][k]=0;
                 dssdL_E_Y[i][j][k]=0;
+                dssdL_T_X[i][j][k]=0;
+                dssdL_T_Y[i][j][k]=0;
             }
         }
     }
@@ -540,17 +553,22 @@ bool AIDA::IonGetPos()
         int z = hit->GetZ();
         int xy = hit->GetXY();
         double energy = hit->GetEnergy();
+        unsigned long long timestamp = hit->GetTimestamp();
         if (xy<128){
-            if (mult_strip_x[z][xy]<maxmult) dssdL_E_X[z][xy][mult_strip_x[z][xy]] = energy;
+            if (mult_strip_x[z][xy]<maxmult) {
+                dssdL_E_X[z][xy][mult_strip_x[z][xy]] = energy;
+                dssdL_T_X[z][xy][mult_strip_x[z][xy]]=timestamp;
+            }
             mult_strip_x[z][xy]++;
         }else{
-            if (mult_strip_y[z][xy-128]<maxmult) dssdL_E_Y[z][xy-128][mult_strip_y[z][xy-128]] = energy;
+            if (mult_strip_y[z][xy-128]<maxmult) {
+                dssdL_E_Y[z][xy-128][mult_strip_y[z][xy-128]] = energy;
+                dssdL_T_Y[z][xy-128][mult_strip_y[z][xy-128]]=timestamp;
+            }
             mult_strip_y[z][xy-128]++;
         }
     }
     //!Old code
-
-
     //get pos by weighting method
     Double_t Ion_posX;
     Double_t Ion_posY;
@@ -568,12 +586,21 @@ bool AIDA::IonGetPos()
         Double_t sum_weightx=0;
         Double_t sum_ey=0;
         Double_t sum_weighty=0;
+        //! newly added
+        Double_t maxEX = 0;
+        Int_t maxX = 0;
+        Double_t maxEY = 0;
+        Int_t maxY = 0;
         for(Int_t x=0; x<NumStrX; x++){
             if(dssdL_E_X[z][x][0]>0){
                 is_X_hit=true;
                 sum_ex+=dssdL_E_X[z][x][0];
                 sum_weightx+=x*dssdL_E_X[z][x][0];
                 my_ion_mult_x++;
+                if (dssdL_E_X[z][x][0]>maxEX) {
+                    maxX = x;
+                    maxEX = dssdL_E_X[z][x][0];
+                }
             }
         }
         if (is_X_hit){
@@ -583,6 +610,10 @@ bool AIDA::IonGetPos()
                    sum_ey+=dssdL_E_Y[z][y][0];
                    sum_weighty+=y*dssdL_E_Y[z][y][0];
                    my_ion_mult_y++;
+                   if (dssdL_E_Y[z][y][0]>maxEY) {
+                       maxY = y;
+                       maxEY = dssdL_E_Y[z][y][0];
+                   }
                }
             }
             if(is_Y_hit){
@@ -596,7 +627,12 @@ bool AIDA::IonGetPos()
                 cluster->SetXMult(my_ion_mult_x);
                 cluster->SetYMult(my_ion_mult_y);
                 //! take ealiest time stamp
-                cluster->SetTimestamp(fhits.at(0)->GetTimestamp());
+
+                //cluster->SetTimestamp(fhits.at(0)->GetTimestamp());
+                //! newly added from the Jose email
+                if (maxEX>maxEY) cluster->SetTimestamp(dssdL_T_X[z][maxX][0]);
+                else cluster->SetTimestamp(dssdL_T_Y[z][maxY][0]);
+
                 this->AddCluster(cluster);
                 maxZ=z;
             }

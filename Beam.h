@@ -34,6 +34,8 @@ public:
     memset(ftof,0.,sizeof(ftof));
     memset(fbeta,0.,sizeof(fbeta));
     memset(fdelta,0.,sizeof(fdelta));
+    memset(fmusic1e,0.,sizeof(fmusic1e));
+    memset(fmusic2e,0.,sizeof(fmusic2e));
     /*
     for(unsigned short j=0;j<6;j++){
       faoq[j] = sqrt(-1.);
@@ -65,6 +67,8 @@ public:
       }
       for (Int_t i=0;i<kMaxRIPSInfo;i++){
           obj.SetDelta(i,fdelta[i]);
+          obj.SetMusic1(i,fmusic1e[i]);
+          obj.SetMusic2(i,fmusic2e[i]);
       }
   }
 
@@ -114,6 +118,17 @@ public:
     fdelta[j] = delta;
   }
 
+  //! Get Musics 1
+  void SetMusic1(unsigned short j, double music1){
+      if( j>kMaxRIPSInfo-1) return;
+      fmusic1e[j] = music1;
+  }
+  //! Get Musics 2
+  void SetMusic2(unsigned short j, double music2){
+      if( j>kMaxRIPSInfo-1) return;
+      fmusic2e[j] = music2;
+  }
+
   //! Correct the A/Q ratio based on position
   void CorrectAQ(unsigned short j, double corr){
     if( j>kMaxBeamInfo-1) return;
@@ -153,6 +168,16 @@ public:
     if( j>2) return sqrt(-1.);
     return fdelta[j];
   }
+  //! Get Musics 1
+  double GetMusic1(unsigned short j){
+    if( j>2) return sqrt(-1.);
+    return fmusic1e[j];
+  }
+  //! Get Musics 2
+  double GetMusic2(unsigned short j){
+    if( j>2) return sqrt(-1.);
+    return fmusic2e[j];
+  }
 
 protected:
   unsigned long long fts;
@@ -171,6 +196,10 @@ protected:
   double fbeta[kMaxBeamInfo];
   //! delta momentum 3-5, 5-7, 3-7
   double fdelta[kMaxRIPSInfo];
+
+  double fmusic1e[kMaxBeamInfo];
+  double fmusic2e[kMaxBeamInfo];
+
 
   /// \cond CLASSIMP
   ClassDef(Beam,1);

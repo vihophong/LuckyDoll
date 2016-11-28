@@ -11,6 +11,9 @@ Merger::Merger()
     fIonAncTWup = 20000;
     fIonAncTWlow = 100000;
 
+    fIondETWup = 50000;
+    fIondETWlow = 150000;
+
     fNeuGammaTWup = 50000;
     fNeuGammaTWlow = 500000;
     fNeuAncTWup = 50000;
@@ -23,6 +26,10 @@ Merger::Merger()
 
     fF11LRTWup = 400;
     fF11LRTWlow = 400;
+
+    fF11LdEtopWup = 400;
+    fF11LdEbotWup = 400;
+
     fF11LVetoTWup = 400;
     fF11LVetoTWlow  = 400;
     fF11LVetoDownup  = 1200;
@@ -258,6 +265,10 @@ void Merger::ReadBRIKEN()
         if (fanc->GetMyPrecious()==1&&fanc->GetID()==2) fF11LMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==1) fVetoTopMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==2) fVetoBotMap.insert(make_pair(fanc->GetTimestamp(),jentry));
+
+        if (fanc->GetMyPrecious()==3&&fanc->GetID()==1) fdETopMap.insert(make_pair(fanc->GetTimestamp(),jentry));
+        if (fanc->GetMyPrecious()==3&&fanc->GetID()==2) fdEBotMap.insert(make_pair(fanc->GetTimestamp(),jentry));
+
         if (fanc->GetMyPrecious()==4) fVetoDownMap.insert(make_pair(fanc->GetTimestamp(),jentry));
     }
     //cout<<"Finished reading anc  ts table with "<<fancMap.size()<<" rows"<<endl;
@@ -265,6 +276,9 @@ void Merger::ReadBRIKEN()
     cout<<"Finished reading F11L  ts table with "<<fF11LMap.size()<<" rows"<<endl;
     cout<<"Finished reading Veto Top ts table with "<<fVetoTopMap.size()<<" rows"<<endl;
     cout<<"Finished reading Veto Bottom ts table with "<<fVetoBotMap.size()<<" rows"<<endl;
+    cout<<"Finished reading dE Top ts table with "<<fdETopMap.size()<<" rows"<<endl;
+    cout<<"Finished reading dE Bottom ts table with "<<fdEBotMap.size()<<" rows"<<endl;
+
     cout<<"Finished reading Veto Down ts table with "<<fVetoDownMap.size()<<" rows"<<endl;
 }
 
@@ -277,6 +291,8 @@ void Merger::ReadTemp()
         if (fanc->GetMyPrecious()==1&&fanc->GetID()==2) fF11LMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==1) fVetoTopMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==2) fVetoBotMap.insert(make_pair(fanc->GetTimestamp(),jentry));
+        if (fanc->GetMyPrecious()==3&&fanc->GetID()==1) fdETopMap.insert(make_pair(fanc->GetTimestamp(),jentry));
+        if (fanc->GetMyPrecious()==3&&fanc->GetID()==2) fdEBotMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==4) fVetoDownMap.insert(make_pair(fanc->GetTimestamp(),jentry));
     }
     cout<<"Finished reading F11R  ts table with "<<fF11RMap.size()<<" rows"<<endl;
@@ -297,6 +313,9 @@ void Merger::DoMergeImp()
     unsigned int ncorrwVetoTop = 0;
     unsigned int ncorrwVetoBot = 0;
     unsigned int ncorrwVetoDown = 0;
+
+    unsigned int ncorrwdETop = 0;
+    unsigned int ncorrwdEBot = 0;
 
 
     for (faidaIonMap_it=faidaIonMap.begin();faidaIonMap_it!=faidaIonMap.end();faidaIonMap_it++){
@@ -507,6 +526,57 @@ void Merger::DoMergeImp()
         }
         if (ncorr>0) ncorrwVetoBot++;
 
+
+        //! correlate event with detop
+        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ncorr = 0;
+        corrts = 0;
+        correntry = 0;
+        check_time =0;
+        fdETopMap_it = fdETopMap.lower_bound(ts1);
+        while(fdETopMap_it!=fdETopMap.end()&&fdETopMap_it->first<ts2){
+            corrts = (Long64_t) fdETopMap_it->first;
+            correntry = fdETopMap_it->second;
+            if (corrts!=check_time){
+                ftrAnc->GetEvent(correntry);
+                check_time=corrts;
+                flocalimp->GetF11Beam()->SetTdETop(fanc->GetTimestamp());
+                flocalimp->GetF11Beam()->SetEdETop(fanc->GetEnergy());
+                flocalimp->GetF11Beam()->SetNdETop(1);
+                ncorr++;
+                break;
+            }
+            fdETopMap_it++;
+        }
+        if (ncorr>0) ncorrwdETop++;
+
+        //! correlate event with debot
+        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ncorr = 0;
+        corrts = 0;
+        correntry = 0;
+        check_time =0;
+        fdEBotMap_it = fdEBotMap.lower_bound(ts1);
+        while(fdEBotMap_it!=fdEBotMap.end()&&fdEBotMap_it->first<ts2){
+            corrts = (Long64_t) fdEBotMap_it->first;
+            correntry = fdEBotMap_it->second;
+            if (corrts!=check_time){
+                ftrAnc->GetEvent(correntry);
+                check_time=corrts;
+                flocalimp->GetF11Beam()->SetTdEBot(fanc->GetTimestamp());
+                flocalimp->GetF11Beam()->SetEdEBot(fanc->GetEnergy());
+                flocalimp->GetF11Beam()->SetNdEBot(1);
+                ncorr++;
+                break;
+            }
+            fdEBotMap_it++;
+        }
+        if (ncorr>0) ncorrwdEBot++;
+
+
+
         //! correlate event with vetodown
         ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
         ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
@@ -536,6 +606,7 @@ void Merger::DoMergeImp()
     cout<<"finished merging Implantation" <<endl;
     cout<<ncorrwBR<<" "<<ncorrwNeutron<<" "<<ncorrwGamma<<endl;
     cout<<ncorrwF11L<<" "<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<endl;
+    cout<<ncorrwdEBot<<" "<<ncorrwdETop<<endl;
 }
 
 void Merger::DoMergeBeta()
@@ -547,6 +618,9 @@ void Merger::DoMergeBeta()
     unsigned int ncorrwVetoTop = 0;
     unsigned int ncorrwVetoBot = 0;
     unsigned int ncorrwVetoDown = 0;
+    unsigned int ncorrwdEBot = 0;
+    unsigned int ncorrwdETop = 0;
+
 
     for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
         unsigned long long ts  = faidaBetaMap_it->first;
@@ -716,6 +790,54 @@ void Merger::DoMergeBeta()
         }
         if (ncorr>0) ncorrwVetoBot++;
 
+        //! correlate event with detop
+        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ncorr = 0;
+        corrts = 0;
+        correntry = 0;
+        check_time =0;
+        fdETopMap_it = fdETopMap.lower_bound(ts1);
+        while(fdETopMap_it!=fdETopMap.end()&&fdETopMap_it->first<ts2){
+            corrts = (Long64_t) fdETopMap_it->first;
+            correntry = fdETopMap_it->second;
+            if (corrts!=check_time){
+                ftrAnc->GetEvent(correntry);
+                check_time=corrts;
+                flocalbeta->GetF11Beam()->SetTdETop(fanc->GetTimestamp());
+                flocalbeta->GetF11Beam()->SetEdETop(fanc->GetEnergy());
+                flocalbeta->GetF11Beam()->SetNdETop(1);
+                ncorr++;
+                break;
+            }
+            fdETopMap_it++;
+        }
+        if (ncorr>0) ncorrwdETop++;
+
+        //! correlate event with debot
+        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ncorr = 0;
+        corrts = 0;
+        correntry = 0;
+        check_time =0;
+        fdEBotMap_it = fdEBotMap.lower_bound(ts1);
+        while(fdEBotMap_it!=fdEBotMap.end()&&fdEBotMap_it->first<ts2){
+            corrts = (Long64_t) fdEBotMap_it->first;
+            correntry = fdEBotMap_it->second;
+            if (corrts!=check_time){
+                ftrAnc->GetEvent(correntry);
+                check_time=corrts;
+                flocalbeta->GetF11Beam()->SetTdEBot(fanc->GetTimestamp());
+                flocalbeta->GetF11Beam()->SetEdEBot(fanc->GetEnergy());
+                flocalbeta->GetF11Beam()->SetNdEBot(1);
+                ncorr++;
+                break;
+            }
+            fdEBotMap_it++;
+        }
+        if (ncorr>0) ncorrwdEBot++;
+
         //! correlate event with vetodown
         ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
         ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
@@ -746,7 +868,7 @@ void Merger::DoMergeBeta()
     cout<<"finished merging Beta" <<endl;
     cout<<ncorrwGamma<<endl;
     cout<<ncorrwF11L<<" "<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<endl;
-
+    cout<<ncorrwdEBot<<" "<<ncorrwdETop<<endl;
 }
 
 void Merger::DoMergeNeutron()
@@ -758,6 +880,8 @@ void Merger::DoMergeNeutron()
     unsigned int ncorrwVetoTop = 0;
     unsigned int ncorrwVetoBot = 0;
     unsigned int ncorrwVetoDown = 0;
+    unsigned int ncorrwdEBot = 0;
+    unsigned int ncorrwdETop = 0;
 
     for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
         unsigned long long ts  = fhe3Map_it->first;
@@ -915,6 +1039,56 @@ void Merger::DoMergeNeutron()
         }
         if (ncorr>0) ncorrwVetoBot++;
 
+
+
+        //! correlate event with detop
+        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ncorr = 0;
+        corrts = 0;
+        correntry = 0;
+        check_time =0;
+        fdETopMap_it = fdETopMap.lower_bound(ts1);
+        while(fdETopMap_it!=fdETopMap.end()&&fdETopMap_it->first<ts2){
+            corrts = (Long64_t) fdETopMap_it->first;
+            correntry = fdETopMap_it->second;
+            if (corrts!=check_time){
+                ftrAnc->GetEvent(correntry);
+                check_time=corrts;
+                flocalneutron->GetF11Beam()->SetTdETop(fanc->GetTimestamp());
+                flocalneutron->GetF11Beam()->SetEdETop(fanc->GetEnergy());
+                flocalneutron->GetF11Beam()->SetNdETop(1);
+                ncorr++;
+                break;
+            }
+            fdETopMap_it++;
+        }
+        if (ncorr>0) ncorrwdETop++;
+
+        //! correlate event with debot
+        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ncorr = 0;
+        corrts = 0;
+        correntry = 0;
+        check_time =0;
+        fdEBotMap_it = fdEBotMap.lower_bound(ts1);
+        while(fdEBotMap_it!=fdEBotMap.end()&&fdEBotMap_it->first<ts2){
+            corrts = (Long64_t) fdEBotMap_it->first;
+            correntry = fdEBotMap_it->second;
+            if (corrts!=check_time){
+                ftrAnc->GetEvent(correntry);
+                check_time=corrts;
+                flocalneutron->GetF11Beam()->SetTdEBot(fanc->GetTimestamp());
+                flocalneutron->GetF11Beam()->SetEdEBot(fanc->GetEnergy());
+                flocalneutron->GetF11Beam()->SetNdEBot(1);
+                ncorr++;
+                break;
+            }
+            fdEBotMap_it++;
+        }
+        if (ncorr>0) ncorrwdEBot++;
+
         //! correlate event with vetodown
         ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
         ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
@@ -944,6 +1118,7 @@ void Merger::DoMergeNeutron()
     cout<<"finished merging Neutrons" <<endl;
     cout<<ncorrwGamma<<endl;
     cout<<ncorrwF11L<<" "<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<endl;
+    cout<<ncorrwdEBot<<" "<<ncorrwdETop<<endl;
 }
 void Merger::DoMergeAnc()
 {
@@ -952,6 +1127,9 @@ void Merger::DoMergeAnc()
     unsigned int ncorrwVetoBot = 0;
     unsigned int ncorrwVetoDown = 0;
     unsigned int ncorrwNeutron = 0;
+    unsigned int ncorrwdETop = 0;
+    unsigned int ncorrwdEBot = 0;
+
 
     for (fF11MapL_it=fF11LMap.begin();fF11MapL_it!=fF11LMap.end();fF11MapL_it++){
         unsigned long long ts  = fF11MapL_it->first;
@@ -1035,6 +1213,55 @@ void Merger::DoMergeAnc()
         }
         if (ncorr>0) ncorrwVetoBot++;
 
+
+        //! correlate event with detop
+        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ncorr = 0;
+        corrts = 0;
+        correntry = 0;
+        check_time =0;
+        fdETopMap_it = fdETopMap.lower_bound(ts1);
+        while(fdETopMap_it!=fdETopMap.end()&&fdETopMap_it->first<ts2){
+            corrts = (Long64_t) fdETopMap_it->first;
+            correntry = fdETopMap_it->second;
+            if (corrts!=check_time){
+                ftrAnc->GetEvent(correntry);
+                check_time=corrts;
+                flocalancillary->SetTdETop(fanc->GetTimestamp());
+                flocalancillary->SetEdETop(fanc->GetEnergy());
+                flocalancillary->SetNdETop(1);
+                ncorr++;
+                break;
+            }
+            fdETopMap_it++;
+        }
+        if (ncorr>0) ncorrwdETop++;
+
+        //! correlate event with debot
+        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ncorr = 0;
+        corrts = 0;
+        correntry = 0;
+        check_time =0;
+        fdEBotMap_it = fdEBotMap.lower_bound(ts1);
+        while(fdEBotMap_it!=fdEBotMap.end()&&fdEBotMap_it->first<ts2){
+            corrts = (Long64_t) fdEBotMap_it->first;
+            correntry = fdEBotMap_it->second;
+            if (corrts!=check_time){
+                ftrAnc->GetEvent(correntry);
+                check_time=corrts;
+                flocalancillary->SetTdEBot(fanc->GetTimestamp());
+                flocalancillary->SetEdEBot(fanc->GetEnergy());
+                flocalancillary->SetNdEBot(1);
+                ncorr++;
+                break;
+            }
+            fdEBotMap_it++;
+        }
+        if (ncorr>0) ncorrwdEBot++;
+
         //! correlate event with vetodown
         ts1 = (Long64_t)ts - (Long64_t)fF11LVetoDownlow;
         ts2 = (Long64_t)ts + (Long64_t)fF11LVetoDownup;
@@ -1086,4 +1313,5 @@ void Merger::DoMergeAnc()
     }
     cout<<"Finished merging F11L" <<endl;
     cout<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<" "<<ncorrwNeutron<<endl;
+    cout<<ncorrwdEBot<<" "<<ncorrwdETop<<endl;
 }

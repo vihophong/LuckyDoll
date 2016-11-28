@@ -111,6 +111,11 @@ protected:
     std::multimap < unsigned long long, unsigned int>::iterator fVetoBotMap_it;
     std::multimap < unsigned long long, unsigned int>::iterator fVetoDownMap_it;
 
+    std::multimap < unsigned long long, unsigned int> fdETopMap;
+    std::multimap < unsigned long long, unsigned int> fdEBotMap;
+    std::multimap < unsigned long long, unsigned int>::iterator fdETopMap_it;
+    std::multimap < unsigned long long, unsigned int>::iterator fdEBotMap_it;
+
 
      //! tree to be filled
      TTree* ftreeImplant;
@@ -151,6 +156,10 @@ protected:
      long long fF11LVetoDownup;
      long long fF11LVetoDownlow;
 
+     long long fF11LdEtopWup;
+     long long fF11LdEbotWup;
+     long long fIondETWup;
+     long long fIondETWlow;
 
      //! temp
      TH1F* fh1;

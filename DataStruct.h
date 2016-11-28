@@ -25,6 +25,13 @@ public:
         ft_vetotop = 0;
         ft_vetodown = 0;
         fnneutron = 0;
+
+        fndebot = 0;
+        fndetop = 0;
+        fe_detop = 0;
+        fe_debot = 0;
+        ft_detop = 0;
+        ft_debot = 0;
     }
     virtual ~Ancillary(){}
     virtual void Clear(){
@@ -44,6 +51,14 @@ public:
         ft_vetotop = 0;
         ft_vetodown = 0;
         fnneutron = 0;
+
+        fndebot = 0;
+        fndetop = 0;
+        fe_detop = 0;
+        fe_debot = 0;
+        ft_detop = 0;
+        ft_debot = 0;
+
         //! Dealocating memory
         for (size_t idx=0;idx<fNeutrons.size();idx++){
             delete fNeutrons[idx];
@@ -69,6 +84,13 @@ public:
         obj.SetTVetoTop(ft_vetotop);
         obj.SetTVetoBot(ft_vetobot);
         obj.SetTVetoDown(ft_vetodown);
+
+        obj.SetNdETop(fndetop);
+        obj.SetNdEBot(fndebot);
+        obj.SetTdETop(ft_detop);
+        obj.SetTdEBot(ft_debot);
+        obj.SetEdETop(fe_detop);
+        obj.SetEdEBot(fe_debot);
     }
 
     void SetNF11L(unsigned char nf11l){fnf11l = nf11l;}
@@ -76,6 +98,9 @@ public:
     void SetNVetoTop(unsigned char nvetotop){fnvetotop = nvetotop;}
     void SetNVetoBot(unsigned char nvetobot){fnvetobot = nvetobot;}
     void SetNVetoDown(unsigned char nvetodown){fnvetodown = nvetodown;}
+
+    void SetNdETop(unsigned char ndetop){fndetop = ndetop;}
+    void SetNdEBot(unsigned char ndebot){fndebot = ndebot;}
 
     unsigned char GetNF11L(){return fnf11l;}
     unsigned char GetNF11R(){return fnf11r;}
@@ -96,6 +121,11 @@ public:
     void SetTVetoBot(unsigned long long tvetobot){ft_vetobot = tvetobot;}
     void SetTVetoDown(unsigned long long tvetodown){ft_vetodown = tvetodown;}
 
+    void SetEdETop(double edetop){fe_detop = edetop;}
+    void SetTdETop(double tdetop){ft_detop = tdetop;}
+    void SetEdEBot(double edebot){fe_debot = edebot;}
+    void SetTdEBot(double tdebot){ft_debot = tdebot;}
+
     unsigned long long GetTimeStamp(){return ft_f11l;}
 
     //! Add Neutron hits
@@ -111,17 +141,27 @@ private:
     unsigned char fnvetobot;
     unsigned char fnvetodown;
 
+    unsigned char fndetop;
+    unsigned char fndebot;
+
     double fe_f11r;
     double fe_f11l;
     double fe_vetotop;
     double fe_vetobot;
     double fe_vetodown;
 
+    double fe_detop;
+    double fe_debot;
+
+
     unsigned long long ft_f11r;
     unsigned long long ft_f11l;
     unsigned long long ft_vetotop;
     unsigned long long ft_vetobot;
     unsigned long long ft_vetodown;
+
+    unsigned long long ft_detop;
+    unsigned long long ft_debot;
 
     //! BELEN hits
     unsigned short fnneutron;

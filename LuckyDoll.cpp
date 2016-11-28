@@ -13,7 +13,7 @@
 #include "TClonesArray.h"
 #include "CommandLineInterface.h"
 #include "AIDAUnpacker.h"
-#include "BuildAIDAEvents.h"
+#include "BuildAIDAEventsNew.h"
 #include "AIDA.h"
 #include "TVectorD.h"
 

@@ -43,5 +43,5 @@ add_library(AIDAsnew SHARED AIDA.cpp G__AIDAsimplenew.cxx) # Link2Dictionary!
 target_link_libraries(AIDAsnew ${ROOT_LIBRARIES})   # Link2Dictionary!
 
 #---Create  a main program using the library
-add_executable(aida LuckyDoll.cpp AIDAUnpacker.cpp BuildAIDAEventsNew.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEventsNew.h CommandLineInterface.h rawaida.h)
-target_link_libraries(aida AIDAsnew)
+add_executable(aidanew LuckyDollNew.cpp AIDAUnpacker.cpp BuildAIDAEventsNew.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEventsNew.h CommandLineInterface.h rawaida.h)
+target_link_libraries(aidanew AIDAsnew)

@@ -342,6 +342,12 @@ public:
           origincluster->Copy(*clonecluster);
           //! CALIBRATE TIME HERE!
           clonecluster->SetTimestamp(clonecluster->GetTimestamp()*ClockResolution);
+
+	  //if (!(clonecluster->GetHitPositionZ()==1&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()<64))
+	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>125))	    
+	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>50&&clonecluster->GetHitPositionY()<75))
+	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>98&&clonecluster->GetHitPositionY()<111))
+	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()>126))
           obj.AddCluster(clonecluster);
         }
         obj.SetTimestamp(faidats*ClockResolution);

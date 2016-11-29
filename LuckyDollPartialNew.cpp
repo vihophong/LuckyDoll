@@ -57,7 +57,7 @@ int main(int argc, char* argv[]){
 
   int FillFlag = 1;
   long long int TransientTime = 10000;
-
+  double CorrCut = -1;
   char* InputAIDA = NULL;
   char* OutFile = NULL;
   char* CalibrationFile = NULL;
@@ -81,6 +81,7 @@ int main(int argc, char* argv[]){
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
   interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
+  interface->Add("-eecut", "specify energy - energy corr cut parameter (default= no cut)", &CorrCut);
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -185,6 +186,7 @@ int main(int argc, char* argv[]){
       evts->SetPulserInStream(false);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
+      evts->SetEnergyCorrCut(CorrCut);
       evts->Init((char*)inputfiles[i].c_str());
       double time_last = (double) get_time();
 
@@ -220,7 +222,8 @@ int main(int argc, char* argv[]){
           if (evts->IsBETA()) {
               aidabeta->Clear();
               evts->GetAIDABeta()->Copy(*aidabeta);
-              if (FillFlag) treebeta->Fill();
+              //if (FillFlag&&aidabeta->GetNClusters()>0) treebeta->Fill();
+	      if (FillFlag) treebeta->Fill();
           }else if (!evts->IsBETA()){
               aidaion->Clear();
               evts->GetAIDAIon()->Copy(*aidaion);
@@ -240,7 +243,7 @@ int main(int argc, char* argv[]){
           }
 	  //! a tempolary solution to fix the bug
 	  //if ((100.*ctr)/total>99.99) break;
-	  if (ctr>total-2) break;
+	  if (ctr>total-100) break;
       }
       if (evts->IsBETA()) {
           tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();

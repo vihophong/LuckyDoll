@@ -238,6 +238,9 @@ int main(int argc, char* argv[]){
           if(signal_received){
             break;
           }
+	  //! a tempolary solution to fix the bug
+	  //if ((100.*ctr)/total>99.99) break;
+	  if (ctr>total-2) break;
       }
       if (evts->IsBETA()) {
           tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();

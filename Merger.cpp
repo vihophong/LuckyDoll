@@ -34,6 +34,9 @@ Merger::Merger()
     fF11LVetoTWlow  = 400;
     fF11LVetoDownup  = 1200;
     fF11LVetoDownlow  = -600;
+
+    fF11LGammaTWlow = 1000;
+    fF11LGammaTWup = 1000;
 }
 
 Merger::~Merger()
@@ -1129,6 +1132,7 @@ void Merger::DoMergeAnc()
     unsigned int ncorrwNeutron = 0;
     unsigned int ncorrwdETop = 0;
     unsigned int ncorrwdEBot = 0;
+    unsigned int ncorrwGamma = 0;
 
 
     for (fF11MapL_it=fF11LMap.begin();fF11MapL_it!=fF11LMap.end();fF11MapL_it++){
@@ -1309,9 +1313,32 @@ void Merger::DoMergeAnc()
         }
         if (ncorr>0) ncorrwNeutron++;
 
+        //! correlated event with gamma
+        ts1 = (Long64_t)ts - (Long64_t)fF11LGammaTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fF11LGammaTWup;
+        ncorr = 0;
+        corrts = 0;
+        correntry = 0;
+        check_time =0;
+        fcloverMap_it = fcloverMap.lower_bound(ts1);
+        while(fcloverMap_it!=fcloverMap.end()&&fcloverMap_it->first<ts2){
+            corrts = (Long64_t) fcloverMap_it->first;
+            correntry = fcloverMap_it->second;
+            if (corrts!=check_time){
+                ftrGamma->GetEvent(correntry);
+                check_time=corrts;
+                CloverHit* hit=new CloverHit;
+                fclover->Copy(*hit);
+                flocalancillary->AddCloverHit(hit);
+                ncorr++;
+            }
+            fcloverMap_it++;
+        }
+        if (ncorr>0) ncorrwGamma++;
+
         ftreeAncillary->Fill();
     }
     cout<<"Finished merging F11L" <<endl;
     cout<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<" "<<ncorrwNeutron<<endl;
-    cout<<ncorrwdEBot<<" "<<ncorrwdETop<<endl;
+    cout<<ncorrwdEBot<<" "<<ncorrwdETop<<" "<<ncorrwGamma<<endl;
 }

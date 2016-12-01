@@ -51,6 +51,7 @@ public:
         ft_vetotop = 0;
         ft_vetodown = 0;
         fnneutron = 0;
+        fngamma = 0;
 
         fndebot = 0;
         fndetop = 0;
@@ -64,6 +65,10 @@ public:
             delete fNeutrons[idx];
         }
         fNeutrons.clear();
+        for (size_t idx=0;idx<fClovers.size();idx++){
+            delete fClovers[idx];
+        }
+        fClovers.clear();
     }
     //! Copy object
     virtual void Copy(Ancillary& obj){
@@ -91,6 +96,14 @@ public:
         obj.SetTdEBot(ft_debot);
         obj.SetEdETop(fe_detop);
         obj.SetEdEBot(fe_debot);
+        for (size_t idx=0;idx<fNeutrons.size();idx++){
+            obj.AddNeutronHit(fNeutrons[idx]);
+        }
+        for (size_t idx=0;idx<fClovers.size();idx++){
+            obj.AddCloverHit(fClovers[idx]);
+        }
+
+
     }
 
     void SetNF11L(unsigned char nf11l){fnf11l = nf11l;}
@@ -133,6 +146,11 @@ public:
         fNeutrons.push_back(hit);
         fnneutron++;
     }
+    //! Add Clover hits
+    void AddCloverHit(CloverHit* hit){
+        fClovers.push_back(hit);
+        fngamma++;
+    }
 
 private:
     unsigned char fnf11l;
@@ -166,6 +184,10 @@ private:
     //! BELEN hits
     unsigned short fnneutron;
     vector<BELENHit*> fNeutrons;
+
+    //! Clover hits
+    unsigned short fngamma;
+    vector<CloverHit*> fClovers;
 
     /// \cond CLASSIMP
     ClassDef(Ancillary,1);

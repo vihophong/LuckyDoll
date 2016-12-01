@@ -161,6 +161,10 @@ protected:
      long long fIondETWup;
      long long fIondETWlow;
 
+     long long fF11LGammaTWlow;
+     long long fF11LGammaTWup;
+
+
      //! temp
      TH1F* fh1;
 

@@ -4,7 +4,7 @@ BuildDecay::BuildDecay()
 {
     fMode = 0;
     fBetaImplantTWup = 1e9;
-    fBetaImplantTWlow = 10e9;
+    fBetaImplantTWlow = 6e9;
     fBetaNeutronTWup = 5e5;
     fBetaNeutronTWlow = 1e5;
     fmaxdeltaxy = 2.;

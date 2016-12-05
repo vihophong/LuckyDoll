@@ -185,7 +185,7 @@ bool BelenReader::GetNextEvent(){
         flocalNeutron->SetRing(fIndex1);
         flocalNeutron->SetType(fIndex2);
         PerturbateHe3(id);
-        flocalNeutron->SetPos(fposX,fposY,fposZ);
+        flocalNeutron->SetRndPos(fposX,fposY,fposZ);
         if (fflag_filldata) fmtrNeutron->Fill();
         fBLNeuEntry++;
     }else if (ftype==2){
@@ -281,6 +281,7 @@ void BelenReader::PerturbateHe3(UShort_t He3Id){
     fposX = fHe3Id2posX[He3Id];
     fposY = fHe3Id2posY[He3Id];
     fposZ = fHe3Id2posZ[He3Id];
+    flocalNeutron->SetPos(fposX,fposY,fposZ);
     //! pertubating
     Double_t a,b,x,y,r;
     r=fHe3Id2diameter[He3Id]/2;

@@ -34,13 +34,13 @@ public:
     void SetCalibFile(char* calf){fcalibfile = calf;ReadCalibTable();}
 
     //! Set event window ion
-    void SetEventWindowION(unsigned long long windowIon) {fwindowIon=windowIon;}
+    //void SetEventWindowION(unsigned long long windowIon) {fwindowIon=windowIon;}
 
     //! Set event window beta
-    void SetEventWindowBETA(unsigned long long windowBeta) {fwindowBeta=windowBeta;}
+    //void SetEventWindowBETA(unsigned long long windowBeta) {fwindowBeta=windowBeta;}
 
     //! Set AIDA transient time window beta
-    void SetAIDATransientTime(unsigned long long aidatranst) {faidatranst=aidatranst;}
+    //void SetAIDATransientTime(unsigned long long aidatranst) {faidatranst=aidatranst;}
 
     //! Set fast discriminator scan window
     void SetDiscriminatorTimeWindow(unsigned long long disWin) {
@@ -189,15 +189,15 @@ private:
     Double_t dssd_cal[NumDSSD][NumStrXY][2];
 
     //! event window for ION event
-    unsigned long long fwindowIon;
+    //unsigned long long fwindowIon;
     //! event window for BETA event
-    unsigned long long fwindowBeta;
+    //unsigned long long fwindowBeta;
 
     //! window for fast discriminator scan
     unsigned long long fwindowDisc;
 
     //! aida sleep time
-    unsigned long long faidatranst;
+    //unsigned long long faidatranst;
 
     //! Add ION and BETA hits
     void AddAIDAIonHits(rawaida_info aidaraw);

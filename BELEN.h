@@ -36,7 +36,8 @@ public:
         fring = -1;
         ftype = -1;
         fdaqid = -1;
-        fpos.SetXYZ(-1,-1,-1);
+        fpos.SetXYZ(-9999,-9999,-9999);
+        frndpos.SetXYZ(-9999,-9999,-9999);
         fts = 0;
         fadc = -1;
         fen = -1;
@@ -49,6 +50,7 @@ public:
         obj.SetDaqID(fdaqid);
         obj.SetTimestamp(fts);
         obj.SetPos(fpos.X(),fpos.Y(),fpos.Z());
+        obj.SetRndPos(frndpos.X(),frndpos.Y(),frndpos.Z());
         obj.SetADC(fadc);
         obj.SetEnergy(fen);
         obj.SetHitsAdded(fhitsadded);
@@ -74,6 +76,10 @@ public:
 
     //! Set the He3 position
     void SetPos(Double_t x, Double_t y, Double_t z){fpos.SetXYZ(x,y,z);}
+
+    //! Set the He3 position
+    void SetRndPos(Double_t x, Double_t y, Double_t z){frndpos.SetXYZ(x,y,z);}
+
     //! Set current hits
     void SetHitsAdded(unsigned short hitsadded){fhitsadded = hitsadded;}
 
@@ -95,6 +101,7 @@ public:
     int GetADC(){return fadc;}
     //! Get 3He position
     TVector3 GetPosition(){return fpos;}
+    TVector3 GetRndPosition(){return frndpos;}
 
     //! Get current hits
     unsigned short GetHitsAdded(){return fhitsadded;}
@@ -108,6 +115,9 @@ public:
       cout << "\tX pos " << fpos.X();
       cout << "\tY pos " << fpos.Y();
       cout << "\tZ pos " << fpos.Z();
+      cout << "\tX pos " << frndpos.X();
+      cout << "\tY pos " << frndpos.Y();
+      cout << "\tZ pos " << frndpos.Z();
       cout << "\tadc " << fadc;
       cout << "\tenergy " << fen;
       cout << "\ttimestamp " << fts;
@@ -121,6 +131,8 @@ protected:
     unsigned short fhitsadded;
     //! Position of 3He counter
     TVector3 fpos;
+    //! Position of 3He counter with random generator
+    TVector3 frndpos;
     //! daq ID number of 3He counter
     short fdaqid;
     //! physical ID number of 3He counter

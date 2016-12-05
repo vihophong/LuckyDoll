@@ -4,9 +4,9 @@ BuildAIDAEvents::BuildAIDAEvents()
     fwindowHits = 200;
     flag_threhold = false;
 
-    faidatranst = 20000;
-    fwindowBeta = 2500;
-    fwindowIon = 2500;
+    //faidatranst = 20000;
+    //fwindowBeta = 2500;
+    //fwindowIon = 2500;
     fwindowDisc = 5000;
     fflag_filldata = false;
     ftemp = 0;
@@ -247,7 +247,11 @@ bool BuildAIDAEvents::GetNextEvent(){
     fflag_addFirstHit=false;
 
     while (!flag_stop){
-        if (!aidaunpkg->GetNextHit()) return false;
+        if (!aidaunpkg->GetNextHit()) {
+            flocalaidaION->Clear();
+            flocalaidaBETA->Clear();
+            return false;
+        }
         aidaraw= aidaunpkg->GetAIDAraw();
         fADcurblock = aidaunpkg->GetCurrentBlock();
 

@@ -51,12 +51,13 @@ int main(int argc, char* argv[]){
 
   cout << "AIDA event builder" << endl;
   int Verbose = 0;
-  long long int WindowIon = 5000; //time unit: 10 ns
-  long long int WindowBeta = 2500; //time unit: 10 ns
+  //long long int WindowIon = 5000; //time unit: 10 ns
+  //long long int WindowBeta = 2500; //time unit: 10 ns
+  //long long int TransientTime = 10000;
+
   long long int WindowDiscriminator = 0;
 
   int FillFlag = 1;
-  long long int TransientTime = 10000;
   double CorrCut = -1;
   char* InputAIDA = NULL;
   char* OutFile = NULL;
@@ -69,8 +70,9 @@ int main(int argc, char* argv[]){
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
-  interface->Add("-wi", "Ion event building window (default: 5000*10ns)", &WindowIon);
-  interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
+  //interface->Add("-wi", "Ion event building window (default: 5000*10ns)", &WindowIon);
+  //interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
+  //interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
   interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);
 
@@ -79,7 +81,6 @@ int main(int argc, char* argv[]){
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
-  interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
   interface->Add("-eecut", "specify energy - energy corr cut parameter (default= no cut)", &CorrCut);
 
@@ -180,9 +181,9 @@ int main(int argc, char* argv[]){
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
       evts->SetDiscriminatorTimeWindow(WindowDiscriminator);
-      evts->SetAIDATransientTime(TransientTime);
-      evts->SetEventWindowION(WindowIon);
-      evts->SetEventWindowBETA(WindowBeta);
+      //evts->SetAIDATransientTime(TransientTime);
+      //evts->SetEventWindowION(WindowIon);
+      //evts->SetEventWindowBETA(WindowBeta);
       evts->SetPulserInStream(false);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
@@ -212,18 +213,14 @@ int main(int argc, char* argv[]){
               (Float_t)ctr/(time_end - local_time_start) << " blocks/s " <<
               (Float_t)nevtbeta/(time_end - local_time_start) <<" betas/s  "<<
                (Float_t)nevtion/(time_end - local_time_start) <<" ions/s "<<
-               (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go | ";
-            if (evts->IsBETA()) cout<<"beta: x"<<evts->GetAIDABeta()->GetCluster(0)->GetHitPositionX()<<"y"<<
-                                       evts->GetAIDABeta()->GetCluster(0)->GetHitPositionY()<<"\r"<< flush;
-            else cout<<"ion: x"<<evts->GetAIDAIon()->GetCluster(0)->GetHitPositionX()<<"y"<<
-                       evts->GetAIDAIon()->GetCluster(0)->GetHitPositionY()<<"\r"<<flush;
+               (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r "<< flush;
             time_last = time_end;
           }
           if (evts->IsBETA()) {
               aidabeta->Clear();
               evts->GetAIDABeta()->Copy(*aidabeta);
               //if (FillFlag&&aidabeta->GetNClusters()>0) treebeta->Fill();
-	      if (FillFlag) treebeta->Fill();
+          if (FillFlag) treebeta->Fill();
           }else if (!evts->IsBETA()){
               aidaion->Clear();
               evts->GetAIDAIon()->Copy(*aidaion);
@@ -238,17 +235,15 @@ int main(int argc, char* argv[]){
               tstart = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
               start++;
           }
+          if (evts->IsBETA()) {
+              if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
+          }else if (!evts->IsBETA()){
+              if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
+          }
+
           if(signal_received){
             break;
           }
-	  //! a tempolary solution to fix the bug
-	  //if ((100.*ctr)/total>99.99) break;
-	  if (ctr>total-100) break;
-      }
-      if (evts->IsBETA()) {
-          tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
-      }else if (!evts->IsBETA()){
-          tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
       }
       runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
       runtime[0] += runtime[i+1];

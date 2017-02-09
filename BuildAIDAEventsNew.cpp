@@ -16,6 +16,7 @@ BuildAIDAEvents::BuildAIDAEvents()
         fsumexcut[i] = 0;
         fsumeycut[i] = 0;
     }
+    fisgzstream = false;
     aidaunpkg = new AIDAUnpacker;
 }
 
@@ -53,6 +54,7 @@ void BuildAIDAEvents::Init(char* aidafile)
     faida = new AIDA;
 
     //! initilize input aida
+    if (fisgzstream) aidaunpkg->SetGzStream();
     aidaunpkg->Init(aidafile);
     aidaunpkg->read_mapping(fmappingfile);
 
@@ -203,6 +205,7 @@ bool BuildAIDAEvents::CloseBetaEvent()
     unsigned short* hitx= flocalaidaBETA->GetMultXs();
     unsigned short* hity= flocalaidaBETA->GetMultYs();
     unsigned short mult=flocalaidaBETA->GetMult();
+
 
     if (mult<64&&!fflag_trans&&(hitx[0]+hity[0]<8)&&(hitx[1]+hity[1]<8)&&(hitx[2]+hity[2]<8)&&(hitx[3]+hity[3]<8)&&(hitx[4]+hity[4]<8)&&(hitx[5]+hity[5]<8))
     {

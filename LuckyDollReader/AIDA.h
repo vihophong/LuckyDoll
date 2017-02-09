@@ -2,6 +2,7 @@
 #define AIDA_H
 #include <iostream>
 #include <vector>
+#include <map>
 #include <cstdlib>
 #include <math.h>
 
@@ -11,7 +12,6 @@
 #include "AIDAdefs.h"
 using namespace std;
 
-
 class AIDAHit : public TObject {
 public:
   //! default constructor
@@ -20,7 +20,9 @@ public:
   }
   virtual ~AIDAHit(){}
   //! constructor with individual values
-  AIDAHit(short range, short id, int xy, int z, double en, int adc,unsigned short hitsadded, unsigned long long int ts){
+  AIDAHit(short range, short fee, short ch, short id, int xy, int z, double en, int adc,unsigned short hitsadded, unsigned long long int ts){
+    ffee = fee;
+    fch = ch;
     fid = id;
     fxy=xy;
     fz=z;
@@ -31,10 +33,12 @@ public:
     frange = range;
   }
   //! Clear the music information
-  void Clear(Option_t *option = ""){
-      fid = 0;
-      fxy = 0;
-      fz = 0;
+  virtual void Clear(Option_t *option = ""){
+      fch = -1;
+      ffee = -1;
+      fid = -1;
+      fxy = -1;
+      fz = -1;
       fadc = -9999;
       fen = -9999.;
       fhitsadded = 0;
@@ -58,6 +62,11 @@ public:
       fz = z;
   }
 
+  //! Set FEE number
+  void SetFEE(short fee){ffee = fee;}
+  //! Set channel number
+  void SetFEEChannel(short ch){fch = ch;}
+
   //! Set the energy
   void SetEnergy(double energy){fen = energy;}
 
@@ -79,6 +88,11 @@ public:
   short GetXY(){return fxy;}
   //! Get Z position in DSSD
   short GetZ(){return fz;}
+
+  //! Get Fee number
+  short GetFEE(){return ffee;}
+  //! Get Fee channel number
+  short GetFEEChannel(){return fch;}
 
   //! Get the energy
   double GetEnergy(){return fen;}
@@ -113,14 +127,18 @@ protected:
   //! translate into the DSSDs coordinator
   short fxy;
   short fz;
+  //! FEE information
+  short ffee;
+  short fch;
+
   //! the energy lab system
   double fen;
   //! the raw adc value
   int fadc;
   //! the timestamp
   unsigned long long fts;
+  //! the fast timestamp
   unsigned long long ffastts;
-
 
   //! current hits
   unsigned short fhitsadded;
@@ -151,13 +169,26 @@ public:
     fcts = ts;
   }
   //! Clear the music information
-  void Clear(Option_t *option = ""){
+  virtual void Clear(){
       fpos.SetXYZ(-1,-1,-1);
       fsumenx=-9999.;
       fsumeny=-9999.;
       fcts=0;
       fclustersadded=0;
   }
+
+  //! copy cluster
+  virtual void Copy(AIDACluster& obj){
+      obj.SetTimestamp(fcts);
+      obj.SetHitPosition(fpos.X(),fpos.Y(),fpos.Z());
+      obj.SetXEnergy(fsumenx);
+      obj.SetYEnergy(fsumeny);
+      obj.SetXMult(fnx);
+      obj.SetYMult(fny);
+      obj.SetFastTimestamp(fcfastts);
+      obj.SetClustersAdded(fclustersadded);
+  }
+
   //! Set XY
   void SetHitPosition(double x,double y,double z){fpos.SetXYZ(x,y,z);}
 
@@ -224,7 +255,7 @@ protected:
   TVector3 fpos;
 
   //! store the hit number
-  vector<short*> fhitsno;
+  //vector<short*> fhitsno;
 
   //! the energy lab system
   double fsumenx;
@@ -253,22 +284,25 @@ class AIDA : public TObject
 public:
     //! default constructor
     AIDA(){
-      for (Int_t i=0;i<NumDSSD;i++){
-          for (Int_t j=0;j<NumStrXY;j++){
-              fdssd_thr[i][j] = 0.;
-              fdssd_cal[i][j][0] = 0.;
-              fdssd_cal[i][j][1] = 1.;
-          }
-      }
+
+      //for (Int_t i=0;i<NumDSSD;i++){
+      //    for (Int_t j=0;j<NumStrXY;j++){
+      //        fdssd_thr[i][j] = 0.;
+      //        fdssd_cal[i][j][0] = 0.;
+      //        fdssd_cal[i][j][1] = 1.;
+      //    }
+      //}
       Clear();
     }
     virtual ~AIDA(){}
     //! Clear the AIDA information
-    void Clear(Option_t *option = ""){
-
+    virtual void Clear(Option_t *option = ""){
+      faidats = 0;
       fmult = 0;
       fnclusters = 0;
       fmaxz = -1;
+      fclustermultz = 0;
+      fhitmultz = 0;
       /*
       for (int i=0;i<NumDSSD;i++){
           fmultx[i]=0;
@@ -281,6 +315,7 @@ public:
       memset(fsumx,0,sizeof(fsumx));
       memset(fsumy,0,sizeof(fsumy));
 
+      memset(fnhitsz,0,sizeof(fnhitsz));
 
       memset(fnclustersz,0,sizeof(fnclustersz));
 
@@ -300,7 +335,53 @@ public:
 
     }
 
+    void Copy(AIDA& obj){
+        for(vector<AIDACluster*>::iterator cluster=fclusters.begin(); cluster!=fclusters.end(); cluster++){
+          AIDACluster* clonecluster = new AIDACluster;
+          AIDACluster* origincluster = *cluster;
+          origincluster->Copy(*clonecluster);
+          //! CALIBRATE TIME HERE!
+          clonecluster->SetTimestamp(clonecluster->GetTimestamp()*ClockResolution);
+
+	  //if (!(clonecluster->GetHitPositionZ()==1&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()<64))
+	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>125))	    
+	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>50&&clonecluster->GetHitPositionY()<75))
+	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>98&&clonecluster->GetHitPositionY()<111))
+	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()>126))
+          obj.AddCluster(clonecluster);
+        }
+        obj.SetTimestamp(faidats*ClockResolution);
+        obj.SetType(ftype);
+        obj.SetMult(fmult);
+        obj.SetNHitZ(fnhitsz);
+        obj.SetHitMultZ(fhitmultz);
+        obj.SetMultX(fmultx);
+        obj.SetMultY(fmulty);
+        obj.SetSumX(fsumx);
+        obj.SetSumY(fsumy);
+        //obj.SetNClusters(fnclusters);
+        //obj.SetNClusterZ(fnclustersz);
+        obj.SetMaxZ(fmaxz);
+        //obj.SetClusterMultZ(fclustermultz);
+    }
+
     void SetTimestamp(unsigned long long ts){faidats = ts;}
+    //!clear all hits
+    void ClearAllHits(){
+        //! Dealocating memory also
+        for (size_t idx=0;idx<fhits.size();idx++){
+            delete fhits[idx];
+        }
+        fhits.clear();
+    }
+
+    void ClearAllClusters(){
+        //! Dealocating memory also
+        for (size_t idx=0;idx<fclusters.size();idx++){
+            delete fclusters[idx];
+        }
+        fclusters.clear();
+    }
 
     //! Add a hit
     void AddHit(AIDAHit* hit){
@@ -316,6 +397,9 @@ public:
           fmulty[z]++;
           fsumy[z]+=hit->GetEnergy();
       }
+      int Z=(int) hit->GetZ();
+      fnhitsz[Z]++;
+      if (fnhitsz[Z]==1) fhitmultz++;
       fmult++;
     }
 
@@ -333,6 +417,22 @@ public:
     void SetHits(vector<AIDAHit*> hits){
       fmult = hits.size();
       fhits = hits;
+    }
+
+
+    //! Set multiplicity
+    void SetMult(unsigned short mult){
+        fmult =  mult;
+    }
+
+    //! set number of dssd with at least 1 hit!
+    void SetHitMultZ(unsigned short hitmultz){
+        fhitmultz = hitmultz;
+    }
+
+    //! Set the nhits in z
+    void SetNHitZ(unsigned short nhitsz[NumDSSD]){
+        memcpy(fnhitsz,nhitsz,NumDSSD*sizeof(unsigned short));
     }
 
     //! Set the X strip multiplicity of the event
@@ -362,6 +462,7 @@ public:
       fclusters.push_back(cluster);
       int Z=(int) cluster->GetHitPositionZ();
       fnclustersz[Z]++;
+      if (fnclustersz[Z]==1) fclustermultz++;
       fnclusters++;
     }
 
@@ -378,6 +479,19 @@ public:
       fnclusters = clusters.size();
       fclusters = clusters;
     }
+
+    //! Set number of cluster
+    void SetNClusters(unsigned short ncluster){fnclusters = ncluster;}
+    //! Set number of dssd with at least 1 cluster
+    void SetClusterMultZ(unsigned short clustermultz){
+        fclustermultz = clustermultz;
+    }
+
+    //! Set number of cluster in dssd
+    void SetNClusterZ(unsigned short nclusterz[NumDSSD]){
+        memcpy(fnclustersz,nclusterz,NumDSSD*sizeof(unsigned short));
+    }
+
     //! Set max Z (for ion event)
     void SetMaxZ(unsigned short maxz){fmaxz = maxz;}
     //! Set event type
@@ -386,29 +500,35 @@ public:
     void SetTypeAdded(short type){ftype += type;}
 
     //! Set threshold
-    void SetThreshold(Double_t dssd_thr[NumDSSD][NumStrXY]){
-        for (Int_t i=0;i<NumDSSD;i++){
-            for (Int_t j=0;j<NumStrXY;j++){
-                fdssd_thr[i][j] = dssd_thr[i][j];
-            }
-        }
-    }
+
+    //void SetThreshold(Double_t dssd_thr[NumDSSD][NumStrXY]){
+    //    for (Int_t i=0;i<NumDSSD;i++){
+    //        for (Int_t j=0;j<NumStrXY;j++){
+    //            fdssd_thr[i][j] = dssd_thr[i][j];
+    //        }
+    //    }
+    //}
 
     //! Set calibrationtable
-    void SetCalib(Double_t dssd_cal[NumDSSD][NumStrXY][2]){
-        for (Int_t i=0;i<NumDSSD;i++){
-            for (Int_t j=0;j<NumStrXY;j++){
-                fdssd_cal[i][j][0] = dssd_cal[i][j][0];
-                fdssd_cal[i][j][1] = dssd_cal[i][j][1];
-            }
-        }
-    }
+    //void SetCalib(Double_t dssd_cal[NumDSSD][NumStrXY][2]){
+    //    for (Int_t i=0;i<NumDSSD;i++){
+    //        for (Int_t j=0;j<NumStrXY;j++){
+    //            fdssd_cal[i][j][0] = dssd_cal[i][j][0];
+    //            fdssd_cal[i][j][1] = dssd_cal[i][j][1];
+    //        }
+    //    }
+    //}
 
     //! Returns timestamp
     unsigned long long GetTimestamp(){return faidats;}
     //! Returns the multiplicity of the event
     unsigned short GetMult(){return fmult;}
 
+    //! Return the number of dssd with hit
+    unsigned short GetZHitMult(){return fhitmultz;}
+
+    //! Return the hits in z
+    unsigned short* GetNHitZ(){return fnhitsz;}
     //! Returns the X strip multiplicity of the event
     unsigned short* GetMultXs(){return fmultx;}
     //! Returns the Y strip multiplicity of the event
@@ -424,6 +544,8 @@ public:
     //! Returns the Y strip in dssd sum energy of the event
     double GetSumY(short dssd){return fsumy[dssd];}
 
+    //! Returns the number of dssd with cluster
+    unsigned short GetClustersMultZ(){return fclustermultz;}
 
     unsigned short* GetNClustersZ(){return fnclustersz;}
 
@@ -437,6 +559,11 @@ public:
     //! Returns the hit number n
     AIDACluster* GetCluster(unsigned short n){return fclusters.at(n);}
 
+    //! Clone Cluster
+    AIDACluster* CloneCluster(unsigned short n){
+        return (AIDACluster*) (fclusters.at(n)->Clone());
+    }
+
     //! Return max Z (for ion event)
     unsigned short GetMaxZ(){return fmaxz;}
 
@@ -446,12 +573,12 @@ public:
     AIDAHit* GetHit(unsigned short n){return fhits.at(n);}
 
     //! Get threshold
-    Double_t GetThreshold(Int_t dssdno, Int_t stripno){return fdssd_thr[dssdno][stripno];}
+    //Double_t GetThreshold(Int_t dssdno, Int_t stripno){return fdssd_thr[dssdno][stripno];}
 
     //! Get calibration table
-    Double_t GetCalibSlope(Int_t dssdno, Int_t stripno){return fdssd_cal[dssdno][stripno][0];}
+    //Double_t GetCalibSlope(Int_t dssdno, Int_t stripno){return fdssd_cal[dssdno][stripno][0];}
     //! Get calibration table
-    Double_t GetCalibOffset(Int_t dssdno, Int_t stripno){return fdssd_cal[dssdno][stripno][1];}
+    //Double_t GetCalibOffset(Int_t dssdno, Int_t stripno){return fdssd_cal[dssdno][stripno][1];}
 
     //! Get event type
     short GetType(){return ftype;}
@@ -474,15 +601,25 @@ public:
 
     //! Beta position
     bool BetaGetPos(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
+    //! Beta position new
+    bool BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Ion position
     bool IonGetPos();
 
   protected:
+    //! aida time stamp (ealiest timestamp within event)
     unsigned long long faidats;
-    //! type of event: 0 beta  1 ion
+    //! type of event: 0T beta  1 ion
     short ftype;
     //! total multiplicity
     unsigned short fmult;
+
+    //! total multiplicity in z
+    unsigned short fnhitsz[NumDSSD];
+
+    //! number of dssd with at least 1 hit
+    unsigned short fhitmultz;
+
 
     //! x multiplicity
     unsigned short fmultx[NumDSSD];
@@ -504,11 +641,15 @@ public:
     //! max hit position
     unsigned short fmaxz;
 
+    //! number of dssd with at least 1 cluster
+    unsigned short fclustermultz;
+
+
     //!Threshold table
-    Double_t fdssd_thr[NumDSSD][NumStrXY];
+    //Double_t fdssd_thr[NumDSSD][NumStrXY];
 
     //!Calibration table
-    Double_t fdssd_cal[NumDSSD][NumStrXY][2];
+    //Double_t fdssd_cal[NumDSSD][NumStrXY][2];
 
 
     //! vector with the hits
@@ -523,262 +664,3 @@ public:
 
 
 #endif // AIDA_H
-
-bool AIDA::BetaGetPos(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[])
-{
-    int maxmult=1;
-    Double_t dssdH_E_X[NumDSSD][NumStrX][maxmult];
-    Double_t dssdH_E_Y[NumDSSD][NumStrY][maxmult];
-    Long64_t dssdH_T_X[NumDSSD][NumStrX][maxmult];
-    Long64_t dssdH_T_Y[NumDSSD][NumStrY][maxmult];
-
-    Long64_t dssdF_T_X[NumDSSD][NumStrX][maxmult];
-    Long64_t dssdF_T_Y[NumDSSD][NumStrY][maxmult];
-
-    int mult_strip_x[NumDSSD][NumStrX];
-    int mult_strip_y[NumDSSD][NumStrX];
-    for (int i=0;i<NumDSSD;i++){
-        for (int j=0;j<NumStrX;j++){
-            mult_strip_x[i][j]=0;
-            mult_strip_y[i][j]=0;
-            for (int k=0;k<maxmult;k++){
-                dssdH_E_X[i][j][k]=0;
-                dssdH_E_Y[i][j][k]=0;
-                dssdH_T_X[i][j][k]=0;
-                dssdF_T_Y[i][j][k]=0;
-                dssdF_T_X[i][j][k]=0;
-                dssdF_T_Y[i][j][k]=0;
-            }
-        }
-    }
-    for (size_t i=0;i<fhits.size();i++){
-        AIDAHit* hit = fhits.at(i);
-        int z = hit->GetZ();
-        int xy = hit->GetXY();
-        double energy = hit->GetEnergy();
-        unsigned long long time = hit->GetTimestamp();
-        unsigned long long fastime = hit->GetFastTimestamp();
-        if (xy<128){
-            if (mult_strip_x[z][xy]<maxmult) {
-                dssdH_E_X[z][xy][mult_strip_x[z][xy]] = energy;
-                dssdH_T_X[z][xy][mult_strip_x[z][xy]] = time;
-                dssdF_T_X[z][xy][mult_strip_x[z][xy]] = fastime;
-            }
-            mult_strip_x[z][xy]++;
-        }else{
-            if (mult_strip_y[z][xy-128]<maxmult) {
-                dssdH_E_Y[z][xy-128][mult_strip_y[z][xy-128]] = energy;
-                dssdH_T_Y[z][xy-128][mult_strip_y[z][xy-128]] = time;
-                dssdF_T_Y[z][xy-128][mult_strip_y[z][xy-128]] = fastime;
-            }
-            mult_strip_y[z][xy-128]++;
-        }
-    }
-
-    //! Old code
-
-    Int_t maxStrInCluster = 3;
-    Int_t maxNposBeta = 3;
-    Int_t maxNCluster = 4;
-
-    for(Int_t z=0; z<NumDSSD; z++){
-        Int_t mult_z = 0;
-        vector<pair<Double_t,pair<pair<Double_t,pair<Double_t,Int_t> >,pair<Double_t,pair<Double_t,Int_t> > >  > > beta_dssd_pre;
-        //vector<pair<E-corr,pair<pair<PosX,pair<EX,NClusterX> >,pair<PosY,pair<EY,NClusterY> > >  > >
-        vector<pair<Double_t,pair<pair<Double_t,pair<Double_t,Int_t> >,pair<Double_t,pair<Double_t,Int_t> > >  > >::iterator ibeta_dssd_pre;
-
-        Double_t posX=-1;
-        Double_t posY=-1;
-
-        Int_t nClusterX=0;
-        Int_t nClusterY=0;
-        Int_t nStripsX=0;
-        Double_t E_X=0;
-        Double_t E_X_ch=0;
-
-        for(Int_t x=0; x<NumStrX; x++){
-            //cout << "x-strip found" << endl;
-            if (dssdH_E_X[z][x][0]>0) {
-                E_X+=dssdH_E_X[z][x][0];
-                E_X_ch+=x*dssdH_E_X[z][x][0];
-                nStripsX++;
-            }
-            if ((dssdH_E_X[z][x][0]<=0||x==NumStrX-1)&&nStripsX>0) {//end of X cluster
-                if (nStripsX<=maxStrInCluster){ //if cluster of less than 3 strips
-                    posX=E_X_ch/E_X;
-                    //another loop for Y strips
-                    nClusterY=0;
-                    Int_t nStripsY=0;
-                    Double_t E_Y=0;
-                    Double_t E_Y_ch=0;
-                    for(Int_t y=0; y<NumStrY; y++){
-                        //cout << "x-strip found" << endl;
-                        if (dssdH_E_Y[z][y][0]>0) {
-                            E_Y+=(Double_t) dssdH_E_Y[z][y][0];
-                            E_Y_ch+=(Double_t) y*dssdH_E_Y[z][y][0];
-                            nStripsY++;
-                        }
-                        if ((dssdH_E_Y[z][y][0]<=0||y==NumStrY-1)&&nStripsY>0) {//end of X cluster
-                            if (nStripsY<=maxStrInCluster){ //if cluster of less than 3 strips
-                                posY=E_Y_ch/E_Y;
-                                beta_dssd_pre.push_back(make_pair((E_Y/E_X-1)*(E_Y/E_X-1),make_pair(make_pair(posX,make_pair(E_X,nStripsX)),make_pair(posY,make_pair(E_Y,nStripsY)))));
-                            }
-                            E_Y=0;
-                            E_Y_ch=0;
-                            nStripsY=0;
-                            nClusterY++;
-                        }
-                    }
-                    //ok!
-                }
-                E_X=0;
-                E_X_ch=0;
-                nStripsX=0;
-                nClusterX++;
-            }
-        }
-
-        //Additional step to filter all possible combination:
-        if (nClusterX>0&&nClusterX<maxNCluster&&nClusterY>0&&nClusterY<maxNCluster){
-            //Record number of cluster here
-            vector <Double_t> xindex;
-            vector <Double_t> yindex;
-            sort(beta_dssd_pre.begin(),beta_dssd_pre.end());
-            for (ibeta_dssd_pre=beta_dssd_pre.begin();ibeta_dssd_pre<beta_dssd_pre.end();++ibeta_dssd_pre){
-                if (((corr_cut<=0)&&(find(xindex.begin(),xindex.end(),ibeta_dssd_pre->second.first.first)==xindex.end())&&(find(yindex.begin(),yindex.end(),ibeta_dssd_pre->second.second.first)==yindex.end()))||
-                        ((corr_cut>0)&&(ibeta_dssd_pre->first<corr_cut*corr_cut)&&(find(xindex.begin(),xindex.end(),ibeta_dssd_pre->second.first.first)==xindex.end())&&(find(yindex.begin(),yindex.end(),ibeta_dssd_pre->second.second.first)==yindex.end())))
-                {
-                    //beta_dssd.push_back(make_pair(make_pair(ibeta_dssd_pre->second.first.first,ibeta_dssd_pre->second.first.second),make_pair(ibeta_dssd_pre->second.second.first,ibeta_dssd_pre->second.second.second)));
-                    if (mult_z<maxNposBeta && ibeta_dssd_pre->second.first.second.first>sumexcut[z] && ibeta_dssd_pre->second.second.second.first>sumeycut[z]){
-                        AIDACluster *cluster=new AIDACluster;
-                        cluster->SetHitPosition(ibeta_dssd_pre->second.first.first,ibeta_dssd_pre->second.second.first,z);
-                        cluster->SetXEnergy(ibeta_dssd_pre->second.first.second.first);
-                        cluster->SetYEnergy(ibeta_dssd_pre->second.second.second.first);
-                        cluster->SetXMult(ibeta_dssd_pre->second.first.second.second);
-                        cluster->SetYMult(ibeta_dssd_pre->second.second.second.second);
-                        //if (ibeta_dssd_pre->second.first.second.second!=ibeta_dssd_pre->second.second.second.second) cout<<"eurica!"<<cluster->GetXMultiplicity()<<"-"<<cluster->GetYMultiplicity()<<endl;
-
-                        //Timing
-                        int hitx = (int) round(ibeta_dssd_pre->second.first.first);
-                        int hity = (int) round(ibeta_dssd_pre->second.second.first);
-                        if (dssdH_T_X[z][hitx][0]>0&&dssdH_T_Y[z][hity][0]>0){
-
-                            //! if there is available fast time stamp
-                            if (dssdH_T_Y[z][hitx][0]==0||dssdH_T_Y[z][hity][0]==0){
-                                cluster->SetFastTimestamp(dssdH_T_Y[z][hitx][0] + dssdH_T_Y[z][hity][0]);
-                            }
-                            //! Take the ealiest time stamp
-                            if (dssdH_T_X[z][hitx][0]>dssdH_T_Y[z][hity][0]) {
-                                cluster->SetTimestamp(dssdH_T_Y[z][hity][0]);
-                                cluster->SetFastTimestamp(dssdF_T_Y[z][hity][0]);
-                            }else {
-                                cluster->SetTimestamp(dssdH_T_X[z][hitx][0]);
-                                cluster->SetFastTimestamp(dssdF_T_X[z][hitx][0]);
-                            }
-
-                        }else{
-                            cout<<__PRETTY_FUNCTION__<<" something wrong!"<<endl;
-                        }
-                        this->AddCluster(cluster);
-                    }
-                    xindex.push_back(ibeta_dssd_pre->second.first.first);
-                    yindex.push_back(ibeta_dssd_pre->second.second.first);
-                    mult_z++;
-                }
-            }
-        }//end of additional step...
-
-    }//end of loop on all dssd
-    if(this->GetNClusters()>0) return true;
-    return false;
-}
-
-bool AIDA::IonGetPos()
-{
-    int maxmult=1;
-    Double_t dssdL_E_X[NumDSSD][NumStrX][maxmult];
-    Double_t dssdL_E_Y[NumDSSD][NumStrY][maxmult];
-    int mult_strip_x[NumDSSD][NumStrX];
-    int mult_strip_y[NumDSSD][NumStrX];
-    for (int i=0;i<NumDSSD;i++){
-        for (int j=0;j<NumStrX;j++){
-            mult_strip_x[i][j]=0;
-            mult_strip_y[i][j]=0;
-            for (int k=0;k<maxmult;k++){
-                dssdL_E_X[i][j][k]=0;
-                dssdL_E_Y[i][j][k]=0;
-            }
-        }
-    }
-    for (size_t i=0;i<fhits.size();i++){
-        AIDAHit* hit = fhits.at(i);
-        int z = hit->GetZ();
-        int xy = hit->GetXY();
-        double energy = hit->GetEnergy();
-        if (xy<128){
-            if (mult_strip_x[z][xy]<maxmult) dssdL_E_X[z][xy][mult_strip_x[z][xy]] = energy;
-            mult_strip_x[z][xy]++;
-        }else{
-            if (mult_strip_y[z][xy-128]<maxmult) dssdL_E_Y[z][xy-128][mult_strip_y[z][xy-128]] = energy;
-            mult_strip_y[z][xy-128]++;
-        }
-    }
-    //!Old code
-
-
-    //get pos by weighting method
-    Double_t Ion_posX;
-    Double_t Ion_posY;
-    Bool_t is_X_hit=false;
-    Bool_t is_Y_hit=false;
-    Int_t my_ion_mult_x,my_ion_mult_y;
-    Int_t maxZ=-1;
-
-    for(Int_t z=0; z<NumDSSD; z++){
-        is_X_hit=false;
-        is_Y_hit=false;
-        my_ion_mult_x=0;
-        my_ion_mult_y=0;
-        Double_t sum_ex=0;
-        Double_t sum_weightx=0;
-        Double_t sum_ey=0;
-        Double_t sum_weighty=0;
-        for(Int_t x=0; x<NumStrX; x++){
-            if(dssdL_E_X[z][x][0]>0){
-                is_X_hit=true;
-                sum_ex+=dssdL_E_X[z][x][0];
-                sum_weightx+=x*dssdL_E_X[z][x][0];
-                my_ion_mult_x++;
-            }
-        }
-        if (is_X_hit){
-            for(Int_t y=0; y<NumStrY; y++){
-                if(dssdL_E_Y[z][y][0]>0){
-                   is_Y_hit=true;
-                   sum_ey+=dssdL_E_Y[z][y][0];
-                   sum_weighty+=y*dssdL_E_Y[z][y][0];
-                   my_ion_mult_y++;
-               }
-            }
-            if(is_Y_hit){
-                Ion_posX=sum_weightx/sum_ex;
-                Ion_posY=sum_weighty/sum_ey;
-                //! only one cluster
-                AIDACluster *cluster=new AIDACluster;
-                cluster->SetXEnergy(sum_ex);
-                cluster->SetYEnergy(sum_ey);
-                cluster->SetHitPosition(Ion_posX,Ion_posY,z);
-                cluster->SetXMult(my_ion_mult_x);
-                cluster->SetYMult(my_ion_mult_y);
-                //! take ealiest time stamp
-                cluster->SetTimestamp(fhits.at(0)->GetTimestamp());
-                this->AddCluster(cluster);
-                maxZ=z;
-            }
-        }
-    }
-    this->SetMaxZ(maxZ);
-    if (maxZ!=-1) return true;
-    return false;
-}
-

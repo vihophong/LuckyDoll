@@ -34,6 +34,12 @@ public:
         f->GetObject("beta",fChain);
         fChain->SetBranchAddress("aida",&aida);
     }
+    void InitIon(TString infile){
+        TFile* f = new TFile(infile);
+        f->GetObject("ion",fChain);
+        fChain->SetBranchAddress("aida",&aida);
+    }
+
     AIDA* aida;
     TTree          *fChain;   //!pointer to the analyzed TTree or TChain
     virtual Int_t    GetEntry(Long64_t entry){

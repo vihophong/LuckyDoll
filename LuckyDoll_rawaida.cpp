@@ -12,7 +12,7 @@
 #include "TStopwatch.h"
 #include "TClonesArray.h"
 #include "CommandLineInterface.h"
-#include "AIDAUnpacker.h"
+#include "AIDAUnpackerGz.h"
 #include "TVectorD.h"
 
 using namespace TMath;
@@ -31,6 +31,7 @@ int main(int argc, char* argv[]){
 
   cout << "AIDA Unpacker: Convert raw data into root tree files with no events structure (only hits)" << endl;
   int Verbose = 0;
+  int GzFlag = 0;
   char* InputAIDA = NULL;
   char* OutFile = NULL;
   char* ThresholdFile = NULL;
@@ -44,7 +45,7 @@ int main(int argc, char* argv[]){
   interface->Add("-v", "verbose level", &Verbose);
   interface->Add("-map", "mapping file", &MappingFile);
   interface->Add("-thr", "threshold file", &ThresholdFile);
-
+  interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -96,6 +97,7 @@ int main(int argc, char* argv[]){
   for (Int_t i=0;i<nfiles;i++){
       //! Program start here
       AIDAUnpacker* aidaunpkg = new AIDAUnpacker;
+      if (GzFlag!=0) aidaunpkg->SetGzStream();
       aidaunpkg->Init((char*)inputfiles[i].c_str());
       aidaunpkg->BookTree(aidatree);
       aidaunpkg->read_mapping(MappingFile);

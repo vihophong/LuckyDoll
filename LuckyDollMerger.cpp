@@ -41,12 +41,17 @@ int main(int argc, char* argv[]){
 
     char* OutFile = NULL;
 
+    int AIbeg = 0;
+    int AIend = 0;
+
     CommandLineInterface* interface = new CommandLineInterface();
     interface->Add("-bl", "BELEN input list of files", &InputBELEN);
     interface->Add("-a", "AIDA input list of files", &InputAIDA);
     interface->Add("-br", "Bigrips input list of files", &InputBIGRIPS);
     interface->Add("-o", "output file", &OutFile);
     interface->Add("-v", "verbose level", &Verbose);
+    interface->Add("-aibeg", "start entry for AIDA ION", &AIbeg);
+    interface->Add("-aiend", "stop entry for AIDA ION", &AIend);
 
     interface->CheckFlags(argc, argv);
     //Complain about missing mandatory arguments
@@ -114,15 +119,15 @@ int main(int argc, char* argv[]){
         merge->SetBrikenFile((char*)inputfiles_briken[i].c_str());
         merge->SetBigripsFile((char*)inputfiles_bigrips[i].c_str());
         merge->Init();
-        merge->ReadAIDA();
+        merge->ReadAIDA(AIbeg,AIend);
         merge->ReadBRIKEN();
         merge->ReadBigrips();
         merge->BookTree(treeImplant,treeBeta,treeNeutron,treeBeam);
         ofile->cd();
         merge->DoMergeImp();
-        merge->DoMergeBeta();
-        merge->DoMergeNeutron();
-        merge->DoMergeAnc();
+        //merge->DoMergeBeta();
+        //merge->DoMergeNeutron();
+        //merge->DoMergeAnc();
         delete merge;
     }
     treeImplant->Write();

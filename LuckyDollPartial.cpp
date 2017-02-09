@@ -57,6 +57,7 @@ int main(int argc, char* argv[]){
 
   int FillFlag = 1;
   long long int TransientTime = 10000;
+  int GzFlag = 0;
 
   char* InputAIDA = NULL;
   char* OutFile = NULL;
@@ -81,6 +82,7 @@ int main(int argc, char* argv[]){
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
   interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
+  interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -175,6 +177,7 @@ int main(int argc, char* argv[]){
   for (Int_t i=0;i<nfiles;i++){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
       evts->SetVerbose(Verbose);
+      if (GzFlag!=0) evts->SetGzStream();
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);

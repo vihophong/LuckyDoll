@@ -13,6 +13,7 @@ BuildAIDAEvents::BuildAIDAEvents()
         fsumexcut[i] = 0;
         fsumeycut[i] = 0;
     }
+    fisgzstream = false;
     aidaunpkg = new AIDAUnpacker;
 }
 
@@ -43,6 +44,7 @@ void BuildAIDAEvents::Init(char* aidafile)
     faida = new AIDA;
 
     //! initilize input aida
+    if (fisgzstream) aidaunpkg->SetGzStream();
     aidaunpkg->Init(aidafile);
     aidaunpkg->read_mapping(fmappingfile);
     if (fthresholdfile!=NULL) aidaunpkg->read_threshold_table(fthresholdfile);

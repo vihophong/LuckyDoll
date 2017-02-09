@@ -52,6 +52,7 @@ int main(int argc, char* argv[]){
 
   cout << "Generate Pulser or 207Bi calibration spectra" << endl;
   int Verbose = 0;
+  int GzFlag = 0;
   int Mode = NULL;
   int Mult = 1;
   long long int WindowIon = 2500; //time unit: 10 ns
@@ -90,6 +91,7 @@ int main(int argc, char* argv[]){
    interface->Add("-nbins","number of histogram bin (default 4000)",&nbins);
    interface->Add("-min","minimum range of X (default 0)",&min);
    interface->Add("-max","maximum range of X (default 24000)",&max);
+   interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -169,6 +171,7 @@ int main(int argc, char* argv[]){
   for (Int_t i=0;i<nfiles;i++){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
       evts->SetVerbose(Verbose);
+      if (GzFlag!=0) evts->SetGzStream();
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);

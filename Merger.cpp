@@ -32,8 +32,8 @@ Merger::Merger()
 
     fF11LVetoTWup = 400;
     fF11LVetoTWlow  = 400;
-    fF11LVetoDownup  = 1200;
-    fF11LVetoDownlow  = -600;
+    fF11LVetoDownup  = 3000;
+    fF11LVetoDownlow  = 500;
 
     fF11LGammaTWlow = 1000;
     fF11LGammaTWup = 1000;
@@ -209,13 +209,18 @@ void Merger::BookTree(TTree* treeImplant, TTree* treeBeta, TTree* treeNeutron, T
     ftreeNeutron->Branch("neutron",&flocalneutron);
     ftreeNeutron->BranchRef();
     ftreeAncillary->Branch("beam",&flocalancillary);
+    ftreeAncillary->Branch("bigrips",&fbigrips);
     ftreeAncillary->BranchRef();
 }
 
-void Merger::ReadAIDA()
+void Merger::ReadAIDA(unsigned int startI, unsigned int stopI)
 {
     //! read ion
-    for (unsigned int jentry = 0;jentry < (unsigned int) fnentriesAIDAIon;jentry++){
+    unsigned int sstartI,sstopI;
+    if (startI==0) sstartI = 0; else sstartI = startI;
+    if (stopI==0) sstopI = (unsigned int) fnentriesAIDAIon; else sstopI = stopI;
+
+    for (unsigned int jentry = sstartI;jentry < sstopI;jentry++){
         ftrAIDAIon->GetEvent(jentry);
         unsigned short lastclusterID = faidaIon->GetNClusters()-1;
         if (faidaIon->GetCluster(lastclusterID)->GetHitPositionZ()==faidaIon->GetMaxZ()){
@@ -1133,6 +1138,7 @@ void Merger::DoMergeAnc()
     unsigned int ncorrwdETop = 0;
     unsigned int ncorrwdEBot = 0;
     unsigned int ncorrwGamma = 0;
+    unsigned int ncorrwBR = 0;
 
 
     for (fF11MapL_it=fF11LMap.begin();fF11MapL_it!=fF11LMap.end();fF11MapL_it++){
@@ -1336,9 +1342,31 @@ void Merger::DoMergeAnc()
         }
         if (ncorr>0) ncorrwGamma++;
 
+        //! correlated event with bigrips
+        ts1 = (Long64_t)ts - (Long64_t)fF11LGammaTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fF11LGammaTWup;
+        ncorr = 0;
+        corrts = 0;
+        correntry = 0;
+        check_time =0;
+
+        fbigripsMap_it = fbigripsMap.lower_bound(ts1);
+        while(fbigripsMap_it!=fbigripsMap.end()&&fbigripsMap_it->first<ts2){
+            corrts = (Long64_t) fbigripsMap_it->first;
+            correntry = fbigripsMap_it->second;
+            if (corrts!=check_time){
+                ftrBigrips->GetEvent(correntry);
+                check_time=corrts;
+                ncorrwBR++;
+                break;
+            }
+            fbigripsMap_it++;
+        }
+
         ftreeAncillary->Fill();
     }
     cout<<"Finished merging F11L" <<endl;
     cout<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<" "<<ncorrwNeutron<<endl;
     cout<<ncorrwdEBot<<" "<<ncorrwdETop<<" "<<ncorrwGamma<<endl;
+    cout<<"br "<<ncorrwBR<<endl;
 }

@@ -7,7 +7,7 @@
 
 #include "AIDA.h"
 #include "rawaida.h"
-#include "AIDAUnpacker.h"
+#include "AIDAUnpackerGz.h"
 #include "rawaida.h"
 
 class BuildAIDAEvents
@@ -21,6 +21,9 @@ public:
 
     //! Set verbose
     void SetVerbose(int verbose){fverbose = verbose;}
+
+    //! Set Gz file input
+    void SetGzStream(){fisgzstream = true;}
 
     //! Set file path containing a Mapping table
     void SetMappingFile(char* mapf){fmappingfile = mapf;}
@@ -106,6 +109,9 @@ private:
     int fverbose;
     //! store last event (sum of all)
     int flastevent;
+
+    //! is gz file in stream
+    bool fisgzstream;
 
     int fflag_pulser_in_stream;
 

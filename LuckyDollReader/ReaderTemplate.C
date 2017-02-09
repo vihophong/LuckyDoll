@@ -10,10 +10,11 @@ void check1(TString infile){
 
     //! get number of entries
     Long64_t nentries = reader->GetEntries();
+    AIDA* aida = reader->aida;
     //! event loop
     for (Long64_t jentry = 0;jentry<nentries;jentry++){
         reader->GetEntry(jentry);
-        histo->Fill(reader->aida->GetMult());
+        histo->Fill(aida->GetMult());
     }
     histo->Draw("colz");
 }

@@ -42,6 +42,15 @@ ROOT_GENERATE_DICTIONARY(G__AIDAsimple AIDA.h LINKDEF AIDALinkDef.h)
 add_library(AIDAs SHARED AIDA.cpp G__AIDAsimple.cxx) # Link2Dictionary!
 target_link_libraries(AIDAs ${ROOT_LIBRARIES})   # Link2Dictionary!
 
+#boost lib
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+#minimum required version of boost is 1.42
+find_package(Boost 1.42.0 COMPONENTS system iostreams)
+include_directories(${Boost_INCLUDE_DIRS})
+
 #---Create  a main program using the library
-add_executable(aida LuckyDoll.cpp AIDAUnpacker.cpp BuildAIDAEvents.cpp  CommandLineInterface.cpp AIDAUnpacker.h BuildAIDAEvents.h CommandLineInterface.h rawaida.h)
+add_executable(aida LuckyDoll.cpp AIDAUnpackerGz.cpp BuildAIDAEvents.cpp  CommandLineInterface.cpp AIDAUnpackerGz.h BuildAIDAEvents.h CommandLineInterface.h rawaida.h)
 target_link_libraries(aida AIDAs)
+target_link_libraries(aida ${Boost_LIBRARIES})

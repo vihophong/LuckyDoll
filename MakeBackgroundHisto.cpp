@@ -12,7 +12,7 @@
 #include "TStopwatch.h"
 #include "TClonesArray.h"
 #include "CommandLineInterface.h"
-#include "AIDAUnpacker.h"
+#include "AIDAUnpackerGz.h"
 #include "TH1.h"
 #include "TH2.h"
 #include "TVectorD.h"
@@ -33,6 +33,7 @@ int main(int argc, char* argv[]){
 
   cout << "Making Histograms from raw data" << endl;
   int Verbose = 0;
+  int GzFlag = 0;
   char* InputAIDA = NULL;
   char* OutFile = NULL;
   char* MappingFile = NULL;
@@ -42,7 +43,7 @@ int main(int argc, char* argv[]){
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
   interface->Add("-map", "mapping file", &MappingFile);
-
+  interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
 
   interface->CheckFlags(argc, argv);
   if(InputAIDA == NULL){
@@ -87,6 +88,7 @@ int main(int argc, char* argv[]){
   //! Program start here
   for (Int_t i=0;i<nfiles;i++){
       AIDAUnpacker* aidaunpkg = new AIDAUnpacker;
+      if (GzFlag!=0) aidaunpkg->SetGzStream();
       aidaunpkg->Init((char*)inputfiles[i].c_str());
       //!Book a tree
       //aidaunpkg->BookTree(tree);

@@ -47,7 +47,7 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 #minimum required version of boost is 1.42
 find_package(Boost 1.42.0 COMPONENTS system iostreams)
-include_directories(${Boost_INCLUDE_DIRS})
+#include_directories(${Boost_INCLUDE_DIRS})
 
 #---Create  a main program using the library
 add_executable(aidapartial LuckyDollPartial.cpp AIDAUnpackerGz.cpp BuildAIDAEvents.cpp  CommandLineInterface.cpp AIDAUnpackerGz.h BuildAIDAEvents.h CommandLineInterface.h rawaida.h)

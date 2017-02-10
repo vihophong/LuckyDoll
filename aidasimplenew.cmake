@@ -20,7 +20,7 @@
 
 # CMakeLists.txt for event package. It creates a library with dictionary and a main program
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(aidasimple)
+project(aidasimplenew)
 
 # You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
 #   - ROOT built with classic configure/make use the provided $ROOTSYS/etc/cmake/FindROOT.cmake
@@ -48,7 +48,7 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 #minimum required version of boost is 1.42
 find_package(Boost 1.42.0 COMPONENTS system iostreams)
-include_directories(${Boost_INCLUDE_DIRS})
+#include_directories(${Boost_INCLUDE_DIRS})
 
 #---Create  a main program using the library
 add_executable(aidanew LuckyDollNew.cpp AIDAUnpackerGz.cpp BuildAIDAEventsNew.cpp  CommandLineInterface.cpp AIDAUnpackerGz.h BuildAIDAEventsNew.h CommandLineInterface.h rawaida.h)

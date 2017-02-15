@@ -16,6 +16,7 @@ BuildAIDAEvents::BuildAIDAEvents()
         fsumexcut[i] = 0;
         fsumeycut[i] = 0;
     }
+    fcorrcut = -1;
     fisgzstream = false;
     aidaunpkg = new AIDAUnpacker;
 }

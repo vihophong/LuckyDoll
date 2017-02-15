@@ -24,6 +24,7 @@ AIDAUnpacker::~AIDAUnpacker(){
 
 void AIDAUnpacker::Init(char *inputfile){
     fverbose = 0;
+    nresetwarning = 0;
     first_scan_flag=true;
     fillFlag = true;
     //!Set default Fee mask (enable all)
@@ -421,8 +422,12 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             //! Get correlation scaler offset
             if (rawaida.infoCode==8) {
                 long long temp=rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp;
-                if (temp-my_first_time_offset<fmaxtsoffset&&temp-my_first_time_offset>-fmaxtsoffset) my_time_offset=temp;
-                else cout<<"AIDA time stamp scaler is going down!"<<endl;
+                if (temp-my_first_time_offset<fmaxtsoffset&&temp-my_first_time_offset>-fmaxtsoffset) {
+                    my_time_offset=temp;
+                }else{
+                    if (nresetwarning<10) cout<<"AIDA time stamp scaler jumped! maybe timestamp reset is sent"<<endl;
+                    nresetwarning ++;
+                }
                 corrTS->Fill(temp);
             }else{
                 rawaida.extTimestamp=(my_time_offset+rawaida.timestamp)/tm_stp_scaler_ratio; //convert to ext timestamp unit

@@ -297,6 +297,12 @@ int main(int argc, char* argv[]){
       runtime[0] += runtime[i+1];
       cout<<evts->GetCurrentBetaEvent()<<" beta events"<<endl;
       cout<<evts->GetCurrentIonEvent()<<" ion events"<<endl;
+
+      if (!FillFlag){
+          ofstream str("ncounts.txt",ios::app);
+          str<<inputfiles[i]<<"\t"<<evts->GetCurrentIonEvent()<<"\t"<<evts->GetCurrentBetaEvent()<<"\t"<<(Double_t)evts->GetCurrentBetaEvent()/(Double_t)evts->GetCurrentIonEvent()<<endl;
+      }
+
       implantationrate += evts->GetCurrentIonEvent();
       cout<<ttotal<<" all events (beta+ion)"<<endl;
       cout<<evts->GetCurrentPulserEvent()<<" pulser events"<<endl;

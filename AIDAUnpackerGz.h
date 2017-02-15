@@ -233,8 +233,7 @@ private:
     int prev_blk;
     int prev_pkg;
     int ncheck;
-
-
+    int nresetwarning;
 
 };
 

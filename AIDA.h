@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "TObject.h"
+#include "TVector.h"
 #include "TVector3.h"
 #include "TMath.h"
 #include "AIDAdefs.h"

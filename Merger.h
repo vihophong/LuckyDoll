@@ -25,8 +25,8 @@ public:
     void SetBrikenFile(char* brikenfile){finputBriken = brikenfile;}
     void Init();
     void ReadBigrips();
-    void ReadAIDA(unsigned int startI = 0, unsigned int stopI = 0);
-    void ReadBRIKEN();
+    void ReadAIDA(unsigned int startI = 0, unsigned int stopI = 0, unsigned int startB=0, unsigned int stopB=0);
+    void ReadBRIKEN(unsigned int startN=0, unsigned int stopN=0,unsigned int startG=0, unsigned int stopG=0,unsigned int startA=0, unsigned int stopA=0);
     void DoMergeBeta();
     void DoMergeNeutron();
     void DoMergeAnc();

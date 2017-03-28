@@ -14,6 +14,7 @@
 #include "TClonesArray.h"
 #include "CommandLineInterface.h"
 #include "BELEN.h"
+#include "Clover.h"
 #include "TVectorD.h"
 #include "BelenReader.h"
 
@@ -40,6 +41,8 @@ int main(int argc, char* argv[]){
     char* InputBELEN = NULL;
     char* OutFile = NULL;
     char* MappingFile = NULL;
+    int SplitSize = -1;
+
 
     CommandLineInterface* interface = new CommandLineInterface();
     interface->Add("-i", "BELEN input list of files", &InputBELEN);
@@ -47,6 +50,8 @@ int main(int argc, char* argv[]){
     interface->Add("-v", "verbose level", &Verbose);
     interface->Add("-map", "mapping file (he3 position)", &MappingFile);
     interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
+    interface->Add("-s", "Maximum size (interger Mb)", &SplitSize);
+
 
     interface->CheckFlags(argc, argv);
     //Complain about missing mandatory arguments
@@ -73,6 +78,21 @@ int main(int argc, char* argv[]){
     TTree* treegamma=new TTree("gamma","tree gamma");
     TTree* treeanc=new TTree("anc","tree anc");
 
+    BELENHit* neutron=new BELENHit;
+    CloverHit* gamma=new CloverHit;
+    BELENHit* anc=new BELENHit;
+    treeneutron->Branch("neutron",&neutron);
+    treegamma->Branch("gamma",&gamma);
+    treeanc->Branch("anc",&anc);
+    treeneutron->BranchRef();
+    treegamma->BranchRef();
+    treeanc->BranchRef();
+
+    if (SplitSize>0){
+        treeneutron->SetMaxTreeSize(SplitSize*1e6);
+        treegamma->SetMaxTreeSize(SplitSize*1e6);
+        treeanc->SetMaxTreeSize(SplitSize*1e6);
+    }
 
     //! Read list of files
     string inputfiles[1000];
@@ -87,14 +107,11 @@ int main(int argc, char* argv[]){
         inf>>inputfiles[i];
         cout<<inputfiles[i]<<endl;
     }
-
     for (Int_t i=0;i<nfiles;i++){
         BelenReader* blrd = new BelenReader;
-        blrd->SetGeoMapping(MappingFile);
-        if (FillFlag) blrd->BookTree(treeneutron,treegamma,treeanc);
-        blrd->Init((char*)inputfiles[i].c_str());
-
-
+        blrd->SetGeoMapping(MappingFile);        
+        if (FillFlag) blrd->BookTree(treeneutron,treegamma,treeanc,neutron,gamma,anc);
+        blrd->Init((char*)inputfiles[i].c_str());       
         int ctr=0;
         int total = blrd->GetNEvents();
         long long tstart;
@@ -114,15 +131,16 @@ int main(int argc, char* argv[]){
 
                 double time_end = get_time();
                 //! get time
+
                 cout << inputfiles[i] << setw(5) << setiosflags(ios::fixed) << setprecision(1) << (100.*ctr)/total<<" % done  " <<
                   (Float_t)(ctr/1000)/(time_end - local_time_start) << "k events/s " <<
                   (Float_t)(nevtneutron/1000)/(time_end - local_time_start) <<"k neutrons/s  "<<
                    (Float_t)(nevtgamma/1000)/(time_end - local_time_start) <<"k gammas/s "<<
-                    (Float_t)(nevtanc/1000)/(time_end - local_time_start) <<"k linhtinhs/s "<<
+                    (Float_t)(nevtanc/1000)/(time_end - local_time_start) <<"k linhtinhs/s "<<                    
                    (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r "<<flush;
+
                 time_last = time_end;
             }
-
             if(signal_received){
                 blrd->CloseReader();
               break;
@@ -134,6 +152,7 @@ int main(int argc, char* argv[]){
         cout<<"  Anc Hits= "<<blrd->GetCurrentAncEvent()<<endl;
         blrd->CloseReader();
         delete blrd;
+        ofile->cd();
     }
 
     if (FillFlag){

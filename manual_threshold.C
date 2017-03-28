@@ -170,15 +170,17 @@ void manual_threshold()
 Double_t findThreshold(TH1F* spec,Int_t ncountsmax)
 {
     Int_t ntotal=0;
-    Double_t thr = 0;
+    Double_t thr = spec->GetBinCenter(1);
     for (Int_t i=spec->GetNbinsX()+1;i>0;i--){
     //for (Int_t i=spec->GetNbinsX();i>0;i--){
         ntotal+=spec->GetBinContent(i);
         //if (i==spec->GetNbinsX()+1) cout<<ntotal<<endl;
+
+        //cout<<spec->GetBinCenter(i)<<"eee"<<ntotal<<endl;
         if (ntotal>ncountsmax) {
             thr = spec->GetBinCenter(i);
             break;
-        }
+        }        
     }
     return thr+0.5;
 }

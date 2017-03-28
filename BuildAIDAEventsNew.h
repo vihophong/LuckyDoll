@@ -69,6 +69,13 @@ public:
     //! Set Correlation energy cut
     void SetEnergyCorrCut(Double_t corrcut){fcorrcut = corrcut;}
 
+    //! Set Ranking mode
+    void SetNoCorrRankingMode(){fisranking = false;}
+
+    //! Set Sum multiplicity XY cut
+    void SetSumMultiplicityCut(int multcut){fmultcut=multcut;}
+
+
     //! Get total number of events
     int GetADNblock(){return fADNblock;}
     //! Get Current events
@@ -219,6 +226,12 @@ private:
 
     //! Correlation cut
     Double_t fcorrcut;
+
+    //! Multiplicity cut
+    unsigned short fmultcut;
+
+    //! position determination ranking mode
+    bool fisranking;
 
     unsigned int ftemp;
     rawaida_info aidaraw;

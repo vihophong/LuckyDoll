@@ -33,33 +33,39 @@ BelenReader::BelenReader():rr()
     ftreedataNeuron = NULL;
     ftreedataGamma = NULL;
     ftreedataAnc = NULL;
+
     fflag_filldata = false;
 }
 
 BelenReader::~BelenReader()
 {
-    delete flocalNeutron;
-    delete flocalGamma;
+    if (!fflag_filldata){
+        delete flocalNeutron;
+        delete flocalGamma;
+        delete flocalAnc;
+    }
+    delete finfile;
 }
 
 
 void BelenReader::Init(char* belenfile){
+    if (!fflag_filldata){
+        flocalNeutron = new BELENHit;
+        flocalGamma = new CloverHit;
+        flocalAnc = new BELENHit;
+    }
     fBLAncEntry = 0;
     fBLGamEntry = 0;
     fBLAncEntry = 0;
 
-    flocalNeutron = new BELENHit;
-    flocalGamma = new CloverHit;
-
-    flocalAnc = new BELENHit;
-
     finfile = new TFile(belenfile);
     ftree = (TTree*) finfile->Get("BelenTree");
-
+    finfile->cd();
     fnentries = ftree->GetEntries();
     cout<<"There are "<<fnentries<<" entries in Belen: "<< belenfile<<endl;
 
     //! brach tree
+
     ftree->SetBranchAddress("Neutrons",&ftreedataNeuron);
     ftree->SetBranchAddress("Gamma",&ftreedataGamma);
     ftree->SetBranchAddress("Ancillary",&ftreedataAnc);
@@ -129,34 +135,15 @@ void BelenReader::GetGeoMapping(){
     inpf.close();
 }
 
-void BelenReader::BookTree(TTree* treeNeutron, TTree *treeGamma, TTree *treeAnc, Int_t bufsize){
+void BelenReader::BookTree(TTree* treeNeutron, TTree *treeGamma, TTree *treeAnc, BELENHit* neutron,CloverHit* gamma, BELENHit* anc)
+{
     //! initilize output
     fmtrNeutron = treeNeutron;
-    //fmtrNeutron->Branch("blentry",&fBLNeuEntry,bufsize); //320000
-    //fmtrNeutron->Branch("blTS",&fBLtsNeutron,bufsize);
-    //fmtrNeutron->Branch("neutron",&flocalNeutron,bufsize);
-    fmtrNeutron->Branch("neutron",&flocalNeutron,bufsize);
-    fmtrNeutron->BranchRef();
-
-
     fmtrGamma = treeGamma;
-    //fmtrGamma->Branch("blentry",&fBLGamEntry,bufsize);
-    //fmtrGamma->Branch("blTS",&fBLtsGamma,bufsize);
-    fmtrGamma->Branch("gamma",&flocalGamma,bufsize);
-    fmtrGamma->BranchRef();
-
     fmtrAnc = treeAnc;
-    //fmtrAnc->Branch("blentry",&fBLAncEntry,bufsize);
-    //fmtrAnc->Branch("blTS",&fBLtsAnc,bufsize);
-    /*
-    fmtrAnc->Branch("f11",&flocalAncF11PL,bufsize);
-    fmtrAnc->Branch("uveto",&flocalAncUpstreamPL,bufsize);
-    fmtrAnc->Branch("dE",&flocalAncdE,bufsize);
-    fmtrAnc->Branch("dveto",&flocalAncAIDAPL,bufsize);
-    */
-    fmtrAnc->Branch("anc",&flocalAnc,bufsize);
-    fmtrAnc->BranchRef();
-
+    flocalNeutron = neutron;
+    flocalGamma = gamma;
+    flocalAnc = anc;
     fflag_filldata=true;
 }
 
@@ -289,7 +276,7 @@ void BelenReader::PerturbateHe3(UShort_t He3Id){
     b=rr.Rndm();
     genRndCircle(x,y,a,b,fposX,fposY,r);
     fposX = x;
-    fposY = y;
+    fposY = y;    
     fposZ = rr.Rndm()*fHe3Id2length[He3Id]+fposZ-fHe3Id2length[He3Id]/2;
 }
 

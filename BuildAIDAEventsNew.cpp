@@ -17,7 +17,9 @@ BuildAIDAEvents::BuildAIDAEvents()
         fsumeycut[i] = 0;
     }
     fcorrcut = -1;
+    fmultcut = 10000;
     fisgzstream = false;
+    fisranking = true;
     aidaunpkg = new AIDAUnpacker;
 }
 
@@ -208,16 +210,29 @@ bool BuildAIDAEvents::CloseBetaEvent()
     unsigned short mult=flocalaidaBETA->GetMult();
 
 
-    if (mult<64&&!fflag_trans&&(hitx[0]+hity[0]<8)&&(hitx[1]+hity[1]<8)&&(hitx[2]+hity[2]<8)&&(hitx[3]+hity[3]<8)&&(hitx[4]+hity[4]<8)&&(hitx[5]+hity[5]<8))
+    if (mult<64&&!fflag_trans&&(hitx[0]+hity[0]<fmultcut)&&(hitx[1]+hity[1]<fmultcut)&&(hitx[2]+hity[2]<fmultcut)&&(hitx[3]+hity[3]<fmultcut)&&(hitx[4]+hity[4]<fmultcut)&&(hitx[5]+hity[5]<fmultcut))
+    //if (mult<64&&!fflag_trans)
     {
-        if (flocalaidaBETA->BetaGetPosNew(fcorrcut,fsumexcut,fsumeycut)){
-            flocalaidaBETA->SetTimestamp(flocalaidaBETA->GetHit(0)->GetTimestamp());
-            if (fflag_filldata) fmtrBETA->Fill();
-            fADBetaEntry++;
-            return true;
-        }else {
-            return false;
+        if (fisranking){//! newly added
+            if (flocalaidaBETA->BetaGetPosNew(fcorrcut,fsumexcut,fsumeycut)){
+                flocalaidaBETA->SetTimestamp(flocalaidaBETA->GetHit(0)->GetTimestamp());
+                if (fflag_filldata) fmtrBETA->Fill();
+                fADBetaEntry++;
+                return true;
+            }else {
+                return false;
+            }
+        }else{
+            if (flocalaidaBETA->BetaGetPosAllNew(fcorrcut,fsumexcut,fsumeycut)){
+                flocalaidaBETA->SetTimestamp(flocalaidaBETA->GetHit(0)->GetTimestamp());
+                if (fflag_filldata) fmtrBETA->Fill();
+                fADBetaEntry++;
+                return true;
+            }else {
+                return false;
+            }
         }
+
     }
     if (mult>=64){
         flocalaidaBETA->SetTimestamp(fADtsBETA);

@@ -97,10 +97,14 @@ public:
         obj.SetEdETop(fe_detop);
         obj.SetEdEBot(fe_debot);
         for (size_t idx=0;idx<fNeutrons.size();idx++){
-            obj.AddNeutronHit(fNeutrons[idx]);
+            BELENHit* hitneutron=new BELENHit;
+            fNeutrons[idx]->Copy(*hitneutron);
+            obj.AddNeutronHit(hitneutron);
         }
         for (size_t idx=0;idx<fClovers.size();idx++){
-            obj.AddCloverHit(fClovers[idx]);
+            CloverHit* hitclover=new CloverHit;
+            fClovers[idx]->Copy(*hitclover);
+            obj.AddCloverHit(hitclover);
         }
 
 
@@ -121,6 +125,24 @@ public:
     unsigned char GetNVetoBot(){return fnvetobot;}
     unsigned char GetNVetoDown(){return fnvetodown;}
 
+
+
+    double GetEF11L(){return fe_f11l;}
+    double GetEF11R(){return fe_f11r;}
+    double GetEVetoTop(){return fe_vetotop;}
+    double GetEVetoBot(){return fe_vetobot;}
+    double GetEVetoDown(){return fe_vetodown;}
+
+    unsigned long long GetTF11L(){return ft_f11l;}
+    unsigned long long GetTF11R(){return ft_f11r;}
+    unsigned long long GetTVetoTop(){return ft_vetotop;}
+    unsigned long long GetTVetoBot(){return ft_vetobot;}
+    unsigned long long GetTVetoDown(){return ft_vetodown;}
+
+    double GetEdETop(){return fe_detop;}
+    double GetTdETop(){return ft_detop;}
+    double GetEdEBot(){return fe_debot;}
+    double GetTdEBot(){return ft_debot;}
 
     void SetEF11L(double ef11l){fe_f11l = ef11l;}
     void SetEF11R(double ef11r){fe_f11r = ef11r;}
@@ -382,6 +404,11 @@ public:
     AIDACluster* GetBeta(){return fBetas;}
     //! Get F11 Beam
     Ancillary* GetF11Beam(){return fF11Beam;}
+    //! Get Clover Beam
+    CloverHit* GetCloverHit(unsigned int i){return fClovers.at(i);}
+    unsigned short GetCloverMult(){return fngamma;}
+    //! Get Clover mult
+
     //! Add Clover hits
     void AddGammaHit(CloverHit* hit){
         fClovers.push_back(hit);
@@ -544,6 +571,8 @@ public:
         fNeutrons.push_back(hit);
         fnneutron++;
     }
+    unsigned int GetMult(){return fnneutron;}
+    Neutron* GetNeutron(int i){return fNeutrons.at(i);}
 private:
     unsigned int fnneutron;
     vector<Neutron*> fNeutrons;

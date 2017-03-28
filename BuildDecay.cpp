@@ -3,11 +3,11 @@
 BuildDecay::BuildDecay()
 {
     fMode = 0;
-    fBetaImplantTWup = 1e9;
-    fBetaImplantTWlow = 6e9;
-    fBetaNeutronTWup = 5e5;
+    fBetaImplantTWup = 2.e9;
+    fBetaImplantTWlow = 5e9;
+    fBetaNeutronTWup = 8e5;
     fBetaNeutronTWlow = 1e5;
-    fmaxdeltaxy = 2.;
+    fmaxdeltaxy = 8.5;
 
     fBetaF11BeamTWup = 40000;
     fBetaF11BeamTWlow = 50000;
@@ -194,8 +194,6 @@ void BuildDecay::DoBuildDecay()
         unsigned int correntry = 0;
         Long64_t check_time = 0;
 
-
-
         fneutronMap_it = fneutronMap.lower_bound(ts1);
         while(fneutronMap_it!=fneutronMap.end()&&fneutronMap_it->first<ts2){
             corrts = (Long64_t) fneutronMap_it->first;
@@ -239,7 +237,6 @@ void BuildDecay::DoBuildDecay()
         if (fimplanti) ncorrwIon++;
         //ftreedecay->Fill();
         k++;
-
     }
     cout<<"finished build Decay!"<<endl;
     cout<<ncorrwNeutron<<" "<<ncorrwIon<<endl;
@@ -337,6 +334,7 @@ void BuildDecay::DoBuildDecay4()
         Long64_t corrts = 0;
         unsigned int correntry = 0;
         Long64_t check_time = 0;
+
         fneutronMap_it = fneutronMap.lower_bound(ts1);
         while(fneutronMap_it!=fneutronMap.end()&&fneutronMap_it->first<ts2){
             corrts = (Long64_t) fneutronMap_it->first;
@@ -352,6 +350,7 @@ void BuildDecay::DoBuildDecay4()
             fneutronMap_it++;
         }
         if (ncorr>0) ncorrwNeutron++;
+
 
         //! correlate event with implant
         ts1 = (Long64_t)ts - (Long64_t)fBetaF11BeamTWlow;

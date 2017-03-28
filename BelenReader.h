@@ -37,7 +37,7 @@ public:
     //! initialization
     void Init(char* belenfile);
     //! book tree if we want to store files
-    void BookTree(TTree* treeNeutron, TTree *treeGamma, TTree *treeAnc, Int_t bufsize=320000);
+    void BookTree(TTree* treeNeutron, TTree *treeGamma, TTree *treeAnc, BELENHit* neutron,CloverHit* gamma, BELENHit* anc);
     //! close file reader
     void CloseReader(){finfile->Close();}
 
@@ -66,6 +66,9 @@ public:
     BELENHit* GetNeutron(){return flocalNeutron;}
     //! gamma hits
     CloverHit* GetGamma(){return flocalGamma;}
+    //! ancillary hist
+    BELENHit* GetAnc(){return flocalAnc;}
+
     //! ancillary hits
     std::vector<BELENHit*> GetAncAIDAPL(){return flocalAncAIDAPL;}
     std::vector<BELENHit*> GetAncUpstreamPL(){return flocalAncUpstreamPL;}

@@ -36,6 +36,7 @@ public:
     memset(fdelta,0.,sizeof(fdelta));
     memset(fmusic1e,0.,sizeof(fmusic1e));
     memset(fmusic2e,0.,sizeof(fmusic2e));
+    memset(fbrho,0,sizeof(fbrho));
     /*
     for(unsigned short j=0;j<6;j++){
       faoq[j] = sqrt(-1.);
@@ -61,6 +62,7 @@ public:
           obj.SetZ(i,fzet[i]);
           obj.SetCorrZ(i,fzetc[i]);
           obj.SetBeta(i,fbeta[i]);
+	  obj.SetBrho(i,fbrho[i]);
       }
       for (Int_t i=0;i<kMaxTOFInfo;i++){
           obj.SetTOF(i,ftof[i]);
@@ -105,6 +107,11 @@ public:
   void SetTOF(unsigned short j, double tof){
     if( j>kMaxTOFInfo-1) return;
     ftof[j] = tof;
+  }
+  //! Set the beta
+  void SetBrho(unsigned short j, double brho){
+    if( j>kMaxBeamInfo-1) return;
+    fbrho[j] = brho;
   }
   //! Set the beta
   void SetBeta(unsigned short j, double beta){
@@ -158,6 +165,11 @@ public:
     if( j>2) return sqrt(-1.);
     return ftof[j];
   }
+  //! Get Brho
+  double GetBrho(unsigned short j){
+    if( j>2) return sqrt(-1.);
+    return fbrho[j];
+  }
   //! Get beta
   double GetBeta(unsigned short j){
     if( j>2) return sqrt(-1.);
@@ -189,6 +201,9 @@ protected:
   double fzet[kMaxBeamInfo];
   //! corrected Z
   double fzetc[kMaxBeamInfo];
+
+  //! brho for 3-5, 5-7, 3-7
+  double fbrho[kMaxBeamInfo];
 
   //! time-of-flight for 3-5, 5-7, 3-7
   double ftof[kMaxTOFInfo];

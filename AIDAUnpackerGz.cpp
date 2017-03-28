@@ -53,7 +53,6 @@ void AIDAUnpacker::Init(char *inputfile){
             cout<<"Error opening file "<<ffilepath<<endl;
             exit(0);
         }
-
         //! Check for data integrity and get number of blocks
         finfile.seekg(0,finfile.end);
         int fileSize = finfile.tellg();
@@ -450,6 +449,15 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
                 //! masking for data less than threshold
                 if (flag_threhold&&rawaida.adcData<dssd_thr[rawaida.dssdNo][rawaida.stripNo])
                     fillFlag=false;
+            }
+
+            //! Masking for high energy
+            if (rawaida.infoCode==0&&rawaida.rangeType==1){
+                if(chMask[rawaida.feeNo][rawaida.chNo]){
+
+                }else{
+                    fillFlag=false;
+                }
             }
 
         }else{ //fail sync flag

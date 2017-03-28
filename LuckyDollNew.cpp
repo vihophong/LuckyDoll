@@ -59,6 +59,7 @@ int main(int argc, char* argv[]){
 
   int FillFlag = 1;
   int GzFlag = 0;
+  int RankingModeFlag = 1;
 
   char* InputAIDA = NULL;
   char* OutFile = NULL;
@@ -66,6 +67,9 @@ int main(int argc, char* argv[]){
   char* ThresholdFile = NULL;
   char* MappingFile = NULL;
   char* ECutFile = NULL;
+  double ECorr=-1.;
+
+  int SumMultCut=10000;
 
   //Read in the command line arguments
   CommandLineInterface* interface = new CommandLineInterface();
@@ -83,7 +87,11 @@ int main(int argc, char* argv[]){
 
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
+  interface->Add("-ecorr", "specify energy cut file", &ECorr);
   interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
+
+  interface->Add("-rmode", "Switch on(1) off(0) the position determination based on energy correlation ranking (default:on)", &RankingModeFlag);
+  interface->Add("-smult", "DSSD multiplicity cut (default 10000)", &SumMultCut);
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -182,6 +190,10 @@ int main(int argc, char* argv[]){
       evts->SetPulserInStream(false);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
+      cout<<"Ecorr= "<<ECorr<<endl;
+      evts->SetEnergyCorrCut(ECorr);
+      evts->SetSumMultiplicityCut(SumMultCut);
+      if (RankingModeFlag==0) evts->SetNoCorrRankingMode();
       evts->Init((char*)inputfiles[i].c_str());
       double time_last = (double) get_time();
 

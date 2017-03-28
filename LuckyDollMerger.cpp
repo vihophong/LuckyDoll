@@ -43,6 +43,15 @@ int main(int argc, char* argv[]){
 
     int AIbeg = 0;
     int AIend = 0;
+    int ABbeg = 0;
+    int ABend = 0;
+    int BNbeg = 0;
+    int BNend = 0;
+    int BGbeg = 0;
+    int BGend = 0;
+    int BAbeg = 0;
+    int BAend = 0;
+
 
     CommandLineInterface* interface = new CommandLineInterface();
     interface->Add("-bl", "BELEN input list of files", &InputBELEN);
@@ -52,6 +61,14 @@ int main(int argc, char* argv[]){
     interface->Add("-v", "verbose level", &Verbose);
     interface->Add("-aibeg", "start entry for AIDA ION", &AIbeg);
     interface->Add("-aiend", "stop entry for AIDA ION", &AIend);
+    interface->Add("-abbeg", "start entry for AIDA BETA", &ABbeg);
+    interface->Add("-abend", "stop entry for AIDA BETA", &ABend);
+    interface->Add("-bnbeg", "start entry for neutron in BRIKEN", &BNbeg);
+    interface->Add("-bnend", "stop entry for neutron in BRIKEN", &BNend);
+    interface->Add("-bgbeg", "start entry for gamma in BRIKEN", &BGbeg);
+    interface->Add("-bgend", "stop entry for gamma in BRIKEN", &BGend);
+    interface->Add("-babeg", "start entry for anc in BRIKEN", &BAbeg);
+    interface->Add("-baend", "stop entry for anc in BRIKEN", &BAend);
 
     interface->CheckFlags(argc, argv);
     //Complain about missing mandatory arguments
@@ -120,14 +137,14 @@ int main(int argc, char* argv[]){
         merge->SetBigripsFile((char*)inputfiles_bigrips[i].c_str());
         merge->Init();
         merge->ReadAIDA(AIbeg,AIend);
-        merge->ReadBRIKEN();
+        merge->ReadBRIKEN(BNbeg,BNend,BGbeg,BGend,BAbeg,BAend);
         merge->ReadBigrips();
         merge->BookTree(treeImplant,treeBeta,treeNeutron,treeBeam);
         ofile->cd();
         merge->DoMergeImp();
-        //merge->DoMergeBeta();
-        //merge->DoMergeNeutron();
-        //merge->DoMergeAnc();
+        merge->DoMergeBeta();
+        merge->DoMergeNeutron();
+        merge->DoMergeAnc();
         delete merge;
     }
     treeImplant->Write();

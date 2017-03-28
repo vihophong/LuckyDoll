@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "TObject.h"
+#include "TVector.h"
 #include "TVector3.h"
 #include "TMath.h"
 #include "AIDAdefs.h"
@@ -601,8 +602,13 @@ public:
 
     //! Beta position
     bool BetaGetPos(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
-    //! Beta position new
+    //! Beta position new (with EX/EY condition)
     bool BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
+    //! Beta position new 2 (with EX-EY condition)
+    bool BetaGetPosNew2(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
+
+    //! Get all Beta position new
+    bool BetaGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Ion position
     bool IonGetPos();
 

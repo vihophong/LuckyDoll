@@ -37,9 +37,11 @@ int main(int argc, char* argv[]){
   long long int WindowBeta = 2500; //time unit: 10 ns
   long long int WindowDiscriminator = 0;
 
+
   int FillFlag = 1;
   int GzFlag = 0;
   long long int TransientTime = 20000;
+  int RankingModeFlag = 1;
 
   char* InputAIDA = NULL;
   char* OutFile = NULL;
@@ -47,6 +49,9 @@ int main(int argc, char* argv[]){
   char* ThresholdFile = NULL;
   char* MappingFile = NULL;
   char* ECutFile = NULL;
+  double ECorr=-1.;
+
+  int SumMultCut=10000;
 
   //Read in the command line arguments
   CommandLineInterface* interface = new CommandLineInterface();
@@ -64,7 +69,12 @@ int main(int argc, char* argv[]){
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
   interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
+  interface->Add("-ecorr", "specify energy cut file", &ECorr);
   interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
+
+  interface->Add("-rmode", "Switch on(1) off(0) the position determination based on energy correlation ranking (default:on)", &RankingModeFlag);
+  interface->Add("-smult", "DSSD multiplicity cut (default 10000)", &SumMultCut);
+
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -143,6 +153,7 @@ int main(int argc, char* argv[]){
           cout<<"dssd No. "<<i<<" X energy cut = "<<ecutX[i]<<"| Y energy cut  = "<<ecutY[i]<<endl;
       }
   }
+  //Int_t nion=0;
 
   for (Int_t i=0;i<nfiles;i++){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
@@ -158,6 +169,10 @@ int main(int argc, char* argv[]){
       //evts->SetEventWindowBETA(WindowBeta);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
+      cout<<"Ecorr= "<<ECorr<<endl;
+      evts->SetEnergyCorrCut(ECorr);
+      evts->SetSumMultiplicityCut(SumMultCut);
+      if (RankingModeFlag==0) evts->SetNoCorrRankingMode();
       evts->Init((char*)inputfiles[i].c_str());
       double time_last = (double) get_time();
 
@@ -198,11 +213,13 @@ int main(int argc, char* argv[]){
           if (evts->IsBETA()) {
               if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
           }else if (!evts->IsBETA()){
+              //nion++;
               if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
           }
           if(signal_received){
             break;
           }
+          //if (nion>70000) goto l1;
       }
       runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
       runtime[0] += runtime[i+1];
@@ -213,12 +230,14 @@ int main(int argc, char* argv[]){
       cout<<evts->GetCurrentPulserEvent()<<" pulser events"<<endl;
       delete evts;
   }
+ l1:
   if (FillFlag){
       treeion->Write();
       treebeta->Write();
       treepulser->Write();
       runtime.Write("runtime");
   }
+
   ofile->Close();
 
 

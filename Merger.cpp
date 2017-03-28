@@ -4,23 +4,23 @@ Merger::Merger()
 {
     fIonPidTWup = 0;
     fIonPidTWlow = 50000;
-    fIonNeutronTWup = 500000;
-    fIonNeutronTWlow = 400000;
+    fIonNeutronTWup = 800000;
+    fIonNeutronTWlow = 100000;
     fIonGammaTWup = 5000;
     fIonGammaTWlow = 70000;
-    fIonAncTWup = 20000;
-    fIonAncTWlow = 100000;
+    fIonAncTWup = 10000;
+    fIonAncTWlow = 80000;
 
-    fIondETWup = 50000;
-    fIondETWlow = 150000;
+    fIondETWup = 10000;
+    fIondETWlow = 80000;
 
-    fNeuGammaTWup = 50000;
-    fNeuGammaTWlow = 500000;
-    fNeuAncTWup = 50000;
-    fNeuAncTWlow = 500000;
+    fNeuGammaTWup = 100000;
+    fNeuGammaTWlow = 800000;
+    fNeuAncTWup = 100000;
+    fNeuAncTWlow = 800000;
 
-    fBetaGammaTWup = 40000;
-    fBetaGammaTWlow = 50000;
+    fBetaGammaTWup = 0;
+    fBetaGammaTWlow = 30000;
     fBetaAncTWup = 40000;
     fBetaAncTWlow = 50000;
 
@@ -37,6 +37,7 @@ Merger::Merger()
 
     fF11LGammaTWlow = 1000;
     fF11LGammaTWup = 1000;
+
 }
 
 Merger::~Merger()
@@ -213,7 +214,7 @@ void Merger::BookTree(TTree* treeImplant, TTree* treeBeta, TTree* treeNeutron, T
     ftreeAncillary->BranchRef();
 }
 
-void Merger::ReadAIDA(unsigned int startI, unsigned int stopI)
+void Merger::ReadAIDA(unsigned int startI, unsigned int stopI,unsigned int startB, unsigned int stopB)
 {
     //! read ion
     unsigned int sstartI,sstopI;
@@ -231,7 +232,10 @@ void Merger::ReadAIDA(unsigned int startI, unsigned int stopI)
     }
     cout<<"Finished reading ion  ts table with "<<faidaIonMap.size()<<" rows"<<endl;
     //! read beta
-    for (unsigned int jentry = 0;jentry < (unsigned int) fnentriesAIDABeta;jentry++){
+    unsigned int sstartB,sstopB;
+    if (startB==0) sstartB = 0; else sstartB = startB;
+    if (stopB==0) sstopB = (unsigned int) fnentriesAIDABeta; else sstopB = stopB;
+    for (unsigned int jentry = sstartB;jentry < sstopB;jentry++){
         ftrAIDABeta->GetEvent(jentry);
         for (unsigned short i = 0;i<faidaBeta->GetNClusters();i++){
             faidaBetaMap.insert(make_pair(faidaBeta->GetCluster(i)->GetTimestamp(),make_pair(jentry,i)));
@@ -249,24 +253,36 @@ void Merger::ReadBigrips()
     cout<<"Finished reading bigrips ts table with "<<fbigripsMap.size()<<" rows"<<endl;
 }
 
-void Merger::ReadBRIKEN()
+void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int startG, unsigned int stopG,unsigned int startA, unsigned int stopA)
 {
     //! read neutron
-    for (unsigned int jentry = 0;jentry < (unsigned int) fnentriesNeutron;jentry++){
+    unsigned int sstartN,sstopN;
+    if (startN==0) sstartN = 0; else sstartN = startN;
+    if (stopN==0) sstopN = (unsigned int) fnentriesNeutron; else sstopN = stopN;
+
+    for (unsigned int jentry = sstartN;jentry < sstopN;jentry++){
         ftrNeutron->GetEvent(jentry);
         fhe3Map.insert(make_pair(fneutron->GetTimestamp(),jentry));
     }
     cout<<"Finished reading neutron  ts table with "<<fhe3Map.size()<<" rows"<<endl;
 
     //! read gamma
-    for (unsigned int jentry = 0;jentry < (unsigned int) fnentriesGamma;jentry++){
+    unsigned int sstartG,sstopG;
+    if (startG==0) sstartG = 0; else sstartG = startG;
+    if (stopG==0) sstopG = (unsigned int) fnentriesGamma; else sstopG = stopG;
+
+    for (unsigned int jentry = sstartG;jentry < sstopG;jentry++){
         ftrGamma->GetEvent(jentry);
         fcloverMap.insert(make_pair(fclover->GetTimestamp(),jentry));
     }
     cout<<"Finished reading gamma  ts table with "<<fcloverMap.size()<<" rows"<<endl;
 
     //! read anc
-    for (unsigned int jentry = 0;jentry < (unsigned int) fnentriesAnc;jentry++){
+    unsigned int sstartA,sstopA;
+    if (startA==0) sstartA = 0; else sstartA = startA;
+    if (stopA==0) sstopA = (unsigned int) fnentriesAnc; else sstopA = stopA;
+
+    for (unsigned int jentry = sstartA;jentry < sstopA;jentry++){
         ftrAnc->GetEvent(jentry);
         //fancMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==1&&fanc->GetID()==1) fF11RMap.insert(make_pair(fanc->GetTimestamp(),jentry));
@@ -1050,8 +1066,8 @@ void Merger::DoMergeNeutron()
 
 
         //! correlate event with detop
-        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
         ncorr = 0;
         corrts = 0;
         correntry = 0;
@@ -1074,8 +1090,8 @@ void Merger::DoMergeNeutron()
         if (ncorr>0) ncorrwdETop++;
 
         //! correlate event with debot
-        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
         ncorr = 0;
         corrts = 0;
         correntry = 0;
@@ -1350,6 +1366,7 @@ void Merger::DoMergeAnc()
         correntry = 0;
         check_time =0;
 
+        fbigrips->Clear();//found recently
         fbigripsMap_it = fbigripsMap.lower_bound(ts1);
         while(fbigripsMap_it!=fbigripsMap.end()&&fbigripsMap_it->first<ts2){
             corrts = (Long64_t) fbigripsMap_it->first;

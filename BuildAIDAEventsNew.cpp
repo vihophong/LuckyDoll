@@ -13,8 +13,8 @@ BuildAIDAEvents::BuildAIDAEvents()
     fflag_pulser_in_stream = false;
 
     for (Int_t i=0;i<NumDSSD;i++){
-        fsumexcut[i] = 0;
-        fsumeycut[i] = 0;
+        fsumexcut[i] = -1000.;
+        fsumeycut[i] = -1000.;
     }
     fcorrcut = -1;
     fmultcut = 10000;
@@ -161,6 +161,7 @@ void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
     hit->SetZ(aidaraw.dssdNo);
     hit->SetFEE(aidaraw.feeNo);
     hit->SetFEEChannel(aidaraw.chNo);
+    hit->SetRange(aidaraw.rangeType);
     flocalaidaION->AddHit(hit);
 }
 
@@ -179,6 +180,7 @@ void BuildAIDAEvents::AddAIDABetaHits(rawaida_info aidaraw){
         hit->SetZ(aidaraw.dssdNo);
         hit->SetFEE(aidaraw.feeNo);
         hit->SetFEEChannel(aidaraw.chNo);
+        hit->SetRange(aidaraw.rangeType);
         flocalaidaBETA->AddHit(hit);
     }
 }
@@ -320,7 +322,7 @@ bool BuildAIDAEvents::GetNextEvent(){
                         fflag_addFirstHit=true;
                         fisbeta = false;
                     }
-                }else {
+                }else{
                     flag_stop = CloseBetaEvent();
                     fADtsBETA = aidaraw.extTimestamp*tm_stp_scaler_ratio;
                     if (!flag_stop) {
@@ -340,7 +342,6 @@ bool BuildAIDAEvents::GetNextEvent(){
                         fisbeta = true;
                     }
                 }
-
             }
 
             flastts = aidaraw.timestamp;

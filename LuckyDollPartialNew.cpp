@@ -59,6 +59,8 @@ int main(int argc, char* argv[]){
 
   int FillFlag = 1;
   int GzFlag = 0;
+  int RankingModeFlag = 1;
+
   double CorrCut = -1;
   char* InputAIDA = NULL;
   char* OutFile = NULL;
@@ -66,6 +68,9 @@ int main(int argc, char* argv[]){
   char* ThresholdFile = NULL;
   char* MappingFile = NULL;
   char* ECutFile = NULL;
+
+  int SumMultCut=10000;
+
 
   //Read in the command line arguments
   CommandLineInterface* interface = new CommandLineInterface();
@@ -83,9 +88,12 @@ int main(int argc, char* argv[]){
 
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
-  interface->Add("-eecut", "specify energy - energy corr cut parameter (default= no cut)", &CorrCut);
+  interface->Add("-ecorr", "specify energy - energy corr cut parameter (default= no cut)", &CorrCut);
 
   interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
+
+  interface->Add("-rmode", "Switch on(1) off(0) the position determination based on energy correlation ranking (default:on)", &RankingModeFlag);
+  interface->Add("-smult", "DSSD multiplicity cut (default 10000)", &SumMultCut);
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -159,8 +167,8 @@ int main(int argc, char* argv[]){
   Double_t ecutX[6];
   Double_t ecutY[6];
   for(Int_t i=0;i<NumDSSD;i++){
-      ecutX[i]=0.;
-      ecutY[i]=0.;
+      ecutX[i]=-5000.;
+      ecutY[i]=-5000.;
       //if (i==0) ecutY[i]=250.;
   }
 
@@ -191,7 +199,11 @@ int main(int argc, char* argv[]){
       evts->SetPulserInStream(false);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
+      cout<<"Ecorr= "<<CorrCut<<endl;
       evts->SetEnergyCorrCut(CorrCut);
+      evts->SetSumMultiplicityCut(SumMultCut);
+      if (RankingModeFlag==0) evts->SetNoCorrRankingMode();
+
       evts->Init((char*)inputfiles[i].c_str());
       double time_last = (double) get_time();
 
@@ -226,8 +238,21 @@ int main(int argc, char* argv[]){
               //if (FillFlag&&aidabeta->GetNClusters()>0) treebeta->Fill();
           if (FillFlag) treebeta->Fill();
           }else if (!evts->IsBETA()){
-              aidaion->Clear();
+              aidaion->Clear();              
               evts->GetAIDAIon()->Copy(*aidaion);
+
+              //! newly add to include low energy hits in ion events
+              for (int j=0;j<evts->GetAIDABeta()->GetMult();j++){
+                  AIDAHit* hit=new AIDAHit;
+                  evts->GetAIDABeta()->GetHit(j)->Copy(*hit);
+                  aidaion->AddHit(hit);
+              }
+              for (int j=0;j<evts->GetAIDAIon()->GetMult();j++){
+                  AIDAHit* hit=new AIDAHit;
+                  evts->GetAIDAIon()->GetHit(j)->Copy(*hit);
+                  aidaion->AddHit(hit);
+              }
+              aidaion->SetMult(evts->GetAIDAIon()->GetMult());
               if (FillFlag) treeion->Fill();
           }
 

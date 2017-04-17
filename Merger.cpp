@@ -350,12 +350,16 @@ void Merger::DoMergeImp()
         flocalimp->Clear();
 
         //! fill ion first
+        /*
         unsigned short lastclusterID = faidaIon->GetNClusters()-1;
         if (faidaIon->GetCluster(lastclusterID)->GetHitPositionZ()==faidaIon->GetMaxZ()){
             faidaIon->GetCluster(lastclusterID)->Copy(*flocalimp->GetIon());
         }else{
             cout<<"something wrong!"<<endl;
         }
+        */
+        faidaIon->Copy(*flocalimp->GetIon());
+
         flocalimp->SetTimeStamp(ts);
         //! correlated event with bigrips
         Long64_t ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;

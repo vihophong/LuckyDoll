@@ -1271,6 +1271,7 @@ bool AIDA::IonGetPos()
     }
     for (size_t i=0;i<fhits.size();i++){
         AIDAHit* hit = fhits.at(i);
+
         int z = hit->GetZ();
         int xy = hit->GetXY();
         double energy = hit->GetEnergy();

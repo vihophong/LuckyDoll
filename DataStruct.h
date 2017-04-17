@@ -227,7 +227,8 @@ public:
         fngamma = 0;
         //fnanc = 0;
         fBeam = new Beam;
-        fIon = new AIDACluster;
+        //fIon = new AIDACluster;
+        fIon = new AIDA;
         fF11Beam = new Ancillary;
     }
     virtual ~Implant(){}
@@ -259,7 +260,8 @@ public:
     //! Get time stamp of this beta event
     unsigned long long GetTimeStamp(){return ftimestamp;}
     //! Get Cluster
-    AIDACluster* GetIon(){return fIon;}
+    //AIDACluster* GetIon(){return fIon;}
+    AIDA* GetIon(){return fIon;}
     //! Get Beam
     Beam* GetBeam(){return fBeam;}
     //! Get F11 Beam
@@ -292,7 +294,8 @@ protected:
     //unsigned short fnanc;
 
     //! AIDA implantation
-    AIDACluster* fIon;
+    AIDA* fIon;
+
     //! Bigrips Beam
     Beam* fBeam;
     //! BELEN hits

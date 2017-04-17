@@ -48,7 +48,21 @@ public:
       frange = 0;
   }
 
-  //! Set energy range (low gain 0 or high gain 1)
+  //! Copy hits
+  virtual void Copy(AIDAHit& obj){
+      obj.SetFEE(ffee);
+      obj.SetFEEChannel(fch);
+      obj.SetID(fid);
+      obj.SetXY(fxy);
+      obj.SetZ(fz);
+      obj.SetADC(fadc);
+      obj.SetEnergy(fen);
+      obj.SetTimestamp(fts);
+      obj.SetFastTimestamp(ffastts);
+      obj.SetRange(frange);
+  }
+
+  //! Set energy range (low energy 0 or high energy 1)
   void SetRange(short range){frange = range;}
 
   //! Set the strip ID
@@ -656,7 +670,6 @@ public:
 
     //!Calibration table
     //Double_t fdssd_cal[NumDSSD][NumStrXY][2];
-
 
     //! vector with the hits
     vector<AIDAHit*> fhits;

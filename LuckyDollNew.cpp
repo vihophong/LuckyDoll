@@ -158,8 +158,8 @@ int main(int argc, char* argv[]){
   Double_t ecutX[6];
   Double_t ecutY[6];
   for(Int_t i=0;i<NumDSSD;i++){
-      ecutX[i]=0.;
-      ecutY[i]=0.;
+      ecutX[i]=-5000.;
+      ecutY[i]=-5000.;
       //if (i==0) ecutY[i]=250.;
   }
 

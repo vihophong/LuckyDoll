@@ -15,7 +15,7 @@
 #include "TClonesArray.h"
 #include "CommandLineInterface.h"
 #include "AIDAUnpacker.h"
-#include "BuildAIDAEvents.h"
+#include "BuildAIDAEventsNew.h"
 #include "AIDA.h"
 #include "TVectorD.h"
 
@@ -27,13 +27,9 @@ double get_time();
 
 
 typedef struct {
-    unsigned long long T; 	 // Calibrated time
-    unsigned long long Tfast;
-    double E; 	 // Energy
     double EX;
     double EY;
     double x,y,z;// number of pixel for AIDA, or number of tube for BELEN
-    unsigned char ID; 	 // Detector type (BigRips, Aida ion, AIDA beta, BELEN, Clovers)
     //** other stuff pending to define **//
 } datatype;
 
@@ -75,8 +71,8 @@ int main(int argc, char* argv[]){
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
-  interface->Add("-wi", "Ion event building window (default: 2500*10ns)", &WindowIon);
-  interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
+  //interface->Add("-wi", "Ion event building window (default: 2500*10ns)", &WindowIon);
+  //interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
   interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);
 
@@ -84,7 +80,7 @@ int main(int argc, char* argv[]){
   interface->Add("-cal", "calibration file", &CalibrationFile);
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
-   interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
+   //interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
    interface->Add("-m", " mode selection: 1: pulser spectra 2: source spectra", &Mode);
    interface->Add("-mult", " Multiplicity condition (<=) in X and Y strips (for source spectra mode)", &Mult);
 
@@ -100,7 +96,7 @@ int main(int argc, char* argv[]){
     cout << "No Mode selection given " << endl;
     return 1;
   }
-  if(Mode >2 || Mode <1){
+  if(Mode >3 || Mode <1){
     cout << "Invalid Mode selection " << endl;
     return 1;
   }
@@ -142,6 +138,18 @@ int main(int argc, char* argv[]){
   TFile* ofile = new TFile(OutFile,"recreate");
   ofile->cd();
 
+  TTree* tree;
+  datatype aida;
+  aida.EY=0;
+  aida.EX=0;
+  aida.x=0;
+  aida.y=0;
+  aida.z=0;
+  if (Mode==3) {
+      tree=new TTree("tree","tree");
+      tree->Branch("aida",&aida,"EX/D:EY/D:x/D:y/D:z/D");
+  }
+
   //! Book tree and histograms
   TH2F* spectra=new TH2F ("spectra","spectra",NumDSSD*(NumStrX+NumStrY),0,NumDSSD*(NumStrX+NumStrY),nbins,min,max);
   TH2F* calibspectra=new TH2F ("calibspectra","calibspectra",NumDSSD*(NumStrX+NumStrY),0,NumDSSD*(NumStrX+NumStrY),nbins,min,max);
@@ -164,8 +172,8 @@ int main(int argc, char* argv[]){
   Double_t ecutX[6];
   Double_t ecutY[6];
   for(Int_t i=0;i<NumDSSD;i++){
-      ecutX[i]=0.;
-      ecutY[i]=0.;
+      ecutX[i]=-5000.;
+      ecutY[i]=-5000.;
   }
 
   for (Int_t i=0;i<nfiles;i++){
@@ -176,9 +184,9 @@ int main(int argc, char* argv[]){
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
       evts->SetDiscriminatorTimeWindow(WindowDiscriminator);
-      evts->SetAIDATransientTime(TransientTime);
-      evts->SetEventWindowION(WindowIon);
-      evts->SetEventWindowBETA(WindowBeta);
+      //evts->SetAIDATransientTime(TransientTime);
+      //evts->SetEventWindowION(WindowIon);
+      //evts->SetEventWindowBETA(WindowBeta);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
       if (Mode == 1) evts->SetPulserInStream(true);
@@ -212,11 +220,11 @@ int main(int argc, char* argv[]){
             time_last = time_end;
           }
           if ((Mode==1) && evts->IsBETA() && evts->GetAIDABeta()->GetMult()>64) { //pulser mode
-              for (Int_t i = 0;i<evts->GetAIDABeta()->GetMult();i++){
-                  int adc = evts->GetAIDABeta()->GetHit(i)->GetADC();	       
-                  double energy = evts->GetAIDABeta()->GetHit(i)->GetEnergy();
-                  short z =  evts->GetAIDABeta()->GetHit(i)->GetZ();
-                  short xy = evts->GetAIDABeta()->GetHit(i)->GetXY();
+              for (Int_t j = 0;j<evts->GetAIDABeta()->GetMult();j++){
+                  int adc = evts->GetAIDABeta()->GetHit(j)->GetADC();
+                  double energy = evts->GetAIDABeta()->GetHit(j)->GetEnergy();
+                  short z =  evts->GetAIDABeta()->GetHit(j)->GetZ();
+                  short xy = evts->GetAIDABeta()->GetHit(j)->GetXY();
                   if (xy<NumStrX) {
                       spectra->Fill(xy + z*NumStrX,adc);
                       calibspectra->Fill(xy + z*NumStrX,energy);
@@ -227,11 +235,11 @@ int main(int argc, char* argv[]){
               }
           }
           if ((Mode==2) && evts->IsBETA() && evts->GetAIDABeta()->GetMult()<64) { //beta mode
-              for (Int_t i = 0;i<evts->GetAIDABeta()->GetMult();i++){
-                  int adc = evts->GetAIDABeta()->GetHit(i)->GetADC();
-                  double energy = evts->GetAIDABeta()->GetHit(i)->GetEnergy();
-                  short z =  evts->GetAIDABeta()->GetHit(i)->GetZ();
-                  short xy = evts->GetAIDABeta()->GetHit(i)->GetXY();
+              for (Int_t j = 0;j<evts->GetAIDABeta()->GetMult();j++){
+                  int adc = evts->GetAIDABeta()->GetHit(j)->GetADC();
+                  double energy = evts->GetAIDABeta()->GetHit(j)->GetEnergy();
+                  short z =  evts->GetAIDABeta()->GetHit(j)->GetZ();
+                  short xy = evts->GetAIDABeta()->GetHit(j)->GetXY();
                   if (xy<NumStrX) {
                       if (evts->GetAIDABeta()->GetMultX(z) <= (unsigned short) Mult){
                           spectra->Fill(xy + z*NumStrX,adc);
@@ -245,13 +253,26 @@ int main(int argc, char* argv[]){
                   }
               }
           }
+          if ((Mode==3) && !evts->IsBETA()){//generate tree files for implantation calibration
+              for (unsigned short jj=0;jj<evts->GetAIDAIon()->GetClusters().size();jj++){
+                  if (evts->GetAIDAIon()->GetCluster(jj)->GetXMultiplicity()==1&&evts->GetAIDAIon()->GetCluster(jj)->GetYMultiplicity()==1){
+                      aida.z=evts->GetAIDAIon()->GetCluster(jj)->GetHitPositionZ();
+                      aida.y=evts->GetAIDAIon()->GetCluster(jj)->GetHitPositionY();
+                      aida.x=evts->GetAIDAIon()->GetCluster(jj)->GetHitPositionX();
+                      aida.EX=evts->GetAIDAIon()->GetCluster(jj)->GetXEnergy();
+                      aida.EY=evts->GetAIDAIon()->GetCluster(jj)->GetYEnergy();
+                      tree->Fill();
+                  }
+              }
+          }
+
 
           //!Get run time
           if (evts->IsBETA()&&start==0) {
-              tstart = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
+              if (evts->GetAIDABeta()->GetHits().size()>0) tstart = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
               start++;
           }else if (!evts->IsBETA()&&start==0){
-              tstart = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
+              if (evts->GetAIDAIon()->GetHits().size()>0) tstart = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
               start++;
           }
 
@@ -259,21 +280,28 @@ int main(int argc, char* argv[]){
             break;
           }
       }
+
       if (evts->IsBETA()) {
-          tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
+          if (evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
       }else if (!evts->IsBETA()){
-          tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
+          if (evts->GetAIDAIon()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
       }
       runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
       runtime[0] += runtime[i+1];
       cout<<evts->GetCurrentBetaEvent()<<" beta events"<<endl;
       cout<<evts->GetCurrentPulserEvent()<<" pulser events"<<endl;
       cout<<ttotal<<" all events"<<endl;
+
       delete evts;
   }
 
-  spectra->Write();
-  calibspectra->Write();
+  if (Mode==3) {
+      tree->Write();
+  }
+  else{
+      spectra->Write();
+      calibspectra->Write();
+  }
   runtime.Write("runtime");
 
   ofile->Close();

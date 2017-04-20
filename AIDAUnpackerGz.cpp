@@ -190,6 +190,9 @@ bool AIDAUnpacker::GetNextHitMIDAS(){
     fcurrentpkg += 8; // For every 8 byte (64 bit) for a block data
     if (fcurrentpkg>=fcurrentlen){
         ReadHeader();
+        //! to fix timejump bug!
+        if(!fisgzstream&&finfile.eof()) return false;
+
         if (fisgzstream&&finfilegz.eof()) return false;
         fcurrentblk++;
     }

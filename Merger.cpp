@@ -892,7 +892,6 @@ void Merger::DoMergeBeta()
 
         ftreeBeta->Fill();
     }
-
     cout<<"finished merging Beta" <<endl;
     cout<<ncorrwGamma<<endl;
     cout<<ncorrwF11L<<" "<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<endl;

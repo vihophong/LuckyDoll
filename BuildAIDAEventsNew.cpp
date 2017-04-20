@@ -149,11 +149,45 @@ void BuildAIDAEvents::ReadCalibTable()
 
 }
 
+void BuildAIDAEvents::ReadHECalibTable()
+{
+
+    //clean up
+    for (Int_t i=0;i<NumDSSD;i++){
+        for (Int_t j=0;j<NumStrXY;j++){
+            dssd_cal_he[i][j][0]=0.;
+            dssd_cal_he[i][j][1]=1.;
+        }
+    }
+
+    ifstream inpf(fcalibfile_he);
+    if (inpf.fail()){
+        cout<<"No Calibration table for high energy is given"<<endl;
+        return;
+    }
+
+    cout<<"Start reading calibration table for high energy: "<<fcalibfile_he<<endl;
+    Int_t dssd_index,strip_index;
+    Double_t cal1,cal2;
+    Int_t mm=0;
+
+    while (inpf.good()){
+    //for (Int_t i=0;i<100;i++){
+        inpf>>dssd_index>>strip_index>>cal1>>cal2;
+        dssd_cal_he[dssd_index][strip_index][0]=cal1;
+        dssd_cal_he[dssd_index][strip_index][1]=cal2;
+        //cout<<dssd_thr[dssd_index][strip_index]<<endl;
+        mm++;
+    }
+    cout<<"Read "<<mm<<" line"<<endl;
+    inpf.close();
+}
+
 //! Add AIDA ION hits
 void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
     AIDAHit* hit = new AIDAHit;
     hit->SetADC(aidaraw.adcData);
-    hit->SetEnergy((double)aidaraw.adcData);
+    hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
     hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
     //hit->SetTimestamp(aidaraw.timestamp);
     hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);

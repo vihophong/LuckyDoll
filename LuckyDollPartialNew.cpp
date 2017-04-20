@@ -68,6 +68,7 @@ int main(int argc, char* argv[]){
   char* ThresholdFile = NULL;
   char* MappingFile = NULL;
   char* ECutFile = NULL;
+  char* CalibrationFileHE = NULL;
 
   int SumMultCut=10000;
 
@@ -84,6 +85,7 @@ int main(int argc, char* argv[]){
 
   interface->Add("-map", "mapping file", &MappingFile);
   interface->Add("-cal", "calibration file", &CalibrationFile);
+  interface->Add("-hecal", "calibration file for high energy", &CalibrationFileHE);
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
@@ -117,6 +119,12 @@ int main(int argc, char* argv[]){
     CalibrationFile = new char[600];
     strcpy(CalibrationFile,"/sssewqewwq/");
     return 1;
+  }
+  if(CalibrationFileHE == NULL){
+    cout << "No Calibration table for high energy is given " << endl;
+    CalibrationFileHE = new char[100];
+    strcpy(CalibrationFileHE,"dummy2312039290");
+    //return 1;
   }
   if(OutFile == NULL){
     cout << "No output ROOT file given " << endl;
@@ -192,6 +200,7 @@ int main(int argc, char* argv[]){
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
+      evts->SetHECalibFile(CalibrationFileHE);
       evts->SetDiscriminatorTimeWindow(WindowDiscriminator);
       //evts->SetAIDATransientTime(TransientTime);
       //evts->SetEventWindowION(WindowIon);

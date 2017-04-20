@@ -36,6 +36,9 @@ public:
     //! Set file path containing a Calibration table
     void SetCalibFile(char* calf){fcalibfile = calf;ReadCalibTable();}
 
+    //! Set file path containing a Calibration table
+    void SetHECalibFile(char* calf){fcalibfile_he = calf;ReadHECalibTable();}
+
     //! Set event window ion
     //void SetEventWindowION(unsigned long long windowIon) {fwindowIon=windowIon;}
 
@@ -97,6 +100,9 @@ public:
     //! Read calibration table to memory
     void ReadCalibTable();
 
+    //! Read High energy calibration table to memory
+    void ReadHECalibTable();
+
     //!Get Next AIDA Event
     bool GetNextEvent();
 
@@ -132,6 +138,7 @@ private:
     char* fmappingfile;
     char* fthresholdfile;
     char* fcalibfile;
+    char* fcalibfile_he;
 
     //!  output tree for ION
     TTree* fmtrION;
@@ -200,6 +207,9 @@ private:
 
     //! AIDA calibration table
     Double_t dssd_cal[NumDSSD][NumStrXY][2];
+
+    //! AIDA calibration table for high energy
+    Double_t dssd_cal_he[NumDSSD][NumStrXY][2];
 
     //! event window for ION event
     //unsigned long long fwindowIon;

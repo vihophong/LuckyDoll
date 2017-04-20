@@ -66,7 +66,7 @@ int main(int argc, char* argv[]){
   char* CalibrationFile = NULL;
   char* ThresholdFile = NULL;
   char* MappingFile = NULL;
-
+  char* CalibrationFileHE = NULL;
   //Read in the command line arguments
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
@@ -78,6 +78,7 @@ int main(int argc, char* argv[]){
 
   interface->Add("-map", "mapping file ", &MappingFile);
   interface->Add("-cal", "calibration file", &CalibrationFile);
+  interface->Add("-hecal", "calibration file for high energy", &CalibrationFileHE);
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
    //interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
@@ -122,9 +123,15 @@ int main(int argc, char* argv[]){
     //return 1;
   }
   if(CalibrationFile == NULL){
-    cout << "No Calibration table given " << endl;
+    cout << "No Calibration table is given " << endl;
     CalibrationFile = new char[100];
     strcpy(CalibrationFile,"dummy2312039290");
+    //return 1;
+  }
+  if(CalibrationFileHE == NULL){
+    cout << "No Calibration table for high energy is given " << endl;
+    CalibrationFileHE = new char[100];
+    strcpy(CalibrationFileHE,"dummy2312039290");
     //return 1;
   }
   if(OutFile == NULL){
@@ -183,6 +190,7 @@ int main(int argc, char* argv[]){
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
+      evts->SetHECalibFile(CalibrationFileHE);
       evts->SetDiscriminatorTimeWindow(WindowDiscriminator);
       //evts->SetAIDATransientTime(TransientTime);
       //evts->SetEventWindowION(WindowIon);

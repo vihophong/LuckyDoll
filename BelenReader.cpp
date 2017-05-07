@@ -59,16 +59,16 @@ void BelenReader::Init(char* belenfile){
     fBLAncEntry = 0;
 
     finfile = new TFile(belenfile);
-    ftree = (TTree*) finfile->Get("BelenTree");
+    ftree = (TTree*) finfile->Get("BRIKENTree");
     finfile->cd();
     fnentries = ftree->GetEntries();
     cout<<"There are "<<fnentries<<" entries in Belen: "<< belenfile<<endl;
 
     //! brach tree
 
-    ftree->SetBranchAddress("Neutrons",&ftreedataNeuron);
-    ftree->SetBranchAddress("Gamma",&ftreedataGamma);
-    ftree->SetBranchAddress("Ancillary",&ftreedataAnc);
+    ftree->SetBranchAddress("Neutrons.",&ftreedataNeuron);
+    ftree->SetBranchAddress("Gamma.",&ftreedataGamma);
+    ftree->SetBranchAddress("Ancillary.",&ftreedataAnc);
 
     fcurentry = 0;
     fBLNeuEntry = 0;

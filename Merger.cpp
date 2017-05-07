@@ -21,8 +21,8 @@ Merger::Merger()
 
     fBetaGammaTWup = 0;
     fBetaGammaTWlow = 30000;
-    fBetaAncTWup = 40000;
-    fBetaAncTWlow = 50000;
+    fBetaAncTWup = 10000;
+    fBetaAncTWlow = 40000;
 
     fF11LRTWup = 400;
     fF11LRTWlow = 400;
@@ -225,7 +225,7 @@ void Merger::ReadAIDA(unsigned int startI, unsigned int stopI,unsigned int start
         ftrAIDAIon->GetEvent(jentry);
         unsigned short lastclusterID = faidaIon->GetNClusters()-1;
         if (faidaIon->GetCluster(lastclusterID)->GetHitPositionZ()==faidaIon->GetMaxZ()){
-            faidaIonMap.insert(make_pair(faidaIon->GetCluster(lastclusterID)->GetTimestamp(),jentry));
+            faidaIonMap.insert(make_pair(faidaIon->GetCluster(lastclusterID)->GetTimestamp()*ClockResolution,jentry));
         }else{
             cout<<"something wrong!"<<endl;
         }
@@ -238,7 +238,8 @@ void Merger::ReadAIDA(unsigned int startI, unsigned int stopI,unsigned int start
     for (unsigned int jentry = sstartB;jentry < sstopB;jentry++){
         ftrAIDABeta->GetEvent(jentry);
         for (unsigned short i = 0;i<faidaBeta->GetNClusters();i++){
-            faidaBetaMap.insert(make_pair(faidaBeta->GetCluster(i)->GetTimestamp(),make_pair(jentry,i)));
+            //if (jentry<10) cout<<i<<" - "<<faidaBeta->GetCluster(i)->GetTimestamp()<<endl;
+            faidaBetaMap.insert(make_pair(faidaBeta->GetCluster(i)->GetTimestamp()*ClockResolution,make_pair(jentry,i)));
         }
     }
     cout<<"Finished reading beta ts table with "<<faidaBetaMap.size()<<" rows"<<endl;
@@ -340,6 +341,7 @@ void Merger::DoMergeImp()
 
     unsigned int ncorrwdETop = 0;
     unsigned int ncorrwdEBot = 0;
+
 
 
     for (faidaIonMap_it=faidaIonMap.begin();faidaIonMap_it!=faidaIonMap.end();faidaIonMap_it++){
@@ -650,7 +652,11 @@ void Merger::DoMergeBeta()
     unsigned int ncorrwdETop = 0;
 
 
+    int jentry=0;
+    int nentries=faidaBetaMap.size();
     for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
+        if (jentry%1000==0) cout<<jentry<<"/"<<nentries<<" entries \r"<<flush;
+        jentry++;
         unsigned long long ts  = faidaBetaMap_it->first;
         unsigned int entry = faidaBetaMap_it->second.first;
         unsigned short clusterId = faidaBetaMap_it->second.second;
@@ -658,6 +664,7 @@ void Merger::DoMergeBeta()
         flocalbeta->Clear();
 
         //! fill beta clusters first
+
         faidaBeta->GetCluster(clusterId)->Copy(*flocalbeta->GetBeta());
         flocalbeta->SetTimeStamp(ts);
         //! and some commond stuff for light particles rejection
@@ -722,8 +729,8 @@ void Merger::DoMergeBeta()
 
 
         //! correlated event with f11l
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
+        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
         ncorr = 0;
         corrts = 0;
         correntry = 0;
@@ -746,8 +753,8 @@ void Merger::DoMergeBeta()
         if (ncorr>0) ncorrwF11L++;
 
         //! correlated event with f11r
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
+        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
         ncorr = 0;
         corrts = 0;
         correntry = 0;
@@ -771,8 +778,8 @@ void Merger::DoMergeBeta()
 
 
         //! correlate event with vetotop
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
+        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
         ncorr = 0;
         corrts = 0;
         correntry = 0;
@@ -795,8 +802,8 @@ void Merger::DoMergeBeta()
         if (ncorr>0) ncorrwVetoTop++;
 
         //! correlate event with vetobot
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
+        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
         ncorr = 0;
         corrts = 0;
         correntry = 0;
@@ -819,8 +826,8 @@ void Merger::DoMergeBeta()
         if (ncorr>0) ncorrwVetoBot++;
 
         //! correlate event with detop
-        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
         ncorr = 0;
         corrts = 0;
         correntry = 0;
@@ -841,10 +848,9 @@ void Merger::DoMergeBeta()
             fdETopMap_it++;
         }
         if (ncorr>0) ncorrwdETop++;
-
         //! correlate event with debot
-        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
         ncorr = 0;
         corrts = 0;
         correntry = 0;
@@ -867,8 +873,8 @@ void Merger::DoMergeBeta()
         if (ncorr>0) ncorrwdEBot++;
 
         //! correlate event with vetodown
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
+        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
         ncorr = 0;
         corrts = 0;
         correntry = 0;

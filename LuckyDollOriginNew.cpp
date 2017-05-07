@@ -158,8 +158,9 @@ int main(int argc, char* argv[]){
   for (Int_t i=0;i<nfiles;i++){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
       evts->SetVerbose(Verbose);
-      if (GzFlag!=0) evts->SetGzStream();
+      if (GzFlag!=0) evts->SetGzStream();      
       if (FillFlag) evts->BookTree(treeion,treebeta,treepulser);
+
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);

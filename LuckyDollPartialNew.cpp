@@ -249,19 +249,21 @@ int main(int argc, char* argv[]){
           }else if (!evts->IsBETA()){
               aidaion->Clear();              
               evts->GetAIDAIon()->Copy(*aidaion);
-
               //! newly add to include low energy hits in ion events
+              /*
               for (int j=0;j<evts->GetAIDABeta()->GetMult();j++){
                   AIDAHit* hit=new AIDAHit;
                   evts->GetAIDABeta()->GetHit(j)->Copy(*hit);
                   aidaion->AddHit(hit);
               }
+
               for (int j=0;j<evts->GetAIDAIon()->GetMult();j++){
                   AIDAHit* hit=new AIDAHit;
                   evts->GetAIDAIon()->GetHit(j)->Copy(*hit);
                   aidaion->AddHit(hit);
-              }
+              }              
               aidaion->SetMult(evts->GetAIDAIon()->GetMult());
+              */ //multiplicity becomes 2?
               if (FillFlag) treeion->Fill();
           }
 

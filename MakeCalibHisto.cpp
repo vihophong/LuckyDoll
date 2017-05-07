@@ -97,7 +97,7 @@ int main(int argc, char* argv[]){
     cout << "No Mode selection given " << endl;
     return 1;
   }
-  if(Mode >3 || Mode <1){
+  if(Mode >4 || Mode <1){
     cout << "Invalid Mode selection " << endl;
     return 1;
   }
@@ -152,7 +152,7 @@ int main(int argc, char* argv[]){
   aida.x=0;
   aida.y=0;
   aida.z=0;
-  if (Mode==3) {
+  if (Mode==3||Mode==4) {
       tree=new TTree("tree","tree");
       tree->Branch("aida",&aida,"EX/D:EY/D:x/D:y/D:z/D");
   }
@@ -273,6 +273,19 @@ int main(int argc, char* argv[]){
                   }
               }
           }
+          if ((Mode==4) && evts->IsBETA()){
+              for (unsigned short jj=0;jj<evts->GetAIDABeta()->GetClusters().size();jj++){
+                  if (evts->GetAIDABeta()->GetCluster(jj)->GetXMultiplicity()==1&&evts->GetAIDABeta()->GetCluster(jj)->GetYMultiplicity()==1){
+                      aida.z=evts->GetAIDABeta()->GetCluster(jj)->GetHitPositionZ();
+                      aida.y=evts->GetAIDABeta()->GetCluster(jj)->GetHitPositionY();
+                      aida.x=evts->GetAIDABeta()->GetCluster(jj)->GetHitPositionX();
+                      aida.EX=evts->GetAIDABeta()->GetCluster(jj)->GetXEnergy();
+                      aida.EY=evts->GetAIDABeta()->GetCluster(jj)->GetYEnergy();
+                      tree->Fill();
+                  }
+              }
+
+          }
 
 
           //!Get run time
@@ -303,7 +316,7 @@ int main(int argc, char* argv[]){
       delete evts;
   }
 
-  if (Mode==3) {
+  if (Mode==3||Mode==4) {
       tree->Write();
   }
   else{

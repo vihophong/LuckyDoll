@@ -424,10 +424,6 @@ public:
     //    fnanc++;
     //}
 
-protected:
-    unsigned long long ftimestamp;
-    unsigned short fngamma;
-    //unsigned short fnanc;
 
     //!common stuff for light particle rejection later
     //! all multiplicity
@@ -448,6 +444,34 @@ protected:
     unsigned short fnclustersz[NumDSSD];
     //! number of dssd with a cluster
     unsigned short fclustermultz;
+
+
+protected:
+    unsigned long long ftimestamp;
+    unsigned short fngamma;
+    //unsigned short fnanc;
+
+    /*
+    //!common stuff for light particle rejection later
+    //! all multiplicity
+    unsigned short fmult;
+    //! number of dssd with a hit
+    unsigned short fhitmultz;
+    //! total multiplicity in z
+    unsigned short fnhitsz[NumDSSD];
+    //! x multiplicity
+    unsigned short fmultx[NumDSSD];
+    //! y multiplicity
+    unsigned short fmulty[NumDSSD];
+    //! max z
+    unsigned short fmaxz;
+    //! total clusters
+    unsigned short fnclusters;
+    //! total clusters in z
+    unsigned short fnclustersz[NumDSSD];
+    //! number of dssd with a cluster
+    unsigned short fclustermultz;
+    */
 
 
     //! AIDA cluster

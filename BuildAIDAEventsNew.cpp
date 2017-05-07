@@ -16,11 +16,22 @@ BuildAIDAEvents::BuildAIDAEvents()
         fsumexcut[i] = -1000.;
         fsumeycut[i] = -1000.;
     }
+
+    for (Int_t i=0;i<NumDSSD;i++){
+        for (Int_t j=0;j<NumStrXY;j++){
+            dssd_cal_he[i][j][0]=0.;
+            dssd_cal_he[i][j][1]=1.;
+        }
+    }
+
     fcorrcut = -1;
     fmultcut = 10000;
     fisgzstream = false;
     fisranking = true;
     aidaunpkg = new AIDAUnpacker;
+
+    flocalaidaBETA = new AIDA;
+    flocalaidaION = new AIDA;
 }
 
 BuildAIDAEvents::~BuildAIDAEvents()
@@ -49,9 +60,6 @@ void BuildAIDAEvents::Init(char* aidafile)
     fADBetaEntry = 0;
     fADPulserEntry = 0;
     fADts = 0;
-
-    flocalaidaBETA = new AIDA;
-    flocalaidaION = new AIDA;
 
     //! for writing
     faida = new AIDA;
@@ -90,13 +98,15 @@ void BuildAIDAEvents::Init(char* aidafile)
 
 void BuildAIDAEvents::BookTree(TTree *treeIon,TTree *treeBeta,TTree *treePulser,Int_t bufsize)
 {
+
     //! initilize output
+
+
     fmtrION = treeIon;
     fmtrION->Branch("adentry",&fADIonEntry,bufsize); //320000
     fmtrION->Branch("adTS",&fADtsION,bufsize);
     fmtrION->Branch("aida",&flocalaidaION,bufsize);
-    fmtrION->BranchRef();
-
+    fmtrION->BranchRef();    
 
     fmtrBETA = treeBeta;
     fmtrBETA->Branch("adentry",&fADBetaEntry,bufsize);
@@ -187,7 +197,9 @@ void BuildAIDAEvents::ReadHECalibTable()
 void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
     AIDAHit* hit = new AIDAHit;
     hit->SetADC(aidaraw.adcData);
+    //hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
     hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
+
     hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
     //hit->SetTimestamp(aidaraw.timestamp);
     hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);

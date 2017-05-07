@@ -63,7 +63,7 @@ int main(int argc, char* argv[]){
     ofile->cd();
 
     TTree* treeDecay = new TTree("tree","tree");
-    treeDecay->SetMaxTreeSize(1900000000);
+    //treeDecay->SetMaxTreeSize(1900000000);
 
     //! Read list of files
     string inputfiles[1000];

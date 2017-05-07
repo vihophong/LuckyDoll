@@ -54,9 +54,9 @@ int main(int argc, char* argv[]){
 
 
     CommandLineInterface* interface = new CommandLineInterface();
-    interface->Add("-bl", "BELEN input file", &InputBELEN);
-    interface->Add("-a", "AIDA input file", &InputAIDA);
-    interface->Add("-br", "Bigrips input file", &InputBIGRIPS);
+    interface->Add("-bl", "BELEN input list of files", &InputBELEN);
+    interface->Add("-a", "AIDA input list of files", &InputAIDA);
+    interface->Add("-br", "Bigrips input list of files", &InputBIGRIPS);
     interface->Add("-o", "output file", &OutFile);
     interface->Add("-v", "verbose level", &Verbose);
     interface->Add("-aibeg", "start entry for AIDA ION", &AIbeg);
@@ -101,22 +101,54 @@ int main(int argc, char* argv[]){
     TTree* treeNeutron = new TTree("neutron","neutron");
     TTree* treeBeam = new TTree("beam","beam");
 
-    Merger *merge=new Merger();
-    merge->SetAIDAFile(InputAIDA);
-    merge->SetBrikenFile(InputBELEN);
-    merge->SetBigripsFile(InputBIGRIPS);
-    merge->Init();
-    merge->ReadAIDA(AIbeg,AIend);
-    merge->ReadBRIKEN(BNbeg,BNend,BGbeg,BGend,BAbeg,BAend);
-    merge->ReadBigrips();
-    merge->BookTree(treeImplant,treeBeta,treeNeutron,treeBeam);
-    ofile->cd();
-    merge->DoMergeImp();
-    merge->DoMergeBeta();
-    merge->DoMergeNeutron();
-    merge->DoMergeAnc();
-    delete merge;
 
+    //! Read list of files
+    string inputfiles_aida[1000];
+    string inputfiles_briken[1000];
+    string inputfiles_bigrips[1000];
+    ifstream inf_aida(InputAIDA);
+    ifstream inf_briken(InputBELEN);
+    ifstream inf_bigrips(InputBIGRIPS);
+
+    Int_t nfiles_aida;
+    inf_aida>>nfiles_aida;
+    Int_t nfiles_briken;
+    inf_briken>>nfiles_briken;
+    Int_t nfiles_bigrips;
+    inf_bigrips>>nfiles_bigrips;
+
+    if (nfiles_aida!=nfiles_briken||nfiles_aida!=nfiles_bigrips){
+        cerr<<"error! nfiles briken ne nfiles aida or nfiles_bigrips" <<endl;
+        return 3;
+    }
+    TVectorD adruntime(nfiles_aida+1);
+    adruntime[0] = 0;
+    for (Int_t i=0;i<nfiles_aida;i++){
+        adruntime[i+1] = 0;
+        inf_aida>>inputfiles_aida[i];
+        inf_briken>>inputfiles_briken[i];
+        inf_bigrips>>inputfiles_bigrips[i];
+        cout<<inputfiles_aida[i]<<"-"<<inputfiles_briken[i]<<"- "<<inputfiles_bigrips[i]<<endl;
+    }
+
+
+    for (Int_t i=0;i<nfiles_aida;i++){
+        Merger *merge=new Merger();
+        merge->SetAIDAFile((char*)inputfiles_aida[i].c_str());
+        merge->SetBrikenFile((char*)inputfiles_briken[i].c_str());
+        merge->SetBigripsFile((char*)inputfiles_bigrips[i].c_str());
+        merge->Init();
+        merge->ReadAIDA(AIbeg,AIend);
+        merge->ReadBRIKEN(BNbeg,BNend,BGbeg,BGend,BAbeg,BAend);
+        merge->ReadBigrips();
+        merge->BookTree(treeImplant,treeBeta,treeNeutron,treeBeam);
+        ofile->cd();
+        merge->DoMergeImp();
+        merge->DoMergeBeta();
+        merge->DoMergeNeutron();
+        merge->DoMergeAnc();
+        delete merge;
+    }
     treeImplant->Write();
     treeBeta->Write();
     treeNeutron->Write();

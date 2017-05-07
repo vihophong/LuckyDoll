@@ -52,7 +52,7 @@ int main(int argc, char* argv[]){
   cout << "AIDA event builder" << endl;
   int Verbose = 0;
   long long int WindowIon = 5000; //time unit: 10 ns
-  long long int WindowBeta = 2500; //time unit: 10 ns
+  long long int WindowBeta = 3500; //time unit: 10 ns
   long long int WindowDiscriminator = 0;
 
   int FillFlag = 1;

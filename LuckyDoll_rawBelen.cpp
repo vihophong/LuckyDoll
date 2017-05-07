@@ -146,6 +146,7 @@ int main(int argc, char* argv[]){
               break;
             }
         }
+
         cout<<"All Hits= "<<blrd->GetCurrentEvent()<<endl;
         cout<<"  Neutron Hits= "<<blrd->GetCurrentNeutronEvent()<<endl;
         cout<<"  Gamma Hits= "<<blrd->GetCurrentGammaEvent()<<endl;

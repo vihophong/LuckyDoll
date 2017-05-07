@@ -11,14 +11,15 @@ class BrikenTreeData  {
 public:
    BrikenTreeData() { }
    ~BrikenTreeData() {}
-   Double_t        E;
-   ULong64_t       T;
-   UShort_t        Id;
-   UShort_t        type;
-   UShort_t        Index1;
-   UShort_t        Index2;
-   UShort_t        InfoFlag;
-   std::string          Name;
+   double E;
+   uint64_t T;
+   uint16_t Id;
+   uint16_t type;
+   uint16_t Index1;
+   uint16_t Index2;
+   uint16_t InfoFlag;
+   std::string Name;
+   void clear();
 };
 
 #endif

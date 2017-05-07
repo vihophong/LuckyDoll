@@ -252,7 +252,7 @@ int main(int argc, char* argv[]){
 
                   aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
                   aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
-                  aida.nz = (int)evts->GetAIDABeta()->GetClustersMultZ();
+                  aida.nz = (int)evts->GetAIDABeta()->GetClustersMultZ();                  
                   if (FillFlag) tree->Fill();
               }
 

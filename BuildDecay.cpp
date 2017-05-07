@@ -4,10 +4,10 @@ BuildDecay::BuildDecay()
 {
     fMode = 0;
     fBetaImplantTWup = 2.e9;
-    fBetaImplantTWlow = 5e9;
+    fBetaImplantTWlow = 10e9;
     fBetaNeutronTWup = 8e5;
     fBetaNeutronTWlow = 1e5;
-    fmaxdeltaxy = 8.5;
+    fmaxdeltaxy = 3.5;
 
     fBetaF11BeamTWup = 40000;
     fBetaF11BeamTWlow = 50000;
@@ -98,12 +98,19 @@ void BuildDecay::ReadImplant()
     fimplantMap.clear();
     for (unsigned int jentry = 0; jentry< (unsigned int) fnentriesImp; jentry++){
         ftrImp->GetEvent(jentry);
+
         //! make gates and selections here
-        aidaSimpleStruct aida;
-        aida.x = fimplant->GetIon()->GetHitPositionX();
-        aida.y = fimplant->GetIon()->GetHitPositionY();
-        aida.z = (unsigned short)fimplant->GetIon()->GetHitPositionZ();
-        fimplantMap.insert(make_pair(fimplant->GetTimeStamp(),make_pair(jentry,aida)));
+        unsigned short lastclusterID=fimplant->GetIon()->GetClusters().size()-1;
+        //if (fimplant->GetIon()->GetMaxZ()==3&&lastclusterID==3){
+            aidaSimpleStruct aida;
+            //lastclusterID=lastclusterID-1;//select dssd #2
+            aida.x = fimplant->GetIon()->GetCluster(lastclusterID)->GetHitPositionX();
+            aida.y = fimplant->GetIon()->GetCluster(lastclusterID)->GetHitPositionY();
+            aida.z = (unsigned short)fimplant->GetIon()->GetCluster(lastclusterID)->GetHitPositionZ();
+            fimplantMap.insert(make_pair(fimplant->GetTimeStamp(),make_pair(jentry,aida)));
+            if (jentry<10) cout<<"impts "<<fimplant->GetTimeStamp()<<" - "<<aida.x<<" : "<<aida.y<<" : "<<aida.z<<" : "<<endl;
+        //}
+
     }
     cout<<"Finished reading implantation table with "<<fimplantMap.size()<<" rows"<<endl;
 }
@@ -124,6 +131,7 @@ void BuildDecay::ReadBeta()
         ftrBeta->GetEvent(jentry);
         //! make gates and selections here
         fbetaMap.insert(make_pair(fbeta->GetTimeStamp(),jentry));
+        if (jentry<10) cout<<"betats "<<fbeta->GetTimeStamp()<<endl;
     }
     cout<<"Finished reading beta table with "<<fbetaMap.size()<<" rows"<<endl;
 }
@@ -175,6 +183,7 @@ void BuildDecay::DoBuildDecay()
     fdeltaxy = -1;
     Int_t k = 0;
     for (fbetaMap_it=fbetaMap.begin();fbetaMap_it!=fbetaMap.end();fbetaMap_it++){
+        //if (((Double_t)k/(Double_t)fnentriesBeta*100.)>5) break;
         if (k%5000==0) cout<<(Double_t)k/(Double_t)fnentriesBeta*100.<<" % completed, file size ="<<(Double_t)foutfile->GetSize()/(Double_t)1000000.<<" MB \r"<<flush;
         fimplanti = 0;
         fdeltaxy = -1;       
@@ -228,6 +237,9 @@ void BuildDecay::DoBuildDecay()
                     continue;
                 }
                 ftrImp->GetEntry(correntry);
+
+                Long64_t tsdiff=(Long64_t)ts-corrts;
+                if (ncorrwIon<10) cout<<k<<"e-e"<<tsdiff<<endl;
                 //! fill data here!
                 fimplanti ++;
                 ftreedecay->Fill();
@@ -398,9 +410,10 @@ void BuildDecay::DoBuildDecay2()
         ftrImp->GetEvent(entry);
         fimplanti = 0;
         fdeltaxy = -1;
-        double impx = fimplant->GetIon()->GetHitPositionX();
-        double impy = fimplant->GetIon()->GetHitPositionY();
-        unsigned short impz = (unsigned short) fimplant->GetIon()->GetHitPositionZ();
+        unsigned short lastclusterID=fimplant->GetIon()->GetNClusters()-1;
+        double impx = fimplant->GetIon()->GetCluster(lastclusterID)->GetHitPositionX();
+        double impy = fimplant->GetIon()->GetCluster(lastclusterID)->GetHitPositionY();
+        unsigned short impz = (unsigned short) fimplant->GetIon()->GetCluster(lastclusterID)->GetHitPositionZ();
 
         //! correlate event with neutron
         Long64_t ts1 = (Long64_t)ts - (Long64_t)fBetaImplantTWlow;

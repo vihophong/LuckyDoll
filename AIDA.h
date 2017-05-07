@@ -190,6 +190,9 @@ public:
       fsumeny=-9999.;
       fcts=0;
       fclustersadded=0;
+      fnx=0;
+      fny=0;
+      fcfastts=0;
   }
 
   //! copy cluster
@@ -356,7 +359,7 @@ public:
           AIDACluster* origincluster = *cluster;
           origincluster->Copy(*clonecluster);
           //! CALIBRATE TIME HERE!
-          clonecluster->SetTimestamp(clonecluster->GetTimestamp()*ClockResolution);
+          //clonecluster->SetTimestamp(clonecluster->GetTimestamp()*ClockResolution);
 
 	  //if (!(clonecluster->GetHitPositionZ()==1&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()<64))
 	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>125))	    
@@ -365,7 +368,8 @@ public:
 	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()>126))
           obj.AddCluster(clonecluster);
         }
-        obj.SetTimestamp(faidats*ClockResolution);
+        //obj.SetTimestamp(faidats*ClockResolution);        
+        obj.SetTimestamp(faidats);
         obj.SetType(ftype);
         obj.SetMult(fmult);
         obj.SetNHitZ(fnhitsz);

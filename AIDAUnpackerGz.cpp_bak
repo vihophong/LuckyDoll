@@ -211,6 +211,7 @@ bool AIDAUnpacker::GetNextHit(){
         }else{
             ReconstructRawAIDA();
         }
+
         if (rawtree!=NULL&&!first_scan_flag) {
             if (ts_prev==rawaida.timestamp&&prev_rt==rawaida.rangeType&&prev_fee==rawaida.feeNo&&prev_ch==rawaida.chNo)
                 cout<<"duplicate entry found!"<<rawaida.feeNo <<
@@ -388,6 +389,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
 
         }// if (midas.infoCode==8)
     }//if great info data
+
     //Skip uninteresting piece of data!
     if(fillFlag&&!first_scan_flag){
         //get time stamp which include msb
@@ -467,7 +469,8 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
     }else{ //fail fill flag (from MBS hit scan)
         fillFlag=false;
     }
-    if (!(rawaida.infoCode==0||(fenableFastDisc&&rawaida.infoCode==6)||rawaida.infoCode==8)) return false;
+
+    if (!(rawaida.infoCode==0||(fenableFastDisc&&rawaida.infoCode==6))) return false;
     return fillFlag;
 }
 

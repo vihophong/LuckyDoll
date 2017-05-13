@@ -227,7 +227,7 @@ int main(int argc, char* argv[]){
                (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r "<<flush;
             time_last = time_end;
           }
-          if ((Mode==1) && evts->IsBETA() && evts->GetAIDABeta()->GetMult()>64) { //pulser mode
+          if ((Mode==1) && evts->IsBETA() && evts->GetAIDABeta()->GetMult()>=64) { //pulser mode
               for (Int_t j = 0;j<evts->GetAIDABeta()->GetMult();j++){
                   int adc = evts->GetAIDABeta()->GetHit(j)->GetADC();
                   double energy = evts->GetAIDABeta()->GetHit(j)->GetEnergy();

@@ -11,7 +11,6 @@ BuildAIDAEvents::BuildAIDAEvents()
     fflag_filldata = false;
     ftemp = 0;
     fflag_pulser_in_stream = false;
-    fflag_corrscaler_in_stream = false;
 
     for (Int_t i=0;i<NumDSSD;i++){
         fsumexcut[i] = -1000.;
@@ -33,7 +32,6 @@ BuildAIDAEvents::BuildAIDAEvents()
 
     flocalaidaBETA = new AIDA;
     flocalaidaION = new AIDA;
-    flocalaidaCORR = new AIDA;
 }
 
 BuildAIDAEvents::~BuildAIDAEvents()
@@ -95,7 +93,7 @@ void BuildAIDAEvents::Init(char* aidafile)
             flastfasttsEXT[i][j] = 0;
         }
     }
-    fflag_trans = false;    
+    fflag_trans = false;
 }
 
 void BuildAIDAEvents::BookTree(TTree *treeIon,TTree *treeBeta,TTree *treePulser,Int_t bufsize)
@@ -290,7 +288,7 @@ bool BuildAIDAEvents::CloseBetaEvent()
         if (fflag_pulser_in_stream) return true;
         else return false;
         //!will not give to the "nextevent" scheme!
-    }    
+    }
     return false;
 }
 
@@ -390,6 +388,7 @@ bool BuildAIDAEvents::GetNextEvent(){
                     }
                 }
             }
+
             flastts = aidaraw.timestamp;
         }
 
@@ -412,22 +411,6 @@ bool BuildAIDAEvents::GetNextEvent(){
 
                 }
             }
-        }
-
-        //! handle correlation scaler
-        if (fflag_corrscaler_in_stream&&aidaraw.infoCode==8){
-            AIDAHit* hit = new AIDAHit;
-            //if we dont set all things -> memory leak
-            hit->SetADC(0);
-            hit->SetEnergy(0.);
-            hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
-            hit->SetID(9999);
-            hit->SetXY(0);
-            hit->SetZ(0);
-            hit->SetFEE(0);
-            hit->SetFEEChannel(0);
-            hit->SetRange(0);
-            flocalaidaCORR->AddHit(hit);
         }
 
     }// flag stop

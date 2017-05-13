@@ -39,7 +39,6 @@ typedef struct {
 
 const unsigned char IDion = 4;
 const unsigned char IDbeta = 5;
-const unsigned char IDcorr = 6;
 
 int main(int argc, char* argv[]){
 
@@ -188,7 +187,7 @@ int main(int argc, char* argv[]){
       //evts->SetAIDATransientTime(TransientTime);
       //evts->SetEventWindowION(WindowIon);
       //evts->SetEventWindowBETA(WindowBeta);
-      evts->SetCorrScalerInStream(true);
+      evts->SetPulserInStream(false);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
       cout<<"Ecorr= "<<ECorr<<endl;
@@ -223,14 +222,10 @@ int main(int argc, char* argv[]){
                (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r "<<flush;
             time_last = time_end;
           }
-          if (evts->IsBETA()&&evts->GetAIDABeta()->GetMult()<64) {//real beta
+          if (evts->IsBETA()) {
               //!sort the timestamp
               std::multimap<unsigned long long, int> tsvector;
               std::multimap<unsigned long long, int>::iterator tsvector_it;
-
-              for (int i=0;i<evts->GetAIDACORR()->GetMult();i++){
-                  tsvector.insert(std::make_pair(evts->GetAIDACORR()->GetHit(i)->GetTimestamp()*ClockResolution,-1));
-              }
 
               for (int i = 0;i<evts->GetAIDABeta()->GetNClusters();i++){
                   tsvector.insert(std::make_pair(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
@@ -238,35 +233,30 @@ int main(int argc, char* argv[]){
               //!fill tree according to the time stamp
               for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){
                   Int_t i = tsvector_it->second;
-                  if (i!=-1){//real beta
-                      Double_t ex = evts->GetAIDABeta()->GetCluster(i)->GetXEnergy();
-                      Double_t ey = evts->GetAIDABeta()->GetCluster(i)->GetYEnergy();
-                      aida.ID = IDbeta;
-                      aida.E = (ex+ey)/2;
-                      aida.EX = ex;
-                      aida.EY = ey;
-                      //!If you need time ordered then we need to modify this
-                      aida.T = tsvector_it->first;
-                      aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
-                      aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
-                      aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
-                      aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
+                  Double_t ex = evts->GetAIDABeta()->GetCluster(i)->GetXEnergy();
+                  Double_t ey = evts->GetAIDABeta()->GetCluster(i)->GetYEnergy();
+                  aida.ID = IDbeta;
+                  aida.E = (ex+ey)/2;
+                  aida.EX = ex;
+                  aida.EY = ey;
+                  //!If you need time ordered then we need to modify this
+                  aida.T = tsvector_it->first;
+                  aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
+                  aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
+                  aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
+                  aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
 
-                      //aida.nx=(int)evts->GetAIDABeta()->GetCluster(i)->GetXMultiplicity();
-                      //aida.ny=(int)evts->GetAIDABeta()->GetCluster(i)->GetYMultiplicity();
-                      //aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi(int(aida.z));
+                  //aida.nx=(int)evts->GetAIDABeta()->GetCluster(i)->GetXMultiplicity();
+                  //aida.ny=(int)evts->GetAIDABeta()->GetCluster(i)->GetYMultiplicity();
+                  //aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi(int(aida.z));
 
-                      aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
-                      aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
-                      aida.nz = (int)evts->GetAIDABeta()->GetClustersMultZ();
-                  }else{//corrlation scaler
-                      aida.ID=IDcorr;
-                      aida.T=tsvector_it->first;
-                  }
+                  aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
+                  aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
+                  aida.nz = (int)evts->GetAIDABeta()->GetClustersMultZ();                  
                   if (FillFlag) tree->Fill();
               }
-          }else if (!evts->IsBETA()){//ion
-              //!sort the timestamp
+
+          }else if (!evts->IsBETA()){
               int lastclusterID = evts->GetAIDAIon()->GetNClusters()-1;
               if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()==evts->GetAIDAIon()->GetMaxZ()){
                   Double_t ex = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetXEnergy();
@@ -274,8 +264,8 @@ int main(int argc, char* argv[]){
                   aida.ID = IDion;
                   aida.E = (ex+ey)/2;
                   aida.EX = ex;
-                  aida.EY = ey;                  
-                  unsigned long long tsimp = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetTimestamp() * ClockResolution;
+                  aida.EY = ey;
+                  aida.T = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetTimestamp() * ClockResolution;
                   aida.Tfast = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetFastTimestamp() * ClockResolution;
                   aida.x = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionX();
                   aida.y = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionY();
@@ -289,39 +279,11 @@ int main(int argc, char* argv[]){
                   aida.ny = (int)evts->GetAIDAIon()->GetMultY((int)aida.z);
                   aida.nz = (int)evts->GetAIDAIon()->GetClustersMultZ();
                   //if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()>0) cout<< "eeeed"<<aida.z<<endl;
-
-
-                  std::multimap<unsigned long long, int> tsvector;
-                  std::multimap<unsigned long long, int>::iterator tsvector_it;
-
-                  tsvector.insert(std::make_pair(tsimp,-1));
-                  for (int i=0;i<evts->GetAIDACORR()->GetMult();i++){
-                      tsvector.insert(std::make_pair(evts->GetAIDACORR()->GetHit(i)->GetTimestamp()*ClockResolution,i));
-                  }
-                  for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){
-                      Int_t i = tsvector_it->second;
-                      if (i==-1) {//normal implant
-                          aida.ID=IDion;
-                          aida.T=tsimp;
-                      }else{  //corr scaler
-                          aida.ID=IDcorr;
-                          aida.T=tsvector_it->first;
-                      }
-                      if (FillFlag) tree->Fill();
-                  }
-
+                  if (FillFlag) tree->Fill();
               }else{
                   cout<<"Somethings wrong with clustering?"<<endl;
               }
-          }else{//pulser (or something else?))
-              for (int i=0;i<evts->GetAIDACORR()->GetMult();i++){
-                  aida.ID=IDcorr;
-                  aida.T=evts->GetAIDACORR()->GetHit(i)->GetTimestamp()*ClockResolution;
-                  if (FillFlag) tree->Fill();
-              }
           }
-          //alway remember this clear for correlation scaler to avoid memory flow!
-          if (evts->GetAIDACORR()->GetMult()>0) evts->GetAIDACORR()->Clear();
 
           //!Get run time
           if (evts->IsBETA()&&start==0) {

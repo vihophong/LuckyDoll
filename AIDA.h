@@ -416,6 +416,7 @@ public:
           fmulty[z]++;
           fsumy[z]+=hit->GetEnergy();
       }
+
       int Z=(int) hit->GetZ();
       fnhitsz[Z]++;
       if (fnhitsz[Z]==1) fhitmultz++;

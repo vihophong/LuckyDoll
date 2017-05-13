@@ -8,6 +8,7 @@ BuildAIDAEvents::BuildAIDAEvents()
     fflag_filldata = false;
     ftemp = 0;
     fflag_pulser_in_stream = false;
+    fflag_corrscaler_in_stream = false;
 
     for (Int_t i=0;i<NumDSSD;i++){
         fsumexcut[i] = 0;
@@ -16,12 +17,20 @@ BuildAIDAEvents::BuildAIDAEvents()
     fcorrcut = -1;
     fisgzstream = false;
     aidaunpkg = new AIDAUnpacker;
+
+
+    flocalaidaBETA = new AIDA;
+    flocalaidaION = new AIDA;
+    flocalaidaCORR = new AIDA;
 }
 
 BuildAIDAEvents::~BuildAIDAEvents()
 {
     //! error on this
     //delete aidaunpkg;
+    delete flocalaidaBETA;
+    delete flocalaidaION;
+    delete flocalaidaCORR;
 
 }
 
@@ -37,9 +46,6 @@ void BuildAIDAEvents::Init(char* aidafile)
     fADBetaEntry = 0;
     fADPulserEntry = 0;
     fADts = 0;
-
-    flocalaidaBETA = new AIDA;
-    flocalaidaION = new AIDA;
 
     //! for writing
     faida = new AIDA;
@@ -233,6 +239,24 @@ bool BuildAIDAEvents::GetNextEvent(){
     fflag_addFirstBetaHit=false;
     while(!flag_stop){
         if (!aidaunpkg->GetNextHit()) return false;
+
+        //! handle correlation scaler
+
+        if (fflag_corrscaler_in_stream&&aidaraw.rangeType==-1){
+            AIDAHit* hit = new AIDAHit;
+            //if we dont set all things -> memory leak
+            hit->SetADC(0);
+            hit->SetEnergy(0.);
+            hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
+            hit->SetID(9999);
+            hit->SetXY(0);
+            hit->SetZ(0);
+            hit->SetFEE(0);
+            hit->SetFEEChannel(0);
+            hit->SetRange(0);
+            flocalaidaCORR->AddHit(hit);
+        }
+
 
         aidaraw= aidaunpkg->GetAIDAraw();
         fADcurblock = aidaunpkg->GetCurrentBlock();

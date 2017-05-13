@@ -12,8 +12,8 @@
 #include "TStopwatch.h"
 #include "TClonesArray.h"
 #include "CommandLineInterface.h"
-#include "AIDAUnpackerGz.h"
-#include "BuildAIDAEventsNew.h"
+#include "AIDAUnpacker.h"
+#include "BuildAIDAEvents.h"
 #include "AIDA.h"
 #include "TVectorD.h"
 
@@ -52,15 +52,13 @@ int main(int argc, char* argv[]){
 
   cout << "AIDA event builder" << endl;
   int Verbose = 0;
-  //long long int WindowIon = 5000; //time unit: 10 ns
-  //long long int WindowBeta = 2500; //time unit: 10 ns
-  //long long int TransientTime = 20000;
-
+  long long int WindowIon = 5000; //time unit: 10 ns
+  long long int WindowBeta = 2500; //time unit: 10 ns
   long long int WindowDiscriminator = 0;
 
   int FillFlag = 1;
   int GzFlag = 0;
-  int RankingModeFlag = 1;
+  long long int TransientTime = 20000;
 
   char* InputAIDA = NULL;
   char* OutFile = NULL;
@@ -68,17 +66,13 @@ int main(int argc, char* argv[]){
   char* ThresholdFile = NULL;
   char* MappingFile = NULL;
   char* ECutFile = NULL;
-  double ECorr=-1.;
-
-  int SumMultCut=10000;
 
   //Read in the command line arguments
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
-  //interface->Add("-wi", "Ion event building window (default: 5000*10ns)", &WindowIon);
-  //interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
-  //interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
+  interface->Add("-wi", "Ion event building window (default: 5000*10ns)", &WindowIon);
+  interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
   interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);
 
@@ -87,12 +81,9 @@ int main(int argc, char* argv[]){
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
+  interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
-  interface->Add("-ecorr", "specify energy cut file", &ECorr);
   interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
-
-  interface->Add("-rmode", "Switch on(1) off(0) the position determination based on energy correlation ranking (default:on)", &RankingModeFlag);
-  interface->Add("-smult", "DSSD multiplicity cut (default 10000)", &SumMultCut);
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -150,6 +141,7 @@ int main(int argc, char* argv[]){
   Int_t betarate = 0;
   Int_t corrscalerrate = 0;
 
+
   TVectorD runtime(nfiles+1);
   runtime[0] = 0;
   for (Int_t i=0;i<nfiles;i++){
@@ -161,8 +153,8 @@ int main(int argc, char* argv[]){
   Double_t ecutX[6];
   Double_t ecutY[6];
   for(Int_t i=0;i<NumDSSD;i++){
-      ecutX[i]=-5000.;
-      ecutY[i]=-5000.;
+      ecutX[i]=0.;
+      ecutY[i]=0.;
       //if (i==0) ecutY[i]=250.;
   }
 
@@ -187,16 +179,13 @@ int main(int argc, char* argv[]){
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
       evts->SetDiscriminatorTimeWindow(WindowDiscriminator);
-      //evts->SetAIDATransientTime(TransientTime);
-      //evts->SetEventWindowION(WindowIon);
-      //evts->SetEventWindowBETA(WindowBeta);
+      evts->SetAIDATransientTime(TransientTime);
+      evts->SetEventWindowION(WindowIon);
+      evts->SetEventWindowBETA(WindowBeta);
+      //evts->SetPulserInStream(false);
       evts->SetCorrScalerInStream(true);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
-      cout<<"Ecorr= "<<ECorr<<endl;
-      evts->SetEnergyCorrCut(ECorr);
-      evts->SetSumMultiplicityCut(SumMultCut);
-      if (RankingModeFlag==0) evts->SetNoCorrRankingMode();
       evts->Init((char*)inputfiles[i].c_str());
       double time_last = (double) get_time();
 
@@ -222,7 +211,11 @@ int main(int argc, char* argv[]){
               (Float_t)ctr/(time_end - local_time_start) << " blocks/s " <<
               (Float_t)nevtbeta/(time_end - local_time_start) <<" betas/s  "<<
                (Float_t)nevtion/(time_end - local_time_start) <<" ions/s "<<
-               (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r "<<flush;
+               (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go | ";
+            if (evts->IsBETA()) cout<<"beta: x"<<evts->GetAIDABeta()->GetCluster(0)->GetHitPositionX()<<"y"<<
+                                       evts->GetAIDABeta()->GetCluster(0)->GetHitPositionY()<<"\r"<< flush;
+            else cout<<"ion: x"<<evts->GetAIDAIon()->GetCluster(0)->GetHitPositionX()<<"y"<<
+                       evts->GetAIDAIon()->GetCluster(0)->GetHitPositionY()<<"\r"<<flush;
             time_last = time_end;
           }
           if (evts->IsBETA()&&evts->GetAIDABeta()->GetMult()<64) {//real beta
@@ -276,7 +269,7 @@ int main(int argc, char* argv[]){
                   aida.ID = IDion;
                   aida.E = (ex+ey)/2;
                   aida.EX = ex;
-                  aida.EY = ey;                  
+                  aida.EY = ey;
                   unsigned long long tsimp = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetTimestamp() * ClockResolution;
                   aida.Tfast = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetFastTimestamp() * ClockResolution;
                   aida.x = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionX();
@@ -333,28 +326,33 @@ int main(int argc, char* argv[]){
               tstart = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
               start++;
           }
-          if (evts->IsBETA()) {
-              if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
-          }else if (!evts->IsBETA()){
-              if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
-          }
           if(signal_received){
             break;
           }
       }
-
-
+      if (evts->IsBETA()) {
+          tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
+      }else if (!evts->IsBETA()){
+          tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
+      }
       runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
       runtime[0] += runtime[i+1];
-      cout<<"Summary for subrun: "<<inputfiles[i]<<endl;
       cout<<evts->GetCurrentBetaEvent()<<" beta events"<<endl;
       cout<<evts->GetCurrentIonEvent()<<" ion events"<<endl;
+
+      /*
+      if (!FillFlag){
+          ofstream str("ncounts.txt",ios::app);
+          str<<inputfiles[i]<<"\t"<<evts->GetCurrentIonEvent()<<"\t"<<evts->GetCurrentBetaEvent()<<"\t"<<(Double_t)evts->GetCurrentBetaEvent()/(Double_t)evts->GetCurrentIonEvent()<<endl;
+      }*/
+
       cout<<evts->GetAIDAUnpacker()->GetNCorrScaler()<<" corr events"<<endl;
       implantationrate += evts->GetCurrentIonEvent();
       betarate+=evts->GetCurrentBetaEvent();
       corrscalerrate+=evts->GetAIDAUnpacker()->GetNCorrScaler();
       cout<<ttotal<<" all events (beta+ion)"<<endl;
       cout<<evts->GetCurrentPulserEvent()<<" pulser events"<<endl;
+
       delete evts;
   }
   if (FillFlag){

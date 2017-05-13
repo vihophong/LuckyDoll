@@ -57,8 +57,11 @@ public:
     //! Set Fill data or not
     void SetFillData(bool fill_flag){fflag_filldata = fill_flag;}
 
-    //! Set Fill data or not
+    //! Set If pulser events are in stream or not
     void SetPulserInStream(bool pulser_in_stream){fflag_pulser_in_stream = pulser_in_stream;}
+
+    //! Set Set If corrlelation events are in stream or not ( in this case pulser must be instream!)
+    void SetCorrScalerInStream(bool corr_in_stream){fflag_corrscaler_in_stream = corr_in_stream;}
 
     //! Set Sum Energy Cut
     void SetSumEXCut(Double_t sumexcut[]){for (Int_t i=0;i<NumDSSD;i++) fsumexcut[i] = sumexcut[i];}
@@ -67,6 +70,8 @@ public:
     //! Set Correlation energy cut
     void SetEnergyCorrCut(Double_t corrcut){fcorrcut = corrcut;}
 
+    //! Get AIDA Unpacker
+    AIDAUnpacker* GetAIDAUnpacker(){return aidaunpkg;}
     //! Get total number of events
     int GetADNblock(){return fADNblock;}
     //! Get Current events
@@ -84,6 +89,8 @@ public:
     AIDA* GetAIDABeta(){return flocalaidaBETA;}
 
     AIDA* GetAIDAIon(){return flocalaidaION;}
+
+    AIDA* GetAIDACORR(){return flocalaidaCORR;}
 
     //! Read calibration table to memory
     void ReadCalibTable();
@@ -114,6 +121,8 @@ private:
     bool fisgzstream;
 
     int fflag_pulser_in_stream;
+    int fflag_corrscaler_in_stream;
+
 
     //! flag if the avaiable event is beta event
     bool fisbeta;
@@ -157,8 +166,9 @@ private:
     //! output objects
 
     AIDA* faida;
-
+    AIDA* flocalaidaCORR;
     AIDA* flocalaidaBETA;
+
     AIDA* flocalaidaION;
 
     //! stuff for the merger

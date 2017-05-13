@@ -13,6 +13,7 @@ AIDAUnpacker::AIDAUnpacker():midas(),rawaida(),finfile(),fifsinfilegz(),finfileg
     fmaxtsoffset = 100;
     fisgzstream = false;
     for (int i=0;i<NumFee;i++) for (int j=0;j<NumChFee;j++) chMask[i][j]=1;
+    fncorrscaler=0;
 }
 
 AIDAUnpacker::~AIDAUnpacker(){
@@ -325,7 +326,10 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             my_MBS_index=(midas.infoField & 0x000F0000) >>16; //-> Bit 19:16 is information index
             my_MBS_bits=midas.infoField & 0x0000FFFF; //-> Bit 15:0 with EXT scaler data (0 1 2 index) (LUPO?)            
 
-            if (my_MBS_index==0) rawaida.infoCode = 9;// newly added (May13 2017)
+            if (my_MBS_index==0) {
+                fncorrscaler++;
+                rawaida.infoCode = 9;// newly added (May13 2017)
+            }
 
             if (my_MBS_index==0 || my_MBS_index==1){ //Get low bits of EXT time stamp
                 MBS_hit[midas.feeId][my_MBS_index]=true;
@@ -594,6 +598,8 @@ int AIDAUnpacker::GetFirstSync(){
     fcurrentblk = 0;
     ReadHeader();
     ncheck=0;
+
+    fncorrscaler=0;
 }
 
 int AIDAUnpacker::BookTree(TTree *tree)

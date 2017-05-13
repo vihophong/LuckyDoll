@@ -55,7 +55,6 @@ public:
             aidaunpkg->EnableFastDiscriminator();
         }
     }
-
     //! Set (AIDAUnpacker) max timestamp offset between exTS and inTS deviation hit by hit
     void SetAIDAMaxTSOffset(long long maxtsoffset) {aidaunpkg->SetMaxOffSet(maxtsoffset);}
 
@@ -82,6 +81,8 @@ public:
     void SetSumMultiplicityCut(int multcut){fmultcut=multcut;}
 
 
+    //! Get AIDA Unpacker
+    AIDAUnpacker* GetAIDAUnpacker(){return aidaunpkg;}
     //! Get total number of events
     int GetADNblock(){return fADNblock;}
     //! Get Current events
@@ -252,7 +253,6 @@ private:
 
     unsigned int ftemp;
     rawaida_info aidaraw;
-
 
 };
 

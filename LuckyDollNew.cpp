@@ -12,7 +12,7 @@
 #include "TStopwatch.h"
 #include "TClonesArray.h"
 #include "CommandLineInterface.h"
-#include "AIDAUnpacker.h"
+#include "AIDAUnpackerGz.h"
 #include "BuildAIDAEventsNew.h"
 #include "AIDA.h"
 #include "TVectorD.h"
@@ -147,6 +147,8 @@ int main(int argc, char* argv[]){
 
 
   Int_t implantationrate = 0;
+  Int_t betarate = 0;
+  Int_t corrscalerrate = 0;
 
   TVectorD runtime(nfiles+1);
   runtime[0] = 0;
@@ -258,7 +260,7 @@ int main(int argc, char* argv[]){
 
                       aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
                       aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
-                      aida.nz = (int)evts->GetAIDABeta()->GetClustersMultZ();
+                      aida.nz = (int)evts->GetAIDABeta()->GetClustersMultZ();                      
                   }else{//corrlation scaler
                       aida.ID=IDcorr;
                       aida.T=tsvector_it->first;
@@ -343,9 +345,13 @@ int main(int argc, char* argv[]){
 
       runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
       runtime[0] += runtime[i+1];
+      cout<<"Summary for subrun: "<<inputfiles[i]<<endl;
       cout<<evts->GetCurrentBetaEvent()<<" beta events"<<endl;
       cout<<evts->GetCurrentIonEvent()<<" ion events"<<endl;
+      cout<<evts->GetAIDAUnpacker()->GetNCorrScaler()<<" corr events"<<endl;
       implantationrate += evts->GetCurrentIonEvent();
+      betarate+=evts->GetCurrentBetaEvent();
+      corrscalerrate+=evts->GetAIDAUnpacker()->GetNCorrScaler();
       cout<<ttotal<<" all events (beta+ion)"<<endl;
       cout<<evts->GetCurrentPulserEvent()<<" pulser events"<<endl;
       delete evts;
@@ -363,6 +369,10 @@ int main(int argc, char* argv[]){
       cout<<inputfiles[i]<<" - "<<runtime[i+1]<< " seconds"<<endl;
   }
   cout<<"\nImplatation rate =  "<<(double)implantationrate/runtime[0]<< " cps"<<endl;
+  cout<<"Total number of implantation =  "<<implantationrate<<endl;
+  cout<<"Total number of beta =  "<<betarate<<endl;
+  cout<<"Total number of corrlation scaler =  "<<corrscalerrate<<endl;
+
   //runtime.Print();
   //! Finish----------------
   double time_end = get_time();

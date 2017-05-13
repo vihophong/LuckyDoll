@@ -62,6 +62,9 @@ public:
     //! Get number of block
     int GetNBlock(){return fnblock;}
 
+    //! Get current number of corrlation scaler
+    int GetNCorrScaler(){return fncorrscaler;}
+
     //! Get aida raw data
     rawaida_info GetAIDAraw(){return rawaida;}
 
@@ -234,6 +237,8 @@ private:
     int prev_pkg;
     int ncheck;
     int nresetwarning;
+
+    int fncorrscaler;
 
 };
 

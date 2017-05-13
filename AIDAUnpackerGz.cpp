@@ -323,7 +323,10 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             int my_MBS_index;
             long long my_MBS_bits;
             my_MBS_index=(midas.infoField & 0x000F0000) >>16; //-> Bit 19:16 is information index
-            my_MBS_bits=midas.infoField & 0x0000FFFF; //-> Bit 15:0 with EXT scaler data (0 1 2 index) (LUPO?)
+            my_MBS_bits=midas.infoField & 0x0000FFFF; //-> Bit 15:0 with EXT scaler data (0 1 2 index) (LUPO?)            
+
+            if (my_MBS_index==0) rawaida.infoCode = 9;// newly added (May13 2017)
+
             if (my_MBS_index==0 || my_MBS_index==1){ //Get low bits of EXT time stamp
                 MBS_hit[midas.feeId][my_MBS_index]=true;
                 MBS_bits[midas.feeId][my_MBS_index]=my_MBS_bits; // LSB of the ext data (bit 15:0 or 31:16) with ch number
@@ -467,7 +470,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
     }else{ //fail fill flag (from MBS hit scan)
         fillFlag=false;
     }
-    if (!(rawaida.infoCode==0||(fenableFastDisc&&rawaida.infoCode==6)||rawaida.infoCode==8)) return false;
+    if (!(rawaida.infoCode==0||(fenableFastDisc&&rawaida.infoCode==6)||rawaida.infoCode==9)) return false;
     return fillFlag;
 }
 

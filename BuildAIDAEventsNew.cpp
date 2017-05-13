@@ -415,7 +415,7 @@ bool BuildAIDAEvents::GetNextEvent(){
         }
 
         //! handle correlation scaler
-        if (fflag_corrscaler_in_stream&&aidaraw.infoCode==9){
+        if (fflag_corrscaler_in_stream&&aidaraw.rangeType==-1){
             AIDAHit* hit = new AIDAHit;
             //if we dont set all things -> memory leak
             hit->SetADC(0);

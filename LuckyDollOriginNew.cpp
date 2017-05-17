@@ -57,8 +57,6 @@ int main(int argc, char* argv[]){
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
-  interface->Add("-wi", "Ion event building window (default: 5000*10ns)", &WindowIon);
-  interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
   interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);
 
@@ -67,9 +65,8 @@ int main(int argc, char* argv[]){
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
-  interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
-  interface->Add("-ecorr", "specify energy cut file", &ECorr);
+  interface->Add("-ecorr", "specify energy corrleration cut", &ECorr);
   interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
 
   interface->Add("-rmode", "Switch on(1) off(0) the position determination based on energy correlation ranking (default:on)", &RankingModeFlag);

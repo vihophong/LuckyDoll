@@ -88,7 +88,7 @@ int main(int argc, char* argv[]){
 
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
-  interface->Add("-ecorr", "specify energy cut file", &ECorr);
+  interface->Add("-ecorr", "specify energy corrleration cut", &ECorr);
   interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
 
   interface->Add("-rmode", "Switch on(1) off(0) the position determination based on energy correlation ranking (default:on)", &RankingModeFlag);

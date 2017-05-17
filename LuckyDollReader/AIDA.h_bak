@@ -48,21 +48,7 @@ public:
       frange = 0;
   }
 
-  //! Copy hits
-  virtual void Copy(AIDAHit& obj){
-      obj.SetFEE(ffee);
-      obj.SetFEEChannel(fch);
-      obj.SetID(fid);
-      obj.SetXY(fxy);
-      obj.SetZ(fz);
-      obj.SetADC(fadc);
-      obj.SetEnergy(fen);
-      obj.SetTimestamp(fts);
-      obj.SetFastTimestamp(ffastts);
-      obj.SetRange(frange);
-  }
-
-  //! Set energy range (low energy 0 or high energy 1)
+  //! Set energy range (low gain 0 or high gain 1)
   void SetRange(short range){frange = range;}
 
   //! Set the strip ID
@@ -190,9 +176,6 @@ public:
       fsumeny=-9999.;
       fcts=0;
       fclustersadded=0;
-      fnx=0;
-      fny=0;
-      fcfastts=0;
   }
 
   //! copy cluster
@@ -359,7 +342,7 @@ public:
           AIDACluster* origincluster = *cluster;
           origincluster->Copy(*clonecluster);
           //! CALIBRATE TIME HERE!
-          //clonecluster->SetTimestamp(clonecluster->GetTimestamp()*ClockResolution);
+          clonecluster->SetTimestamp(clonecluster->GetTimestamp()*ClockResolution);
 
 	  //if (!(clonecluster->GetHitPositionZ()==1&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()<64))
 	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>125))	    
@@ -368,8 +351,7 @@ public:
 	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()>126))
           obj.AddCluster(clonecluster);
         }
-        //obj.SetTimestamp(faidats*ClockResolution);        
-        obj.SetTimestamp(faidats);
+        obj.SetTimestamp(faidats*ClockResolution);
         obj.SetType(ftype);
         obj.SetMult(fmult);
         obj.SetNHitZ(fnhitsz);
@@ -416,7 +398,6 @@ public:
           fmulty[z]++;
           fsumy[z]+=hit->GetEnergy();
       }
-
       int Z=(int) hit->GetZ();
       fnhitsz[Z]++;
       if (fnhitsz[Z]==1) fhitmultz++;
@@ -621,11 +602,8 @@ public:
 
     //! Beta position
     bool BetaGetPos(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
-    //! Beta position new (with EX/EY condition)
+    //! Beta position new
     bool BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
-    //! Beta position new 2 (with EX-EY condition)
-    bool BetaGetPosNew2(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
-
     //! Get all Beta position new
     bool BetaGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Ion position
@@ -675,6 +653,7 @@ public:
 
     //!Calibration table
     //Double_t fdssd_cal[NumDSSD][NumStrXY][2];
+
 
     //! vector with the hits
     vector<AIDAHit*> fhits;

@@ -1,7 +1,7 @@
 #include "BuildAIDAEventsNew.h"
 BuildAIDAEvents::BuildAIDAEvents()
 {
-    fwindowHits = 200;
+    fwindowHits = 250;
     flag_threhold = false;
 
     //faidatranst = 20000;
@@ -14,8 +14,11 @@ BuildAIDAEvents::BuildAIDAEvents()
     fflag_corrscaler_in_stream = false;
 
     for (Int_t i=0;i<NumDSSD;i++){
-        fsumexcut[i] = -1000.;
-        fsumeycut[i] = -1000.;
+        fsumexcut[i] = -10000.;
+        fsumeycut[i] = -10000.;
+        fsumexcuth[i] = -10000.;
+        fsumeycuth[i] = -10000.;
+
     }
 
     for (Int_t i=0;i<NumDSSD;i++){
@@ -24,6 +27,9 @@ BuildAIDAEvents::BuildAIDAEvents()
             dssd_cal_he[i][j][1]=1.;
         }
     }
+
+    for (int i=0;i<NumFee;i++) for (int j=0;j<NumChFee;j++) chMask[i][j]=1;
+
 
     fcorrcut = -1;
     fmultcut = 10000;
@@ -71,6 +77,9 @@ void BuildAIDAEvents::Init(char* aidafile)
     aidaunpkg->Init(aidafile);
     aidaunpkg->read_mapping(fmappingfile);
 
+    aidaunpkg->CopyChannelMask(chMask);
+    aidaunpkg->ResetChannelMask();
+
     //if (fthresholdfile!=NULL) aidaunpkg->read_threshold_table(fthresholdfile);
     read_threshold_table(fthresholdfile);
 
@@ -95,7 +104,8 @@ void BuildAIDAEvents::Init(char* aidafile)
             flastfasttsEXT[i][j] = 0;
         }
     }
-    fflag_trans = false;    
+    fflag_trans = false;
+    //! Add on 2017 May20th
 }
 
 void BuildAIDAEvents::BookTree(TTree *treeIon,TTree *treeBeta,TTree *treePulser,Int_t bufsize)
@@ -197,25 +207,27 @@ void BuildAIDAEvents::ReadHECalibTable()
 
 //! Add AIDA ION hits
 void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
-    AIDAHit* hit = new AIDAHit;
-    hit->SetADC(aidaraw.adcData);
-    //hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
-    hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
+    if (chMask[aidaraw.feeNo][aidaraw.chNo]==1){
+        AIDAHit* hit = new AIDAHit;
+        hit->SetADC(aidaraw.adcData);
+        //hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
+        hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
 
-    hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
-    //hit->SetTimestamp(aidaraw.timestamp);
-    hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);
-    hit->SetXY(aidaraw.stripNo);
-    hit->SetZ(aidaraw.dssdNo);
-    hit->SetFEE(aidaraw.feeNo);
-    hit->SetFEEChannel(aidaraw.chNo);
-    hit->SetRange(aidaraw.rangeType);
-    flocalaidaION->AddHit(hit);
+        hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
+        //hit->SetTimestamp(aidaraw.timestamp);
+        hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);
+        hit->SetXY(aidaraw.stripNo);
+        hit->SetZ(aidaraw.dssdNo);
+        hit->SetFEE(aidaraw.feeNo);
+        hit->SetFEEChannel(aidaraw.chNo);
+        hit->SetRange(aidaraw.rangeType);
+        flocalaidaION->AddHit(hit);
+    }
 }
 
 //! Add AIDA Beta hitsflocalbeta
 void BuildAIDAEvents::AddAIDABetaHits(rawaida_info aidaraw){
-    if (aidaraw.adcData>dssd_thr[aidaraw.dssdNo][aidaraw.stripNo]){
+    if (aidaraw.adcData>dssd_thr[aidaraw.dssdNo][aidaraw.stripNo]&&chMask[aidaraw.feeNo][aidaraw.chNo]==1){
         AIDAHit* hit = new AIDAHit;
         hit->SetADC(aidaraw.adcData);
         hit->SetEnergy((double)aidaraw.adcData*dssd_cal[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal[aidaraw.dssdNo][aidaraw.stripNo][0]);
@@ -240,7 +252,8 @@ bool BuildAIDAEvents::CloseIonEvent()
       cout << __PRETTY_FUNCTION__ << endl;
     //cout<<fADIonEntry<<"-"<<flocalaidaION->GetMult()<<endl;
     //fADIonEntry++;
-    if (flocalaidaION->IonGetPos()) {
+    //if (flocalaidaION->IonGetPos()) {
+    if (flocalaidaION->BetaGetPosNew(-1,fsumexcuth,fsumeycuth)) {
         flocalaidaION->SetTimestamp(flocalaidaION->GetHit(0)->GetTimestamp());
         if (fflag_filldata) fmtrION->Fill();
         fADIonEntry++;

@@ -57,6 +57,8 @@ int main(int argc, char* argv[]){
 
   long long int WindowDiscriminator = 0;
 
+  long long int Window = 200;
+
   int FillFlag = 1;
   int GzFlag = 0;
   int RankingModeFlag = 1;
@@ -80,6 +82,7 @@ int main(int argc, char* argv[]){
   //interface->Add("-wi", "Ion event building window (default: 5000*10ns)", &WindowIon);
   //interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
   //interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
+  interface->Add("-w", "Time window between successive DAQ readouts (default: 200*10ns)", &Window);
   interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);
 
@@ -202,9 +205,7 @@ int main(int argc, char* argv[]){
       evts->SetCalibFile(CalibrationFile);
       evts->SetHECalibFile(CalibrationFileHE);
       evts->SetDiscriminatorTimeWindow(WindowDiscriminator);
-      //evts->SetAIDATransientTime(TransientTime);
-      //evts->SetEventWindowION(WindowIon);
-      //evts->SetEventWindowBETA(WindowBeta);
+      evts->SetTimeWindow(Window);
       evts->SetPulserInStream(false);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);

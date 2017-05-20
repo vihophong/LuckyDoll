@@ -55,6 +55,11 @@ public:
             aidaunpkg->EnableFastDiscriminator();
         }
     }
+
+    //! Set time window
+
+    void SetTimeWindow(unsigned long long windowHits){fwindowHits = windowHits;}
+
     //! Set (AIDAUnpacker) max timestamp offset between exTS and inTS deviation hit by hit
     void SetAIDAMaxTSOffset(long long maxtsoffset) {aidaunpkg->SetMaxOffSet(maxtsoffset);}
 
@@ -242,6 +247,13 @@ private:
     //! Sum energy cut
     Double_t fsumeycut[NumDSSD];
 
+    //! Sum energy cut for high energy
+    Double_t fsumexcuth[NumDSSD];
+    //! Sum energy cut for high energy
+    Double_t fsumeycuth[NumDSSD];
+
+    int chMask[NumFee][NumChFee]; //newly added
+
     //! Correlation cut
     Double_t fcorrcut;
 
@@ -252,7 +264,7 @@ private:
     bool fisranking;
 
     unsigned int ftemp;
-    rawaida_info aidaraw;
+    rawaida_info aidaraw;    
 
 };
 

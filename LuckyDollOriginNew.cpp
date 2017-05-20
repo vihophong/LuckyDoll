@@ -33,14 +33,13 @@ int main(int argc, char* argv[]){
 
   cout << "AIDA event builder" << endl;
   int Verbose = 0;
-  long long int WindowIon = 5000; //time unit: 10 ns
-  long long int WindowBeta = 2500; //time unit: 10 ns
   long long int WindowDiscriminator = 0;
+  long long int Window = 200;
+
 
 
   int FillFlag = 1;
   int GzFlag = 0;
-  long long int TransientTime = 20000;
   int RankingModeFlag = 1;
 
   char* InputAIDA = NULL;
@@ -57,6 +56,7 @@ int main(int argc, char* argv[]){
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
+  interface->Add("-w", "Time window between successive DAQ readouts (default: 200*10ns)", &Window);
   interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);
 
@@ -162,9 +162,7 @@ int main(int argc, char* argv[]){
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
       evts->SetDiscriminatorTimeWindow(WindowDiscriminator);
-      //evts->SetAIDATransientTime(TransientTime);
-      //evts->SetEventWindowION(WindowIon);
-      //evts->SetEventWindowBETA(WindowBeta);
+      evts->SetTimeWindow(Window);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
       cout<<"Ecorr= "<<ECorr<<endl;

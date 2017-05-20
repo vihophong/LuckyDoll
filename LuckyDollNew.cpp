@@ -57,6 +57,7 @@ int main(int argc, char* argv[]){
   //long long int TransientTime = 20000;
 
   long long int WindowDiscriminator = 0;
+  long long int Window = 200;
 
   int FillFlag = 1;
   int GzFlag = 0;
@@ -76,9 +77,7 @@ int main(int argc, char* argv[]){
   CommandLineInterface* interface = new CommandLineInterface();
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
-  //interface->Add("-wi", "Ion event building window (default: 5000*10ns)", &WindowIon);
-  //interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
-  //interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
+  interface->Add("-w", "Time window between successive DAQ readouts (default: 200*10ns)", &Window);
   interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);
 
@@ -187,9 +186,7 @@ int main(int argc, char* argv[]){
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
       evts->SetDiscriminatorTimeWindow(WindowDiscriminator);
-      //evts->SetAIDATransientTime(TransientTime);
-      //evts->SetEventWindowION(WindowIon);
-      //evts->SetEventWindowBETA(WindowBeta);
+      evts->SetTimeWindow(Window);
       evts->SetCorrScalerInStream(true);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
@@ -269,51 +266,44 @@ int main(int argc, char* argv[]){
               }
           }else if (!evts->IsBETA()){//ion
               //!sort the timestamp
-              int lastclusterID = evts->GetAIDAIon()->GetNClusters()-1;
-              if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()==evts->GetAIDAIon()->GetMaxZ()){
-                  Double_t ex = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetXEnergy();
-                  Double_t ey = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetYEnergy();
-                  aida.ID = IDion;
-                  aida.E = (ex+ey)/2;
-                  aida.EX = ex;
-                  aida.EY = ey;                  
-                  unsigned long long tsimp = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetTimestamp() * ClockResolution;
-                  aida.Tfast = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetFastTimestamp() * ClockResolution;
-                  aida.x = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionX();
-                  aida.y = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionY();
-                  aida.z = evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ();
-                  /*
-                  aida.nx=(int)evts->GetAIDAIon()->GetCluster(i)->GetXMultiplicity();
-                  aida.ny=(int)evts->GetAIDAIon()->GetCluster(i)->GetYMultiplicity();
-                  aida.nz = (int)evts->GetAIDAIon()->GetNClustersZi(int(aida.z));
-                  */
-                  aida.nx = (int)evts->GetAIDAIon()->GetMultX((int)aida.z);
-                  aida.ny = (int)evts->GetAIDAIon()->GetMultY((int)aida.z);
-                  aida.nz = (int)evts->GetAIDAIon()->GetClustersMultZ();
-                  //if (evts->GetAIDAIon()->GetCluster(lastclusterID)->GetHitPositionZ()>0) cout<< "eeeed"<<aida.z<<endl;
+              std::multimap<unsigned long long, int> tsvector;
+              std::multimap<unsigned long long, int>::iterator tsvector_it;
 
+              for (int i=0;i<evts->GetAIDACORR()->GetMult();i++){
+                  tsvector.insert(std::make_pair(evts->GetAIDACORR()->GetHit(i)->GetTimestamp()*ClockResolution,-1));
+              }
+              for (int i = 0;i<evts->GetAIDAIon()->GetNClusters();i++){
+                  if(evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()==evts->GetAIDAIon()->GetMaxZ()) tsvector.insert(std::make_pair(evts->GetAIDAIon()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
+              }
+              //!fill tree according to the time stamp
+              for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){
+                  Int_t i = tsvector_it->second;
+                  if (i!=-1){//real beta
+                      Double_t ex = evts->GetAIDAIon()->GetCluster(i)->GetXEnergy();
+                      Double_t ey = evts->GetAIDAIon()->GetCluster(i)->GetYEnergy();
+                      aida.ID = IDion;
+                      aida.E = (ex+ey)/2;
+                      aida.EX = ex;
+                      aida.EY = ey;
+                      //!If you need time ordered then we need to modify this
+                      aida.T = tsvector_it->first;
+                      aida.Tfast = evts->GetAIDAIon()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
+                      aida.x = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionX();
+                      aida.y = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionY();
+                      aida.z = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ();
 
-                  std::multimap<unsigned long long, int> tsvector;
-                  std::multimap<unsigned long long, int>::iterator tsvector_it;
+                      //aida.nx=(int)evts->GetAIDAIon()->GetCluster(i)->GetXMultiplicity();
+                      //aida.ny=(int)evts->GetAIDAIon()->GetCluster(i)->GetYMultiplicity();
+                      //aida.nz = (int)evts->GetAIDAIon()->GetNClustersZi(int(aida.z));
 
-                  tsvector.insert(std::make_pair(tsimp,-1));
-                  for (int i=0;i<evts->GetAIDACORR()->GetMult();i++){
-                      tsvector.insert(std::make_pair(evts->GetAIDACORR()->GetHit(i)->GetTimestamp()*ClockResolution,i));
+                      aida.nx = (int)evts->GetAIDAIon()->GetMultX((int)aida.z);
+                      aida.ny = (int)evts->GetAIDAIon()->GetMultY((int)aida.z);
+                      aida.nz = (int)evts->GetAIDAIon()->GetClustersMultZ();
+                  }else{//corrlation scaler
+                      aida.ID=IDcorr;
+                      aida.T=tsvector_it->first;
                   }
-                  for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){
-                      Int_t i = tsvector_it->second;
-                      if (i==-1) {//normal implant
-                          aida.ID=IDion;
-                          aida.T=tsimp;
-                      }else{  //corr scaler
-                          aida.ID=IDcorr;
-                          aida.T=tsvector_it->first;
-                      }
-                      if (FillFlag) tree->Fill();
-                  }
-
-              }else{
-                  cout<<"Somethings wrong with clustering?"<<endl;
+                  if (FillFlag) tree->Fill();
               }
           }else{//pulser (or something else?))
               for (int i=0;i<evts->GetAIDACORR()->GetMult();i++){

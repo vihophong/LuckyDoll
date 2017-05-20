@@ -93,6 +93,10 @@ public:
     //! Get correlation scaler histogram
     TH1F* GetCorrScalerHisto(){return corrTS;}
 
+    //! Added 2017 May20th to fix bug on disabling channels
+    void ResetChannelMask(){for (int i=0;i<NumFee;i++) for (int j=0;j<NumChFee;j++) chMask[i][j]=1;}
+    void CopyChannelMask(int fchMask[NumFee][NumChFee]){for (int i=0;i<NumFee;i++) for (int j=0;j<NumChFee;j++) fchMask[i][j]=chMask[i][j];}
+
     //! Book a tree
     int BookTree(TTree* tree);
     //! Get a tree
@@ -101,7 +105,6 @@ public:
     //! reverse mapping (accesible)
     int DSSDtoFee[NumFee][NumChFee];
     int DSSDtoCh[NumFee][NumChFee];
-
 
 private:
     //! file path

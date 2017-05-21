@@ -1253,7 +1253,7 @@ bool AIDA::BetaGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumey
                     delete cluster;
                 }
                 */
-                if ((corr_cut<=0)||(corr_cut>0)&&(cluster_map_it->first<corr_cut)&&mult_z<maxNposBeta && cluster->GetXEnergy()>sumexcut[z] && cluster->GetYEnergy()>sumeycut[z])
+                if ((corr_cut<=0)||(corr_cut>0)&&(cluster_map_it->first<corr_cut))
                 this->AddCluster(cluster);
                 else delete cluster;
             }//loop all cluster map
@@ -1544,7 +1544,7 @@ bool AIDA::IonGetPosNew()//Clustering algorithm applied for Ion events
                             if (dssdH_T_X[z][hitx][0]>dssdH_T_Y[z][hity][0]) {
                                 cluster->SetTimestamp(dssdH_T_Y[z][hity][0]);
                                 cluster->SetFastTimestamp(dssdF_T_Y[z][hity][0]);
-                            }else{
+                            }else {
                                 cluster->SetTimestamp(dssdH_T_X[z][hitx][0]);
                                 cluster->SetFastTimestamp(dssdF_T_X[z][hitx][0]);
                             }

@@ -630,6 +630,9 @@ public:
     bool BetaGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Ion position
     bool IonGetPos();
+    //! Ion position with clustering algorithm
+    bool IonGetPosNew();
+    bool IonGetPosAllNew();
 
   protected:
     //! aida time stamp (ealiest timestamp within event)

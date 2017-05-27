@@ -1,6 +1,6 @@
-#include "AIDAUnpacker.h"
+#include "AIDAUnpackerGz.h"
 
-AIDAUnpacker::AIDAUnpacker():midas(),rawaida(),finfile()
+AIDAUnpacker::AIDAUnpacker():midas(),rawaida(),finfile(),fifsinfilegz(),finfilegz()
 {
     fenableFastDisc = false;
     rawtree=NULL;
@@ -11,17 +11,21 @@ AIDAUnpacker::AIDAUnpacker():midas(),rawaida(),finfile()
         }
     }
     fmaxtsoffset = 100;
+    fisgzstream = false;
     for (int i=0;i<NumFee;i++) for (int j=0;j<NumChFee;j++) chMask[i][j]=1;
+    fncorrscaler=0;
 }
 
 AIDAUnpacker::~AIDAUnpacker(){
     //! error on this
     //delete corrTS;
-    finfile.close();
+    if (!fisgzstream) finfile.close();
+    else fifsinfilegz.close();
 }
 
 void AIDAUnpacker::Init(char *inputfile){
     fverbose = 0;
+    nresetwarning = 0;
     first_scan_flag=true;
     fillFlag = true;
     //!Set default Fee mask (enable all)
@@ -42,32 +46,46 @@ void AIDAUnpacker::Init(char *inputfile){
     my_first_time_offset = 0;
 
 
-    //! Open files
-    ffilepath = inputfile;
-    finfile.open(ffilepath,std::ios::in|std::ios::binary);
-    if (!finfile.good()){
-        cout<<"Error opening file "<<ffilepath<<endl;
-        exit(0);
-    }
+    if (!fisgzstream){//Normal mode
+        //! Open files
+        ffilepath = inputfile;
+        finfile.open(ffilepath,std::ios::in|std::ios::binary);
+        if (!finfile.good()){
+            cout<<"Error opening file "<<ffilepath<<endl;
+            exit(0);
+        }
+        //! Check for data integrity and get number of blocks
+        finfile.seekg(0,finfile.end);
+        int fileSize = finfile.tellg();
+        finfile.seekg(0,finfile.beg);
+        fileSize += -finfile.tellg();
 
-    //! Check for data integrity and get number of blocks
-    finfile.seekg(0,finfile.end);
-    int fileSize = finfile.tellg();
-    finfile.seekg(0,finfile.beg);
-    fileSize += -finfile.tellg();
+        fnblock=  fileSize / BLOCK_SIZE;
+        int nBlock_check = fileSize % BLOCK_SIZE;
+        if (nBlock_check != 0){
+            cout<<"Missing block data!"<<endl;
+            exit(0);
+        }
+        cout<<__PRETTY_FUNCTION__<< " Openning raw aida file: "<<ffilepath<<endl;
+        cout<< "Number of block = "<<fnblock<<endl;
 
-    fnblock=  fileSize / BLOCK_SIZE;
-    int nBlock_check = fileSize % BLOCK_SIZE;
-    if (nBlock_check != 0){
-        cout<<"Missing block data!"<<endl;
-        exit(0);
+    }else{//Gzip mode
+        ffilepath = inputfile;
+        fifsinfilegz.open(ffilepath, std::ios::in|std::ios::binary);
+        if (!fifsinfilegz.good()){
+            std::cout<<"Error opening file "<<ffilepath<<std::endl;
+            exit(0);
+        }
+        finfilegz.push(boost::iostreams::gzip_decompressor());
+        finfilegz.push(fifsinfilegz);
+        fnblock= 2000000000;//just put a finite large number
+        cout<<__PRETTY_FUNCTION__<< " Openning GZipped raw aida file: "<<ffilepath<<endl;
     }
-    cout<<__PRETTY_FUNCTION__<< " Openning raw aida file: "<<ffilepath<<endl;
-    cout<< "Number of block = "<<fnblock<<endl;
 
     //!Read header of the first block
     fcurrentblk = 0;
     ReadHeader();
+    if (fisgzstream&&finfilegz.eof()) exit(0);
     ClearSorter();
 }
 
@@ -94,8 +112,13 @@ void AIDAUnpacker::ClearSorter(){
 
 void AIDAUnpacker::ReadHeader(){
     fcurrentpkg = 0;
-    finfile.read((char*)&fblkHeader,sizeof(fblkHeader));
-    finfile.read((char*)&fblkData,sizeof(fblkData));
+    if (!fisgzstream){// read normally
+        finfile.read((char*)&fblkHeader,sizeof(fblkHeader));
+        finfile.read((char*)&fblkData,sizeof(fblkData));
+    }else{//read from gz pipe
+        finfilegz.read((char*)&fblkHeader,sizeof(fblkHeader));
+        finfilegz.read((char*)&fblkData,sizeof(fblkData));
+    }
     //!READ HEADER
     //! some unnessecaray stuffs
     header_stream = (fblkHeader[12] & 0xFF) << 8 | (fblkHeader[13]& 0xFF);
@@ -168,6 +191,10 @@ bool AIDAUnpacker::GetNextHitMIDAS(){
     fcurrentpkg += 8; // For every 8 byte (64 bit) for a block data
     if (fcurrentpkg>=fcurrentlen){
         ReadHeader();
+        //! to fix timejump bug!
+        if(!fisgzstream&&finfile.eof()) return false;
+
+        if (fisgzstream&&finfilegz.eof()) return false;
         fcurrentblk++;
     }
     if (fcurrentblk>fnblock) return false;
@@ -185,7 +212,6 @@ bool AIDAUnpacker::GetNextHit(){
         }else{
             ReconstructRawAIDA();
         }
-
         if (rawtree!=NULL&&!first_scan_flag) {
             if (ts_prev==rawaida.timestamp&&prev_rt==rawaida.rangeType&&prev_fee==rawaida.feeNo&&prev_ch==rawaida.chNo)
                 cout<<"duplicate entry found!"<<rawaida.feeNo <<
@@ -298,13 +324,18 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             int my_MBS_index;
             long long my_MBS_bits;
             my_MBS_index=(midas.infoField & 0x000F0000) >>16; //-> Bit 19:16 is information index
-            my_MBS_bits=midas.infoField & 0x0000FFFF; //-> Bit 15:0 with EXT scaler data (0 1 2 index) (LUPO?)
+            my_MBS_bits=midas.infoField & 0x0000FFFF; //-> Bit 15:0 with EXT scaler data (0 1 2 index) (LUPO?)            
+
+
             if (my_MBS_index==0 || my_MBS_index==1){ //Get low bits of EXT time stamp
                 MBS_hit[midas.feeId][my_MBS_index]=true;
                 MBS_bits[midas.feeId][my_MBS_index]=my_MBS_bits; // LSB of the ext data (bit 15:0 or 31:16) with ch number
                 MBS_tm_stp_lsb[midas.feeId][my_MBS_index]=midas.timestampLsb; //Get timestamp of this information
             }
             else if(my_MBS_index==2){ //get higher bits of EXT timestamp (assume other low bits info already come
+                fncorrscaler++;
+                rawaida.rangeType = -1;// newly added (May13 2017)
+
                 if (MBS_hit[midas.feeId][0]&&MBS_hit[midas.feeId][1]){ // when we have enough 2 hits in time stamp scaler
                     unsigned long t1=midas.timestampLsb;
                     unsigned long t2=MBS_tm_stp_lsb[midas.feeId][1];
@@ -315,7 +346,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
                         //!Only take last bit of time stamp
                         rawaida.infoCode = 8;
                         //note my_MBS_bits<<32 is now in index 2 which is bit 32-47
-                        rawaida.extTimestamp=(my_MBS_bits <<32 | MBS_bits[midas.feeId][1] <<16 | MBS_bits[midas.feeId][0])*tm_stp_scaler_ratio;
+                        rawaida.extTimestamp=my_MBS_bits <<32 | MBS_bits[midas.feeId][1] <<16 | MBS_bits[midas.feeId][0];
 
                         //cout<<"phong1 - "<<rawaida.extTimestamp<<endl;
                         //!Get first correlation scaler
@@ -324,9 +355,9 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
                                 first_corr_scaler_timestamp=rawaida.extTimestamp;
                                 //get offset time from here!!!
                                 long long timestamp_temp=(long long)(tm_stp_msb_modules[midas.feeId] << 28 ) | (midas.timestampLsb & 0x0FFFFFFF); //caution this conversion!
-                                my_first_time_offset=first_corr_scaler_timestamp-timestamp_temp;
-                                corrTS=new TH1F("corrTS","corrTS",fmaxtsoffset*2,my_first_time_offset-fmaxtsoffset,my_first_time_offset+fmaxtsoffset);
-                                //std::cout<<"Got you first offset bw AIDA-LUPO! = "<<std::dec<<my_first_time_offset<<"-- Timestamp LUPO="<<first_corr_scaler_timestamp<<"| Timestamp AIDA="<<timestamp_temp<<std::endl;
+                                my_first_time_offset=first_corr_scaler_timestamp*tm_stp_scaler_ratio-timestamp_temp;
+                                //corrTS=new TH1F("corrTS","corrTS",fmaxtsoffset*2,my_first_time_offset-fmaxtsoffset,my_first_time_offset+fmaxtsoffset);
+                                //std::cout<<"Got you first offset bw AIDA-LUPO! = "<<std::dec<<my_first_time_offset<<"-- Timestamp LUPO="<<first_corr_scaler_timestamp*tm_stp_scaler_ratio<<"| Timestamp AIDA="<<timestamp_temp<<std::endl;
                                 //CAUTION:IF FOR SOME REASON WE MISS SYNC THEN THIS OFFSET MAKE NON SENSE
                             }
                             first_corr_scaler_datum++;
@@ -363,7 +394,6 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
 
         }// if (midas.infoCode==8)
     }//if great info data
-
     //Skip uninteresting piece of data!
     if(fillFlag&&!first_scan_flag){
         //get time stamp which include msb
@@ -397,12 +427,16 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
         if (sync_flag){
             //! Get correlation scaler offset
             if (rawaida.infoCode==8) {
-                long long temp=rawaida.extTimestamp-rawaida.timestamp;
-                if (temp-my_first_time_offset<fmaxtsoffset&&temp-my_first_time_offset>-fmaxtsoffset) my_time_offset=temp;
-                else cout<<"AIDA time stamp scaler is going down!"<<endl;
-                corrTS->Fill(temp);
+                long long temp=rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp;
+                if (temp-my_first_time_offset<fmaxtsoffset&&temp-my_first_time_offset>-fmaxtsoffset) {
+                    my_time_offset=temp;
+                }else{
+                    if (nresetwarning<10) cout<<"AIDA time stamp scaler jumped! maybe timestamp reset is sent"<<endl;
+                    nresetwarning ++;
+                }
+                //corrTS->Fill(temp);
             }else{
-                rawaida.extTimestamp=(my_time_offset+rawaida.timestamp); //convert to ext timestamp unit
+                rawaida.extTimestamp=(my_time_offset+rawaida.timestamp)/tm_stp_scaler_ratio; //convert to ext timestamp unit
             }
 
             //!Check global time warps
@@ -415,7 +449,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             //! Masking for slow discriminator data
             if (rawaida.infoCode==0&&rawaida.rangeType==0){
                 if(chMask[rawaida.feeNo][rawaida.chNo]){
-                    //if (rawaida.infoCode==0) corrTS->Fill(rawaida.extTimestamp-rawaida.timestamp);
+                    //if (rawaida.infoCode==0) corrTS->Fill(rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp);
                 }else{
                     fillFlag=false;
                 }
@@ -424,14 +458,22 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
                     fillFlag=false;
             }
 
+            //! Masking for high energy
+            if (rawaida.infoCode==0&&rawaida.rangeType==1){
+                if(chMask[rawaida.feeNo][rawaida.chNo]){
+
+                }else{
+                    fillFlag=false;
+                }
+            }
+
         }else{ //fail sync flag
             fillFlag=false;
         }
     }else{ //fail fill flag (from MBS hit scan)
         fillFlag=false;
     }
-
-    if (!(rawaida.infoCode==0||(fenableFastDisc&&rawaida.infoCode==6))) return false;
+    if (!(rawaida.infoCode==0||(fenableFastDisc&&rawaida.infoCode==6)||rawaida.rangeType==-1)) return false;
     return fillFlag;
 }
 
@@ -528,7 +570,7 @@ int AIDAUnpacker::GetFirstSync(){
             cout<<" First MSB of Timestamp = "<<"0x"<<std::hex<<first_tm_stp_msb_modules[i]<<endl;
         }
     }
-    cout<<"First Corr timestamp = "<<std::dec<<first_corr_scaler_timestamp<<endl;
+    cout<<"First Corr timestamp = "<<std::dec<<first_corr_scaler_timestamp*tm_stp_scaler_ratio<<endl;
     cout<<"First Offset timestamp = "<<my_first_time_offset<<endl;
 
     //!Set starting value of correlation scaler and most significant bit of timestamp
@@ -537,13 +579,26 @@ int AIDAUnpacker::GetFirstSync(){
     }
     my_time_offset = my_first_time_offset;
     first_scan_flag=false;
-    //! Rewind
-    finfile.clear();
-    finfile.seekg(0, ios::beg);
+    if (!fisgzstream){
+        //! Rewind
+        finfile.clear();
+        finfile.seekg(0, ios::beg);
+    }else{
+        //! Rewind
+        fifsinfilegz.clear();
+        fifsinfilegz.seekg(0, ios::beg);
+        //! reset boost gz pipe
+        finfilegz.reset();
+        //! setup boost gz pipe again
+        finfilegz.push(boost::iostreams::gzip_decompressor());
+        finfilegz.push(fifsinfilegz);
+    }
     //!Read header of the first block
     fcurrentblk = 0;
     ReadHeader();
     ncheck=0;
+
+    fncorrscaler=0;
 }
 
 int AIDAUnpacker::BookTree(TTree *tree)

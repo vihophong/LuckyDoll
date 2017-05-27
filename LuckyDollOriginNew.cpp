@@ -210,7 +210,7 @@ int main(int argc, char* argv[]){
               if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
           }else if (!evts->IsBETA()){
               //nion++;
-              if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
+              if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();              
           }
           if(signal_received){
             break;

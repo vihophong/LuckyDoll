@@ -129,6 +129,7 @@ public:
     //! Close event
     bool CloseIonEvent();
     bool CloseBetaEvent();
+    TH1F* h1;
 
 private:
     //!verbose
@@ -265,6 +266,8 @@ private:
 
     unsigned int ftemp;
     rawaida_info aidaraw;    
+
+    Long64_t ftprevcheck;
 
 };
 

@@ -1,7 +1,7 @@
 #include "BuildAIDAEventsNew.h"
 BuildAIDAEvents::BuildAIDAEvents()
 {
-    fwindowHits = 250;
+    fwindowHits = 201;
     flag_threhold = false;
 
     //faidatranst = 20000;
@@ -40,6 +40,9 @@ BuildAIDAEvents::BuildAIDAEvents()
     flocalaidaBETA = new AIDA;
     flocalaidaION = new AIDA;
     flocalaidaCORR = new AIDA;
+    ftprevcheck=-1000;
+
+    //h1=new TH1F("tt","tt",2000,0,2000);
 }
 
 BuildAIDAEvents::~BuildAIDAEvents()
@@ -212,9 +215,10 @@ void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
         hit->SetADC(aidaraw.adcData);
         //hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
         hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
-
-        hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
-        //hit->SetTimestamp(aidaraw.timestamp);
+        hit->SetTimestamp(aidaraw.extTimestamp);
+        //if ((flastfastts[aidaraw.feeNo][aidaraw.chNo] + fwindowDisc) > aidaraw.timestamp)
+        //   hit->SetFastTimestamp(flastfasttsEXT[aidaraw.feeNo][aidaraw.chNo]);
+        hit->SetFastTimestamp(aidaraw.timestamp);
         hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);
         hit->SetXY(aidaraw.stripNo);
         hit->SetZ(aidaraw.dssdNo);
@@ -231,10 +235,10 @@ void BuildAIDAEvents::AddAIDABetaHits(rawaida_info aidaraw){
         AIDAHit* hit = new AIDAHit;
         hit->SetADC(aidaraw.adcData);
         hit->SetEnergy((double)aidaraw.adcData*dssd_cal[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal[aidaraw.dssdNo][aidaraw.stripNo][0]);
-        hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
-        //hit->SetTimestamp(aidaraw.timestamp);
-        if ((flastfastts[aidaraw.feeNo][aidaraw.chNo] + fwindowDisc) > aidaraw.timestamp)
-            hit->SetFastTimestamp(flastfasttsEXT[aidaraw.feeNo][aidaraw.chNo]);
+        hit->SetTimestamp(aidaraw.extTimestamp);
+        //if ((flastfastts[aidaraw.feeNo][aidaraw.chNo] + fwindowDisc) > aidaraw.timestamp)
+        //   hit->SetFastTimestamp(flastfasttsEXT[aidaraw.feeNo][aidaraw.chNo]);
+        hit->SetFastTimestamp(aidaraw.timestamp);
         hit->SetID(aidaraw.stripNo + aidaraw.dssdNo*NumStrXY);
         hit->SetXY(aidaraw.stripNo);
         hit->SetZ(aidaraw.dssdNo);
@@ -252,12 +256,36 @@ bool BuildAIDAEvents::CloseIonEvent()
       cout << __PRETTY_FUNCTION__ << endl;
     //cout<<fADIonEntry<<"-"<<flocalaidaION->GetMult()<<endl;
     //fADIonEntry++;
-    //if (flocalaidaION->IonGetPos()) {
-    if (flocalaidaION->BetaGetPosNew(-1,fsumexcuth,fsumeycuth)) {
-        flocalaidaION->SetTimestamp(flocalaidaION->GetHit(0)->GetTimestamp());
-        if (fflag_filldata) fmtrION->Fill();
-        fADIonEntry++;
-        return true;
+    if (fisranking){//! newly added
+        //if (flocalaidaION->IonGetPos()) {
+        if (flocalaidaION->BetaGetPosNew(-1,fsumexcuth,fsumeycuth)) {
+            flocalaidaION->SetTimestamp(flocalaidaION->GetHit(0)->GetTimestamp());
+            /*
+            for (int i=0;i<flocalaidaBETA->GetHits().size();i++){
+                AIDAHit* hit=new AIDAHit;
+                flocalaidaBETA->GetHit(i)->Copy(*hit);
+                flocalaidaION->AddHit(hit);
+            }
+            */
+            if (fflag_filldata) fmtrION->Fill();
+            fADIonEntry++;
+            return true;
+        }
+    }else{
+        //if (flocalaidaION->IonGetPos()) {
+        if (flocalaidaION->BetaGetPosAllNew(-1,fsumexcuth,fsumeycuth)) {
+            flocalaidaION->SetTimestamp(flocalaidaION->GetHit(0)->GetTimestamp());
+            /*
+            for (int i=0;i<flocalaidaBETA->GetHits().size();i++){
+                AIDAHit* hit=new AIDAHit;
+                flocalaidaBETA->GetHit(i)->Copy(*hit);
+                flocalaidaION->AddHit(hit);
+            }
+            */
+            if (fflag_filldata) fmtrION->Fill();
+            fADIonEntry++;
+            return true;
+        }
     }
     return false;
 }
@@ -322,8 +350,10 @@ bool BuildAIDAEvents::GetNextEvent(){
         }else if (aidaraw.rangeType==0){
             flastADBetats = aidaraw.timestamp;
             AddAIDABetaHits(aidaraw);
+
             fflag_ision = false;
         }
+        //h1->Fill(aidaraw.timestamp-ftprevcheck);
     }
     fflag_addFirstHit=false;
 
@@ -350,7 +380,7 @@ bool BuildAIDAEvents::GetNextEvent(){
                 flastts = aidaraw.timestamp;
                 fflag_firsthit = false;
             }
-            if (aidaraw.timestamp<flastts+fwindowHits){
+            if (aidaraw.timestamp<=flastts+fwindowHits){
                 //! if ion hit
                 if (aidaraw.rangeType==1){
                     flastADIonts = aidaraw.timestamp;
@@ -362,7 +392,9 @@ bool BuildAIDAEvents::GetNextEvent(){
                     flastADBetats = aidaraw.timestamp;
                     AddAIDABetaHits(aidaraw);
                 }
+                //h1->Fill(aidaraw.timestamp-ftprevcheck);
             }else{ //out of window, next event
+                ftprevcheck=-1000;
                 if (fflag_ision) {
                     flag_stop = CloseIonEvent();
                     fADtsION = aidaraw.extTimestamp*tm_stp_scaler_ratio;
@@ -403,6 +435,7 @@ bool BuildAIDAEvents::GetNextEvent(){
                     }
                 }
             }
+            //ftprevcheck=aidaraw.timestamp;
             flastts = aidaraw.timestamp;
         }
 

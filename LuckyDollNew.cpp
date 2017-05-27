@@ -70,6 +70,7 @@ int main(int argc, char* argv[]){
   char* MappingFile = NULL;
   char* ECutFile = NULL;
   double ECorr=-1.;
+  char* CalibrationFileHE = NULL;
 
   int SumMultCut=10000;
 
@@ -83,6 +84,7 @@ int main(int argc, char* argv[]){
 
   interface->Add("-map", "mapping file", &MappingFile);
   interface->Add("-cal", "calibration file", &CalibrationFile);
+  interface->Add("-hecal", "calibration file for high energy", &CalibrationFileHE);
   interface->Add("-thr", "threshold file", &ThresholdFile);
 
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
@@ -115,6 +117,12 @@ int main(int argc, char* argv[]){
     CalibrationFile = new char[600];
     strcpy(CalibrationFile,"/sssewqewwq/");
     return 1;
+  }
+  if(CalibrationFileHE == NULL){
+    cout << "No Calibration table for high energy is given " << endl;
+    CalibrationFileHE = new char[100];
+    strcpy(CalibrationFileHE,"dummy2312039290");
+    //return 1;
   }
   if(OutFile == NULL){
     cout << "No output ROOT file given " << endl;
@@ -185,6 +193,7 @@ int main(int argc, char* argv[]){
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
+      evts->SetHECalibFile(CalibrationFileHE);
       evts->SetDiscriminatorTimeWindow(WindowDiscriminator);
       evts->SetTimeWindow(Window);
       evts->SetCorrScalerInStream(true);
@@ -230,7 +239,6 @@ int main(int argc, char* argv[]){
               for (int i=0;i<evts->GetAIDACORR()->GetMult();i++){
                   tsvector.insert(std::make_pair(evts->GetAIDACORR()->GetHit(i)->GetTimestamp()*ClockResolution,-1));
               }
-
               for (int i = 0;i<evts->GetAIDABeta()->GetNClusters();i++){
                   tsvector.insert(std::make_pair(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
               }
@@ -257,7 +265,7 @@ int main(int argc, char* argv[]){
 
                       aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
                       aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
-                      aida.nz = (int)evts->GetAIDABeta()->GetClustersMultZ();
+                      aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi((int) aida.z);
                   }else{//corrlation scaler
                       aida.ID=IDcorr;
                       aida.T=tsvector_it->first;

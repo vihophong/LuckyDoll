@@ -248,7 +248,7 @@ int main(int argc, char* argv[]){
               //if (FillFlag&&aidabeta->GetNClusters()>0) treebeta->Fill();
           if (FillFlag) treebeta->Fill();
           }else if (!evts->IsBETA()){
-              aidaion->Clear();              
+              aidaion->Clear();
               evts->GetAIDAIon()->Copy(*aidaion);
               //! newly add to include low energy hits in ion events
               /*
@@ -262,7 +262,7 @@ int main(int argc, char* argv[]){
                   AIDAHit* hit=new AIDAHit;
                   evts->GetAIDAIon()->GetHit(j)->Copy(*hit);
                   aidaion->AddHit(hit);
-              }              
+              }
               aidaion->SetMult(evts->GetAIDAIon()->GetMult());
               */ //multiplicity becomes 2?
               if (FillFlag) treeion->Fill();

@@ -324,7 +324,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             int my_MBS_index;
             long long my_MBS_bits;
             my_MBS_index=(midas.infoField & 0x000F0000) >>16; //-> Bit 19:16 is information index
-            my_MBS_bits=midas.infoField & 0x0000FFFF; //-> Bit 15:0 with EXT scaler data (0 1 2 index) (LUPO?)            
+            my_MBS_bits=midas.infoField & 0x0000FFFF; //-> Bit 15:0 with EXT scaler data (0 1 2 index) (LUPO?)
 
 
             if (my_MBS_index==0 || my_MBS_index==1){ //Get low bits of EXT time stamp
@@ -346,7 +346,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
                         //!Only take last bit of time stamp
                         rawaida.infoCode = 8;
                         //note my_MBS_bits<<32 is now in index 2 which is bit 32-47
-                        rawaida.extTimestamp=my_MBS_bits <<32 | MBS_bits[midas.feeId][1] <<16 | MBS_bits[midas.feeId][0];
+                        rawaida.extTimestamp=(my_MBS_bits <<32 | MBS_bits[midas.feeId][1] <<16 | MBS_bits[midas.feeId][0])*tm_stp_scaler_ratio;
 
                         //cout<<"phong1 - "<<rawaida.extTimestamp<<endl;
                         //!Get first correlation scaler
@@ -355,9 +355,9 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
                                 first_corr_scaler_timestamp=rawaida.extTimestamp;
                                 //get offset time from here!!!
                                 long long timestamp_temp=(long long)(tm_stp_msb_modules[midas.feeId] << 28 ) | (midas.timestampLsb & 0x0FFFFFFF); //caution this conversion!
-                                my_first_time_offset=first_corr_scaler_timestamp*tm_stp_scaler_ratio-timestamp_temp;
+                                my_first_time_offset=first_corr_scaler_timestamp-timestamp_temp;
                                 //corrTS=new TH1F("corrTS","corrTS",fmaxtsoffset*2,my_first_time_offset-fmaxtsoffset,my_first_time_offset+fmaxtsoffset);
-                                //std::cout<<"Got you first offset bw AIDA-LUPO! = "<<std::dec<<my_first_time_offset<<"-- Timestamp LUPO="<<first_corr_scaler_timestamp*tm_stp_scaler_ratio<<"| Timestamp AIDA="<<timestamp_temp<<std::endl;
+                                //std::cout<<"Got you first offset bw AIDA-LUPO! = "<<std::dec<<my_first_time_offset<<"-- Timestamp LUPO="<<first_corr_scaler_timestamp<<"| Timestamp AIDA="<<timestamp_temp<<std::endl;
                                 //CAUTION:IF FOR SOME REASON WE MISS SYNC THEN THIS OFFSET MAKE NON SENSE
                             }
                             first_corr_scaler_datum++;
@@ -427,16 +427,17 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
         if (sync_flag){
             //! Get correlation scaler offset
             if (rawaida.infoCode==8) {
-                long long temp=rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp;
+                long long temp=rawaida.extTimestamp-rawaida.timestamp;
                 if (temp-my_first_time_offset<fmaxtsoffset&&temp-my_first_time_offset>-fmaxtsoffset) {
                     my_time_offset=temp;
+
                 }else{
                     if (nresetwarning<10) cout<<"AIDA time stamp scaler jumped! maybe timestamp reset is sent"<<endl;
                     nresetwarning ++;
                 }
                 //corrTS->Fill(temp);
             }else{
-                rawaida.extTimestamp=(my_time_offset+rawaida.timestamp)/tm_stp_scaler_ratio; //convert to ext timestamp unit
+                rawaida.extTimestamp=my_time_offset+rawaida.timestamp; //convert to ext timestamp unit
             }
 
             //!Check global time warps
@@ -449,7 +450,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             //! Masking for slow discriminator data
             if (rawaida.infoCode==0&&rawaida.rangeType==0){
                 if(chMask[rawaida.feeNo][rawaida.chNo]){
-                    //if (rawaida.infoCode==0) corrTS->Fill(rawaida.extTimestamp*tm_stp_scaler_ratio-rawaida.timestamp);
+                    //if (rawaida.infoCode==0) corrTS->Fill(rawaida.extTimestamp-rawaida.timestamp);
                 }else{
                     fillFlag=false;
                 }
@@ -570,7 +571,7 @@ int AIDAUnpacker::GetFirstSync(){
             cout<<" First MSB of Timestamp = "<<"0x"<<std::hex<<first_tm_stp_msb_modules[i]<<endl;
         }
     }
-    cout<<"First Corr timestamp = "<<std::dec<<first_corr_scaler_timestamp*tm_stp_scaler_ratio<<endl;
+    cout<<"First Corr timestamp = "<<std::dec<<first_corr_scaler_timestamp<<endl;
     cout<<"First Offset timestamp = "<<my_first_time_offset<<endl;
 
     //!Set starting value of correlation scaler and most significant bit of timestamp

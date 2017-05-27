@@ -210,7 +210,7 @@ void BuildAIDAEvents::ReadHECalibTable()
 
 //! Add AIDA ION hits
 void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
-    if (chMask[aidaraw.feeNo][aidaraw.chNo]==1){
+    //if (chMask[aidaraw.feeNo][aidaraw.chNo]==1){ //no disable high energy
         AIDAHit* hit = new AIDAHit;
         hit->SetADC(aidaraw.adcData);
         //hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
@@ -226,7 +226,7 @@ void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
         hit->SetFEEChannel(aidaraw.chNo);
         hit->SetRange(aidaraw.rangeType);
         flocalaidaION->AddHit(hit);
-    }
+    //}
 }
 
 //! Add AIDA Beta hitsflocalbeta

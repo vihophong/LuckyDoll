@@ -146,6 +146,7 @@ int main(int argc, char* argv[]){
       tree->Branch("aida",&aida,"T/l:Tfast/l:E/D:EX/D:EY/D:x/D:y/D:z/D:nx/I:ny/I:nz/I:ID/b");
   }
 
+  
   //! Read list of files
   string inputfiles[1000];
   ifstream inf(InputAIDA);
@@ -186,6 +187,9 @@ int main(int argc, char* argv[]){
       }
   }
 
+  //!  current time offset
+  long long currentTSoffset=0;
+
   for (Int_t i=0;i<nfiles;i++){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
       evts->SetVerbose(Verbose);
@@ -204,6 +208,9 @@ int main(int argc, char* argv[]){
       evts->SetSumMultiplicityCut(SumMultCut);
       if (RankingModeFlag==0) evts->SetNoCorrRankingMode();
       evts->Init((char*)inputfiles[i].c_str());
+
+      //! add last corr ts from previous run, added for briken experiment
+      if (i>0) evts->GetAIDAUnpacker()->SetCurrentCorrTSoffset(currentTSoffset);
       double time_last = (double) get_time();
 
       int ctr=0;
@@ -220,6 +227,7 @@ int main(int argc, char* argv[]){
       while(evts->GetNextEvent()){
           ttotal++;
           ctr=evts->GetCurrentADBlock();
+
           if(ctr%1000 == 0){
             int nevtbeta = evts->GetCurrentBetaEvent();
             int nevtion = evts->GetCurrentIonEvent();
@@ -227,10 +235,10 @@ int main(int argc, char* argv[]){
             cout << inputfiles[i] << setw(5) << setiosflags(ios::fixed) << setprecision(1) << (100.*ctr)/total<<" % done\t" <<
               (Float_t)ctr/(time_end - local_time_start) << " blocks/s " <<
               (Float_t)nevtbeta/(time_end - local_time_start) <<" betas/s  "<<
-               (Float_t)nevtion/(time_end - local_time_start) <<" ions/s "<<
+                    (Float_t)nevtion/(time_end - local_time_start) <<" ions/s "<<
                (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r "<<flush;
             time_last = time_end;
-          }
+          }                   
           if (evts->IsBETA()&&evts->GetAIDABeta()->GetMult()<64) {//real beta
               //!sort the timestamp
               std::multimap<unsigned long long, int> tsvector;
@@ -295,7 +303,7 @@ int main(int argc, char* argv[]){
                       aida.EY = ey;
                       //!If you need time ordered then we need to modify this
                       aida.T = tsvector_it->first;
-                      aida.Tfast = evts->GetAIDAIon()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
+                      aida.Tfast = evts->GetAIDAIon()->GetCluster(i)->GetFastTimestamp() * ClockResolution;                     
                       aida.x = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionX();
                       aida.y = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionY();
                       aida.z = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ();
@@ -334,14 +342,18 @@ int main(int argc, char* argv[]){
           if (evts->IsBETA()) {
               if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
           }else if (!evts->IsBETA()){
-              if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
+              if(evts->GetAIDAIon()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
           }
           if(signal_received){
             break;
           }
-      }
+      }      
 
 
+      //! Get last corr ts, added for briken experiment
+      currentTSoffset=evts->GetAIDAUnpacker()->GetCurrentCorrTSoffset();
+
+      cout<<"t"<<tend<<"-"<<tstart<<endl;
       runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
       runtime[0] += runtime[i+1];
       cout<<"Summary for subrun: "<<inputfiles[i]<<endl;

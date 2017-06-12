@@ -102,6 +102,14 @@ public:
     //! Get a tree
     TTree* GetTree(){return rawtree;}
 
+    //! Get first Corr time stamp offset
+    long long GetFirstCorrTSoffset() {return my_first_time_offset;}
+    //! Get current Corr time stamp offset
+    long long GetCurrentCorrTSoffset() {return rawaida.extTimestamp-rawaida.timestamp;}
+    //! Set first corr ts offset
+    void SetFirstCorrTSoffset(long long tsoff) {my_first_time_offset=tsoff;}
+    void SetCurrentCorrTSoffset(long long tsoff) {my_time_offset=tsoff;}
+
     //! reverse mapping (accesible)
     int DSSDtoFee[NumFee][NumChFee];
     int DSSDtoCh[NumFee][NumChFee];

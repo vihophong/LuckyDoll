@@ -12,7 +12,7 @@
 #include "TStopwatch.h"
 #include "TClonesArray.h"
 #include "CommandLineInterface.h"
-#include "AIDAUnpacker.h"
+#include "AIDAUnpackerGz.h"
 #include "BuildAIDAEventsNew.h"
 #include "AIDA.h"
 #include "TVectorD.h"
@@ -151,11 +151,18 @@ int main(int argc, char* argv[]){
       }
   }
   //Int_t nion=0;
+  Long64_t ts_prev_ion_hit=0;
+  Long64_t ts_prev_beta_last=0;
+  Long64_t tdeadtimesum=0;
+
+
+  //!  current time offset
+  long long currentTSoffset=0;
 
   for (Int_t i=0;i<nfiles;i++){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
       evts->SetVerbose(Verbose);
-      if (GzFlag!=0) evts->SetGzStream();      
+      if (GzFlag!=0) evts->SetGzStream();
       if (FillFlag) evts->BookTree(treeion,treebeta,treepulser);
 
       evts->SetMappingFile(MappingFile);
@@ -170,6 +177,10 @@ int main(int argc, char* argv[]){
       evts->SetSumMultiplicityCut(SumMultCut);
       if (RankingModeFlag==0) evts->SetNoCorrRankingMode();
       evts->Init((char*)inputfiles[i].c_str());
+
+      //! add last corr ts from previous run, added for briken experiment
+      if (i>0) evts->GetAIDAUnpacker()->SetCurrentCorrTSoffset(currentTSoffset);
+
       double time_last = (double) get_time();
 
       int ctr=0;
@@ -198,26 +209,57 @@ int main(int argc, char* argv[]){
             time_last = time_end;
           }
 
+
+
+          //! special for test
+          if (evts->IsBETA()){
+              evts->GetBetaTree()->Fill();
+              /*
+              if (evts->GetAIDABeta()->GetMult()<128){
+                  tshist->Fill(evts->GetAIDABeta()->GetTimestamp()-ts_prev_ion_hit);
+                  if ((evts->GetAIDABeta()->GetTimestamp()-ts_prev_ion_hit)>4000000){
+                      evts->GetAIDABeta()->ClearAllHits();
+                      if (evts->GetAIDABeta()->GetNClusters()>0) evts->GetBetaTree()->Fill();
+                  }
+              }
+              */
+          }else{
+              /*
+              if (evts->GetAIDAIon()->GetMult()>0) {
+                  //if ((evts->GetAIDAIon()->GetHit(0)->GetTimestamp()-ts_prev_ion_hit)>400000) tdeadtimesum+=1;
+                  ts_prev_ion_hit=evts->GetAIDAIon()->GetHit(evts->GetAIDAIon()->GetMult()-1)->GetTimestamp();
+              }else{
+                  cout<<"sth wrong"<<endl;
+              }
+              //evts->GetAIDAIon()->ClearAllHits();
+              //if (evts->GetAIDAIon()->GetNClusters()>0) evts->GetIonTree()->Fill();
+              */
+              evts->GetIonTree()->Fill();
+          }
+
           //!Get run time
           if (evts->IsBETA()&&start==0) {
-              tstart = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
+              if(evts->GetAIDABeta()->GetHits().size()>0) tstart = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
               start++;
           }else if (!evts->IsBETA()&&start==0){
-              tstart = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
+              if(evts->GetAIDAIon()->GetHits().size()>0) tstart = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
               start++;
           }
           if (evts->IsBETA()) {
               if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
           }else if (!evts->IsBETA()){
               //nion++;
-              if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();              
+              if(evts->GetAIDAIon()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
           }
           if(signal_received){
             break;
           }
           //if (nion>70000) goto l1;
       }
-      runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
+      //! Get last corr ts, added for briken experiment
+      currentTSoffset=evts->GetAIDAUnpacker()->GetCurrentCorrTSoffset();
+
+      runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e6;
       runtime[0] += runtime[i+1];
       cout<<evts->GetCurrentBetaEvent()<<" beta events"<<endl;
       cout<<evts->GetCurrentIonEvent()<<" ion events"<<endl;
@@ -227,7 +269,10 @@ int main(int argc, char* argv[]){
       delete evts;
   }
  l1:
+  if (ts_prev_beta_last-ts_prev_ion_hit>100000) tdeadtimesum+=1;
+  runtime[0]=tdeadtimesum;
   if (FillFlag){
+      //tshist->Write();
       treeion->Write();
       treebeta->Write();
       treepulser->Write();

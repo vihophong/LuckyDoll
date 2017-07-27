@@ -12,17 +12,10 @@
 #include "TStopwatch.h"
 #include "TClonesArray.h"
 #include "CommandLineInterface.h"
-#include "AIDAUnpacker.h"
+#include "AIDAUnpackerGz.h"
 #include "BuildAIDAEventsNew.h"
 #include "AIDA.h"
 #include "TVectorD.h"
-
-using namespace TMath;
-using namespace std;
-bool signal_received = false;
-void signalhandler(int sig);
-double get_time();
-
 
 typedef struct {
     unsigned long long T; 	 // Calibrated time
@@ -32,16 +25,26 @@ typedef struct {
     double EY;
     double x,y,z;// number of pixel for AIDA, or number of tube for BELEN
     int nx, ny, nz;// multiplicity of hits in x and y strips, and dssd planes
-    unsigned char ID; 	 // Detector type (BigRips, Aida ion, AIDA beta, BELEN, Clovers)
+    int ID; 	 // Detector type (BigRips, Aida ion, AIDA beta, BELEN, Clovers)
     //** other stuff pending to define **//
-} datatype;
+    int tw; 	 // Calibrated time
+    int dz;//dz for dssd1
+    int niz;// strip-high-multiplicity flag
 
+} datatype;
 
 const unsigned char IDion = 4;
 const unsigned char IDbeta = 5;
+const unsigned char IDcorr = 6;
+
+
+using namespace TMath;
+using namespace std;
+bool signal_received = false;
+void signalhandler(int sig);
+double get_time();
 
 int main(int argc, char* argv[]){
-
   //! Program start time
   double time_start = get_time();
   TStopwatch timer;
@@ -51,37 +54,33 @@ int main(int argc, char* argv[]){
 
   cout << "AIDA event builder" << endl;
   int Verbose = 0;
-  //long long int WindowIon = 5000; //time unit: 10 ns
-  //long long int WindowBeta = 2500; //time unit: 10 ns
-  //long long int TransientTime = 10000;
-
   long long int WindowDiscriminator = 0;
-
   long long int Window = 200;
+
+
+
+  int Mode = 0;
 
   int FillFlag = 1;
   int GzFlag = 0;
   int RankingModeFlag = 1;
 
-  double CorrCut = -1;
   char* InputAIDA = NULL;
   char* OutFile = NULL;
   char* CalibrationFile = NULL;
   char* ThresholdFile = NULL;
   char* MappingFile = NULL;
   char* ECutFile = NULL;
+  double ECorr=-1.;
   char* CalibrationFileHE = NULL;
 
   int SumMultCut=10000;
 
-
   //Read in the command line arguments
   CommandLineInterface* interface = new CommandLineInterface();
+  interface->Add("-m", "Mode: 0: simple aida tree, 1: advanced aida tree 2: full aidatree", &Mode);
   interface->Add("-a", "AIDA input list of files", &InputAIDA);
   interface->Add("-o", "output file", &OutFile);
-  //interface->Add("-wi", "Ion event building window (default: 5000*10ns)", &WindowIon);
-  //interface->Add("-wb", "Beta event building window (default: 2500*10ns)", &WindowBeta);
-  //interface->Add("-tt", "aida transient time (default: 20000*10ns)", &TransientTime);
   interface->Add("-w", "Time window between successive DAQ readouts (default: 200*10ns)", &Window);
   interface->Add("-wd", "Fast Discriminator Scan window (default: 0 i.e no scan for fast discrimination)", &WindowDiscriminator);
   interface->Add("-v", "verbose level", &Verbose);
@@ -93,12 +92,12 @@ int main(int argc, char* argv[]){
 
   interface->Add("-f", "fill data or not: 1 fill data 0 no fill (default: fill data)", &FillFlag);
   interface->Add("-ecut", "specify energy cut file", &ECutFile);
-  interface->Add("-ecorr", "specify energy - energy corr cut parameter (default= no cut)", &CorrCut);
-
+  interface->Add("-ecorr", "specify energy corrleration cut", &ECorr);
   interface->Add("-gz", "input data from gz file: 1 enable 0 disable (default: disable)", &GzFlag);
 
   interface->Add("-rmode", "Switch on(1) off(0) the position determination based on energy correlation ranking (default:on)", &RankingModeFlag);
   interface->Add("-smult", "DSSD multiplicity cut (default 10000)", &SumMultCut);
+
 
   interface->CheckFlags(argc, argv);
   //Complain about missing mandatory arguments
@@ -115,18 +114,12 @@ int main(int argc, char* argv[]){
     cout << "No Threshold table given " << endl;
     ThresholdFile = new char[600];
     strcpy(ThresholdFile,"/sssewqewwq/");
-    return 1;
+    //return 1;
   }
   if(CalibrationFile == NULL){
     cout << "No Calibration table given " << endl;
     CalibrationFile = new char[600];
     strcpy(CalibrationFile,"/sssewqewwq/");
-    return 1;
-  }
-  if(CalibrationFileHE == NULL){
-    cout << "No Calibration table for high energy is given " << endl;
-    CalibrationFileHE = new char[100];
-    strcpy(CalibrationFileHE,"dummy2312039290");
     //return 1;
   }
   if(OutFile == NULL){
@@ -138,32 +131,25 @@ int main(int argc, char* argv[]){
     //return 2;
   }
 
-
   cout<<"output file: "<<OutFile<< endl;
 
   TFile* ofile = new TFile(OutFile,"recreate");
   ofile->cd();
 
-  TTree* treebeta=new TTree("beta","aida beta");
-  AIDA* aidabeta = new AIDA;
-  if (FillFlag){
+  datatype aida;
   //! Book tree and histograms
-      treebeta->Branch("aida",&aidabeta);
-  }
+  TTree* treeion=new TTree("ion","tree ion");
+  TTree* treebeta=new TTree("beta","tree beta");
+  TTree* treepulser=new TTree("pulser","tree pulser");
+  TTree* treeaida=new TTree("aida","aida simple tree");
 
-  TTree* treeion=new TTree("ion","aida ion");
-  AIDA* aidaion = new AIDA;
-  if (FillFlag){
-  //! Book tree and histograms
-      treeion->Branch("aida",&aidaion);
-  }
+  if (FillFlag) treeaida->Branch("aida",&aida,"T/l:Tfast/l:E/D:EX/D:EY/D:x/D:y/D:z/D:nx/I:ny/I:nz/I:ID/I:tw/I:dz/I:niz/I");
 
   //! Read list of files
   string inputfiles[1000];
   ifstream inf(InputAIDA);
   Int_t nfiles;
   inf>>nfiles;
-
 
   Int_t implantationrate = 0;
 
@@ -180,7 +166,6 @@ int main(int argc, char* argv[]){
   for(Int_t i=0;i<NumDSSD;i++){
       ecutX[i]=-5000.;
       ecutY[i]=-5000.;
-      //if (i==0) ecutY[i]=250.;
   }
 
   std::ifstream ecut(ECutFile,std::ios::in);
@@ -195,26 +180,40 @@ int main(int argc, char* argv[]){
           cout<<"dssd No. "<<i<<" X energy cut = "<<ecutX[i]<<"| Y energy cut  = "<<ecutY[i]<<endl;
       }
   }
+  //Int_t nion=0;
+  Long64_t ts_prev_ion_hit=0;
+  Long64_t ts_prev_beta_last=0;
+  Long64_t tdeadtimesum=0;
+
+
+  //!  current time offset
+  long long currentTSoffset=0;
 
   for (Int_t i=0;i<nfiles;i++){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
       evts->SetVerbose(Verbose);
       if (GzFlag!=0) evts->SetGzStream();
+      if (FillFlag) evts->BookTree(treeion,treebeta,treepulser);
+
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
       evts->SetHECalibFile(CalibrationFileHE);
       evts->SetDiscriminatorTimeWindow(WindowDiscriminator);
       evts->SetTimeWindow(Window);
-      evts->SetPulserInStream(false);
+      evts->SetCorrScalerInStream(false);
+      evts->SetPulserInStream(true);
       evts->SetSumEXCut(ecutX);
       evts->SetSumEYCut(ecutY);
-      cout<<"Ecorr= "<<CorrCut<<endl;
-      evts->SetEnergyCorrCut(CorrCut);
+      cout<<"Ecorr= "<<ECorr<<endl;
+      evts->SetEnergyCorrCut(ECorr);
       evts->SetSumMultiplicityCut(SumMultCut);
       if (RankingModeFlag==0) evts->SetNoCorrRankingMode();
-
       evts->Init((char*)inputfiles[i].c_str());
+
+      //! add last corr ts from previous run, added for briken experiment
+      if (i>0) evts->GetAIDAUnpacker()->SetCurrentCorrTSoffset(currentTSoffset);
+
       double time_last = (double) get_time();
 
       int ctr=0;
@@ -239,70 +238,138 @@ int main(int argc, char* argv[]){
               (Float_t)ctr/(time_end - local_time_start) << " blocks/s " <<
               (Float_t)nevtbeta/(time_end - local_time_start) <<" betas/s  "<<
                (Float_t)nevtion/(time_end - local_time_start) <<" ions/s "<<
-               (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r "<< flush;
+               (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r"<<flush;
             time_last = time_end;
           }
-          if (evts->IsBETA()) {
-              aidabeta->Clear();
-              evts->GetAIDABeta()->Copy(*aidabeta);
-              //if (FillFlag&&aidabeta->GetNClusters()>0) treebeta->Fill();
-          if (FillFlag) treebeta->Fill();
-          }else if (!evts->IsBETA()){
-              aidaion->Clear();
-              evts->GetAIDAIon()->Copy(*aidaion);
-              //! newly add to include low energy hits in ion events
-              /*
-              for (int j=0;j<evts->GetAIDABeta()->GetMult();j++){
-                  AIDAHit* hit=new AIDAHit;
-                  evts->GetAIDABeta()->GetHit(j)->Copy(*hit);
-                  aidaion->AddHit(hit);
-              }
 
-              for (int j=0;j<evts->GetAIDAIon()->GetMult();j++){
-                  AIDAHit* hit=new AIDAHit;
-                  evts->GetAIDAIon()->GetHit(j)->Copy(*hit);
-                  aidaion->AddHit(hit);
+          //! special for test
+          if (evts->IsBETA()){
+              if (Mode==0){
+                  //!sort the timestamp
+                  std::multimap<unsigned long long, int> tsvector;
+                  std::multimap<unsigned long long, int>::iterator tsvector_it;
+
+                  for (int i = 0;i<evts->GetAIDABeta()->GetNClusters();i++){
+                      tsvector.insert(std::make_pair(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
+                  }
+                  //!fill tree according to the time stamp
+                  for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){
+                      Int_t i = tsvector_it->second;
+                      Double_t ex = evts->GetAIDABeta()->GetCluster(i)->GetXEnergy();
+                      Double_t ey = evts->GetAIDABeta()->GetCluster(i)->GetYEnergy();
+                      aida.ID = IDbeta;
+                      aida.E = (ex+ey)/2;
+                      aida.EX = ex;
+                      aida.EY = ey;
+                      //!If you need time ordered then we need to modify this
+                      aida.T = tsvector_it->first;
+                      aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
+                      aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
+                      aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
+                      aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
+
+                      //aida.nx=(int)evts->GetAIDABeta()->GetCluster(i)->GetXMultiplicity();
+                      //aida.ny=(int)evts->GetAIDABeta()->GetCluster(i)->GetYMultiplicity();
+                      //aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi(int(aida.z));
+
+                      aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
+                      aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
+                      aida.nz = (int)evts->GetAIDABeta()->GetZHitMult();
+                      aida.niz = (int)evts->GetAIDABeta()->GetStripMultFlag(aida.nz);
+                      aida.tw=evts->GetAIDABeta()->GetTimeWindow();
+                      aida.dz= (int) evts->GetAIDABeta()->GetDeltaMaxZ();
+                      if (FillFlag) treeaida->Fill();
+                  }
               }
-              aidaion->SetMult(evts->GetAIDAIon()->GetMult());
-              */ //multiplicity becomes 2?
-              if (FillFlag) treeion->Fill();
+              if (Mode==1) evts->GetAIDABeta()->ClearAllHits();
+              if (Mode==1||Mode==2) evts->GetBetaTree()->Fill();
+          }else{
+              if (Mode==0){
+                  //!sort the timestamp
+                  std::multimap<unsigned long long, int> tsvector;
+                  std::multimap<unsigned long long, int>::iterator tsvector_it;
+                  for (int i = 0;i<evts->GetAIDAIon()->GetNClusters();i++){
+                      if(evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()==evts->GetAIDAIon()->GetMaxZ()) tsvector.insert(std::make_pair(evts->GetAIDAIon()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
+                  }
+                  //!fill tree according to the time stamp
+                  for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){
+                      Int_t i = tsvector_it->second;
+                      Double_t ex = evts->GetAIDAIon()->GetCluster(i)->GetXEnergy();
+                      Double_t ey = evts->GetAIDAIon()->GetCluster(i)->GetYEnergy();
+                      aida.ID = IDion;
+                      aida.E = (ex+ey)/2;
+                      aida.EX = ex;
+                      aida.EY = ey;
+                      //!If you need time ordered then we need to modify this
+                      aida.T = tsvector_it->first;
+                      aida.Tfast = evts->GetAIDAIon()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
+                      aida.x = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionX();
+                      aida.y = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionY();
+                      aida.z = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ();
+
+                      //aida.nx=(int)evts->GetAIDAIon()->GetCluster(i)->GetXMultiplicity();
+                      //aida.ny=(int)evts->GetAIDAIon()->GetCluster(i)->GetYMultiplicity();
+                      //aida.nz = (int)evts->GetAIDAIon()->GetNClustersZi(int(aida.z));
+
+                      aida.nx = (int)evts->GetAIDAIon()->GetMultX((int)aida.z);
+                      aida.ny = (int)evts->GetAIDAIon()->GetMultY((int)aida.z);
+                      aida.nz = (int)evts->GetAIDAIon()->GetZHitMult();
+                      aida.niz = (int)evts->GetAIDAIon()->GetStripMultFlag(aida.nz);
+                      aida.tw= (int) evts->GetAIDAIon()->GetTimeWindow();
+                      aida.dz= (int) evts->GetAIDAIon()->GetDeltaMaxZ();
+                      if (FillFlag) treeaida->Fill();
+                  }
+              }
+              if (Mode==1) evts->GetAIDABeta()->ClearAllHits();
+              if (Mode==1||Mode==2)evts->GetIonTree()->Fill();
+          }
+          if (evts->IsBETA()&&Mode==2){
+              if (evts->GetAIDABeta()->GetMult()>64) evts->GetPulserTree()->Fill();
           }
 
           //!Get run time
           if (evts->IsBETA()&&start==0) {
-              tstart = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
+              if(evts->GetAIDABeta()->GetHits().size()>0) tstart = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
               start++;
           }else if (!evts->IsBETA()&&start==0){
-              tstart = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
+              if(evts->GetAIDAIon()->GetHits().size()>0) tstart = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
               start++;
           }
           if (evts->IsBETA()) {
               if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDABeta()->GetHit(0)->GetTimestamp();
           }else if (!evts->IsBETA()){
-              if(evts->GetAIDABeta()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
+              if(evts->GetAIDAIon()->GetHits().size()>0) tend = evts->GetAIDAIon()->GetHit(0)->GetTimestamp();
           }
-
           if(signal_received){
             break;
           }
       }
-      runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e9;
+      //! Get last corr ts, added for briken experiment
+      currentTSoffset=evts->GetAIDAUnpacker()->GetCurrentCorrTSoffset();
+
+      runtime[i+1] = (double)((tend-tstart)*ClockResolution)/(double)1e6;
       runtime[0] += runtime[i+1];
       cout<<evts->GetCurrentBetaEvent()<<" beta events"<<endl;
       cout<<evts->GetCurrentIonEvent()<<" ion events"<<endl;
       implantationrate += evts->GetCurrentIonEvent();
       cout<<ttotal<<" all events (beta+ion)"<<endl;
       cout<<evts->GetCurrentPulserEvent()<<" pulser events"<<endl;
-      ofstream str("ncounts.txt",ios::app);
-      str<<inputfiles[i]<<"\t"<<evts->GetCurrentIonEvent()<<"\t"<<evts->GetCurrentBetaEvent()<<"\t"<<(Double_t)evts->GetCurrentBetaEvent()/(Double_t)evts->GetCurrentIonEvent()<<endl;
       delete evts;
   }
+ l1:
+  if (ts_prev_beta_last-ts_prev_ion_hit>100000) tdeadtimesum+=1;
+  runtime[0]=tdeadtimesum;
   if (FillFlag){
-      treebeta->Write();
+      //tshist->Write();
       treeion->Write();
+      treebeta->Write();
+      treepulser->Write();
+      treeaida->Write();
       runtime.Write("runtime");
   }
+
   ofile->Close();
+
 
   cout<<"\n**********************SUMMARY**********************\n"<<endl;
   cout<<"Total run length = "<<runtime[0]<< " seconds"<<endl;
@@ -317,7 +384,6 @@ int main(int argc, char* argv[]){
   cout << "\nProgram Run time: " << time_end - time_start << " s." << endl;
   timer.Stop();
   cout << "CPU time: " << timer.CpuTime() << "\tReal time: " << timer.RealTime() << endl;
-
   return 0;
 }
 

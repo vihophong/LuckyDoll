@@ -316,11 +316,14 @@ public:
     //! Clear the AIDA information
     virtual void Clear(Option_t *option = ""){
       faidats = 0;
+      faidatw = 0;
+      ftsprevion = 0;
       fmult = 0;
       fnclusters = 0;
       fmaxz = -1;
       fclustermultz = 0;
       fhitmultz = 0;
+      fdmaxz = 0;
       /*
       for (int i=0;i<NumDSSD;i++){
           fmultx[i]=0;
@@ -336,6 +339,13 @@ public:
       memset(fnhitsz,0,sizeof(fnhitsz));
 
       memset(fnclustersz,0,sizeof(fnclustersz));
+
+      //! 2017 july 26 added
+      memset(fstripsmult,0,sizeof(fstripsmult));
+      memset(fstripsmultx1,0,sizeof(fstripsmultx1));
+      memset(fstripsmultx2,0,sizeof(fstripsmultx2));
+      memset(fstripsmulty1,0,sizeof(fstripsmulty1));
+      memset(fstripsmulty2,0,sizeof(fstripsmulty2));
 
 
       //! Dealocating memory
@@ -361,14 +371,14 @@ public:
           //! CALIBRATE TIME HERE!
           //clonecluster->SetTimestamp(clonecluster->GetTimestamp()*ClockResolution);
 
-	  //if (!(clonecluster->GetHitPositionZ()==1&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()<64))
-	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>125))	    
-	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>50&&clonecluster->GetHitPositionY()<75))
-	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>98&&clonecluster->GetHitPositionY()<111))
-	  //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()>126))
+      //if (!(clonecluster->GetHitPositionZ()==1&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()<64))
+      //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>125))
+      //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>50&&clonecluster->GetHitPositionY()<75))
+      //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()<64&&clonecluster->GetHitPositionY()>98&&clonecluster->GetHitPositionY()<111))
+      //if (!(clonecluster->GetHitPositionZ()==0&&clonecluster->GetHitPositionX()>126))
           obj.AddCluster(clonecluster);
         }
-        //obj.SetTimestamp(faidats*ClockResolution);        
+        //obj.SetTimestamp(faidats*ClockResolution);
         obj.SetTimestamp(faidats);
         obj.SetType(ftype);
         obj.SetMult(fmult);
@@ -385,6 +395,11 @@ public:
     }
 
     void SetTimestamp(unsigned long long ts){faidats = ts;}
+    //! added 26th July 2017
+    void SetTimeWindow(unsigned long long tw){faidatw = tw;}
+
+    void  SetPrevIonTimestamp(unsigned long long ts){ftsprevion = ts;}
+
     //!clear all hits
     void ClearAllHits(){
         //! Dealocating memory also
@@ -475,6 +490,39 @@ public:
         memcpy(fsumy,sumy,NumDSSD*sizeof(double));
     }
 
+    //! Set per silicon channel multi hit flag
+    void AddStripMult(unsigned short dssd){
+        fstripsmult[dssd]++;
+    }
+
+    void SetStripMultX1Flag(unsigned short dssd,unsigned long long val){
+        fstripsmultx1[dssd]=val;
+    }
+    void SetStripMultX2Flag(unsigned short dssd,unsigned long long val){
+        fstripsmultx2[dssd]=val;
+    }
+    void SetStripMultY1Flag(unsigned short dssd,unsigned long long val){
+        fstripsmulty1[dssd]=val;
+    }
+    void SetStripMultY2Flag(unsigned short dssd,unsigned long long val){
+        fstripsmulty2[dssd]=val;
+    }
+
+    //! Set per silicon channel multi hit flag
+    void SetStripMultX1FlagMask(unsigned short dssd,unsigned short stripNo){
+        fstripsmultx1[dssd]=fstripsmultx1[dssd]|((ULong64_t)0x1<<stripNo);
+    }
+    void SetStripMultX2FlagMask(unsigned short dssd,unsigned short stripNo){
+        fstripsmultx2[dssd]=fstripsmultx2[dssd]|((ULong64_t)0x1<<(stripNo-64));
+    }
+    void SetStripMultY1FlagMask(unsigned short dssd,unsigned short stripNo){
+        fstripsmulty1[dssd]=fstripsmulty1[dssd]|((ULong64_t)0x1<<(stripNo-128));
+    }
+    void SetStripMultY2FlagMask(unsigned short dssd,unsigned short stripNo){
+        fstripsmulty2[dssd]=fstripsmulty2[dssd]|((ULong64_t)0x1<<(stripNo-192));
+    }
+
+
 
     //! Add a cluster
     void AddCluster(AIDACluster* cluster){
@@ -514,6 +562,10 @@ public:
 
     //! Set max Z (for ion event)
     void SetMaxZ(unsigned short maxz){fmaxz = maxz;}
+
+    //! Set delta max Z (added July 29,2017)
+    void SetDeltaMaxZ(unsigned short dmaxz){fdmaxz = dmaxz;}
+
     //! Set event type
     void SetType(short type){ftype = type;}
     //! Set event type
@@ -541,6 +593,13 @@ public:
 
     //! Returns timestamp
     unsigned long long GetTimestamp(){return faidats;}
+
+    //! Revturn prev ion timestamp
+    unsigned long long GetPrevIonTimestamp(){return ftsprevion;}
+
+    //! Returns time width(window)
+    unsigned long long GetTimeWindow(){return faidatw;}
+
     //! Returns the multiplicity of the event
     unsigned short GetMult(){return fmult;}
 
@@ -587,6 +646,10 @@ public:
     //! Return max Z (for ion event)
     unsigned short GetMaxZ(){return fmaxz;}
 
+    //! Return delta max Z (july 27 added)
+    unsigned short GetDeltaMaxZ(){return fdmaxz;}
+
+
     //! Returns the whole vector of hits
     vector<AIDAHit*> GetHits(){return fhits;}
     //! Returns the hit number n
@@ -602,6 +665,25 @@ public:
 
     //! Get event type
     short GetType(){return ftype;}
+
+
+    //! Get per silicon channel multi hit flag
+    int GetStripMultFlag(unsigned short dssd){
+        return fstripsmult[dssd];
+    }
+
+    unsigned long long GetStripMultX1Flag(unsigned short dssd){
+        return fstripsmultx1[dssd];
+    }
+    unsigned long long GetStripMultX2Flag(unsigned short dssd){
+        return fstripsmultx2[dssd];
+    }
+    unsigned long long GetStripMultY1Flag(unsigned short dssd){
+        return fstripsmulty1[dssd];
+    }
+    unsigned long long GetStripMultY2Flag(unsigned short dssd){
+        return fstripsmulty2[dssd];
+    }
 
     //! Printing information
     void Print(Option_t *option = "") const {
@@ -619,21 +701,32 @@ public:
     //! Get beta hit positions and fill in the cluster vector (clustering algorithms)
     //! Return true if there is at least 1 cluster identifed! otherwise return false
 
-    //! Beta position
-    bool BetaGetPos(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Beta position new (with EX/EY condition)
     bool BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Get all Beta position new
     bool BetaGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
-    //! Ion position
-    bool IonGetPos();
     //! Ion position with clustering algorithm
-    bool IonGetPosNew();
-    bool IonGetPosAllNew();
+    bool IonGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
+    bool IonGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
 
   protected:
     //! aida time stamp (ealiest timestamp within event)
     unsigned long long faidats;
+
+    //! the time window of the event (added July26)
+    unsigned long long faidatw;
+
+    //! timestamp of previous ion
+    unsigned long long ftsprevion;
+
+    //! per silicon channel multi hit flag
+    int fstripsmult[NumDSSD];
+    unsigned long long fstripsmultx1[NumDSSD];
+    unsigned long long fstripsmultx2[NumDSSD];
+    unsigned long long fstripsmulty1[NumDSSD];
+    unsigned long long fstripsmulty2[NumDSSD];
+
+
     //! type of event: 0T beta  1 ion
     short ftype;
     //! total multiplicity
@@ -665,6 +758,9 @@ public:
 
     //! max hit position
     unsigned short fmaxz;
+
+    //! max hit position correction (delta_{maxz}) (added July 29,2017)
+    unsigned short fdmaxz;
 
     //! number of dssd with at least 1 cluster
     unsigned short fclustermultz;

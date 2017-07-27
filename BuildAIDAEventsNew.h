@@ -255,6 +255,10 @@ private:
 
     int chMask[NumFee][NumChFee]; //newly added
 
+    //! Added July26, 2017
+    Int_t fmultxyz[NumDSSD*NumStrXY];
+    //! Added July29, 2017
+    Int_t foverflowflag[NumDSSD];
     //! Correlation cut
     Double_t fcorrcut;
 
@@ -265,7 +269,7 @@ private:
     bool fisranking;
 
     unsigned int ftemp;
-    rawaida_info aidaraw;    
+    rawaida_info aidaraw;
 
     Long64_t ftprevcheck;
 

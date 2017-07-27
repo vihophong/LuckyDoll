@@ -18,9 +18,7 @@ BuildAIDAEvents::BuildAIDAEvents()
         fsumeycut[i] = -10000.;
         fsumexcuth[i] = -10000.;
         fsumeycuth[i] = -10000.;
-
     }
-
     for (Int_t i=0;i<NumDSSD;i++){
         for (Int_t j=0;j<NumStrXY;j++){
             dssd_cal_he[i][j][0]=0.;
@@ -109,6 +107,12 @@ void BuildAIDAEvents::Init(char* aidafile)
     }
     fflag_trans = false;
     //! Add on 2017 May20th
+
+    //! Add on 2017 July 26
+    memset(fmultxyz,0,sizeof(fmultxyz));
+
+    //! Added July29, 2017
+    memset(foverflowflag,0,sizeof(foverflowflag));
 }
 
 void BuildAIDAEvents::BookTree(TTree *treeIon,TTree *treeBeta,TTree *treePulser,Int_t bufsize)
@@ -121,7 +125,7 @@ void BuildAIDAEvents::BookTree(TTree *treeIon,TTree *treeBeta,TTree *treePulser,
     fmtrION->Branch("adentry",&fADIonEntry,bufsize); //320000
     fmtrION->Branch("adTS",&fADtsION,bufsize);
     fmtrION->Branch("aida",&flocalaidaION,bufsize);
-    fmtrION->BranchRef();    
+    fmtrION->BranchRef();
 
     fmtrBETA = treeBeta;
     fmtrBETA->Branch("adentry",&fADBetaEntry,bufsize);
@@ -170,7 +174,6 @@ void BuildAIDAEvents::ReadCalibTable()
     }
     cout<<"Read "<<mm<<" line"<<endl;
     inpf.close();
-
 
 }
 
@@ -231,6 +234,18 @@ void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
 
 //! Add AIDA Beta hitsflocalbeta
 void BuildAIDAEvents::AddAIDABetaHits(rawaida_info aidaraw){
+    //! make flag
+    fmultxyz[aidaraw.dssdNo*128+aidaraw.stripNo]++;
+    if(fmultxyz[aidaraw.dssdNo*128+aidaraw.stripNo]>1){
+        flocalaidaBETA->AddStripMult(aidaraw.dssdNo);
+        if (aidaraw.stripNo<64) flocalaidaBETA->SetStripMultX1FlagMask(aidaraw.dssdNo,aidaraw.stripNo);
+        else if (aidaraw.stripNo>=64&&aidaraw.stripNo<128) flocalaidaBETA->SetStripMultX2FlagMask(aidaraw.dssdNo,aidaraw.stripNo);
+        else if (aidaraw.stripNo>=128&&aidaraw.stripNo<192) flocalaidaBETA->SetStripMultY1FlagMask(aidaraw.dssdNo,aidaraw.stripNo);
+        else if (aidaraw.stripNo>=192) flocalaidaBETA->SetStripMultY2FlagMask(aidaraw.dssdNo,aidaraw.stripNo);
+    }
+    if (aidaraw.adcData==32768) foverflowflag[aidaraw.dssdNo]++;
+
+
     if (aidaraw.adcData>dssd_thr[aidaraw.dssdNo][aidaraw.stripNo]&&chMask[aidaraw.feeNo][aidaraw.chNo]==1){
         AIDAHit* hit = new AIDAHit;
         hit->SetADC(aidaraw.adcData);
@@ -256,10 +271,18 @@ bool BuildAIDAEvents::CloseIonEvent()
       cout << __PRETTY_FUNCTION__ << endl;
     //cout<<fADIonEntry<<"-"<<flocalaidaION->GetMult()<<endl;
     //fADIonEntry++;
+    if (flocalaidaION->GetMult()<=0) return false;
+    flocalaidaION->SetTimestamp(flocalaidaION->GetHit(0)->GetTimestamp());
+    flocalaidaION->SetPrevIonTimestamp(flastADIonts);
+    if (flastADBetats>flastADIonts)
+        flocalaidaION->SetTimeWindow((Long64_t)flastADBetats-(Long64_t)fADtsION);
+    else
+        flocalaidaION->SetTimeWindow((Long64_t)flastADIonts-(Long64_t)fADtsION);
+
+
     if (fisranking){//! newly added
         //if (flocalaidaION->IonGetPos()) {
-        if (flocalaidaION->BetaGetPosNew(-1,fsumexcuth,fsumeycuth)) {
-            flocalaidaION->SetTimestamp(flocalaidaION->GetHit(0)->GetTimestamp());
+        if (flocalaidaION->IonGetPosNew(-1,fsumexcuth,fsumeycuth)) {
             /*
             for (int i=0;i<flocalaidaBETA->GetHits().size();i++){
                 AIDAHit* hit=new AIDAHit;
@@ -267,14 +290,14 @@ bool BuildAIDAEvents::CloseIonEvent()
                 flocalaidaION->AddHit(hit);
             }
             */
-            if (fflag_filldata) fmtrION->Fill();
-            fADIonEntry++;
-            return true;
+            //if (fflag_filldata) fmtrION->Fill();
+            //fADIonEntry++;
+            //return true;
         }
+
     }else{
         //if (flocalaidaION->IonGetPos()) {
-        if (flocalaidaION->BetaGetPosAllNew(-1,fsumexcuth,fsumeycuth)) {
-            flocalaidaION->SetTimestamp(flocalaidaION->GetHit(0)->GetTimestamp());
+        if (flocalaidaION->IonGetPosAllNew(-1,fsumexcuth,fsumeycuth)) {
             /*
             for (int i=0;i<flocalaidaBETA->GetHits().size();i++){
                 AIDAHit* hit=new AIDAHit;
@@ -282,12 +305,32 @@ bool BuildAIDAEvents::CloseIonEvent()
                 flocalaidaION->AddHit(hit);
             }
             */
-            if (fflag_filldata) fmtrION->Fill();
-            fADIonEntry++;
-            return true;
+            //if (fflag_filldata) fmtrION->Fill();
+            //fADIonEntry++;
+            //return true;
         }
     }
-    return false;
+
+    //! check overflow channels
+    unsigned short dmaxz=0;
+    if (flocalaidaION->GetMaxZ()!=NumDSSD-1){
+        for (int i=flocalaidaION->GetMaxZ()+1;i<NumDSSD;i++){
+           if (foverflowflag[i]>0) dmaxz=(unsigned short)(i-flocalaidaION->GetMaxZ());
+        }
+    }
+    flocalaidaION->SetDeltaMaxZ(dmaxz);
+
+    /*
+    for (int i=0;i<flocalaidaBETA->GetHits().size();i++){
+        AIDAHit* hit=new AIDAHit;
+        flocalaidaBETA->GetHit(i)->Copy(*hit);
+        flocalaidaION->AddHit(hit);
+    }
+    */
+
+    //if (fflag_filldata) fmtrION->Fill();
+    fADIonEntry++;
+    return true;
 }
 
 //!close event BETA
@@ -296,43 +339,51 @@ bool BuildAIDAEvents::CloseBetaEvent()
     if(fverbose>0)
       cout << __PRETTY_FUNCTION__ << endl;
 
+    if (flocalaidaBETA->GetMult()<=0) return false;
+
+
     unsigned short* hitx= flocalaidaBETA->GetMultXs();
     unsigned short* hity= flocalaidaBETA->GetMultYs();
     unsigned short mult=flocalaidaBETA->GetMult();
+    flocalaidaBETA->SetTimestamp(flocalaidaBETA->GetHit(0)->GetTimestamp());
 
+    //! added july 26,2017
+    flocalaidaBETA->SetTimeWindow((Long64_t)flastADBetats-(Long64_t)fADtsBETA);
+    flocalaidaBETA->SetPrevIonTimestamp(flastADIonts);
 
-    if (mult<64&&!fflag_trans&&(hitx[0]+hity[0]<fmultcut)&&(hitx[1]+hity[1]<fmultcut)&&(hitx[2]+hity[2]<fmultcut)&&(hitx[3]+hity[3]<fmultcut)&&(hitx[4]+hity[4]<fmultcut)&&(hitx[5]+hity[5]<fmultcut))
+    //if (!fflag_trans&&(hitx[0]+hity[0]<fmultcut)&&(hitx[1]+hity[1]<fmultcut)&&(hitx[2]+hity[2]<fmultcut)&&(hitx[3]+hity[3]<fmultcut)&&(hitx[4]+hity[4]<fmultcut)&&(hitx[5]+hity[5]<fmultcut))
+    //if (mult<64&&!fflag_trans&&(hitx[0]+hity[0]<fmultcut)&&(hitx[1]+hity[1]<fmultcut)&&(hitx[2]+hity[2]<fmultcut)&&(hitx[3]+hity[3]<fmultcut)&&(hitx[4]+hity[4]<fmultcut)&&(hitx[5]+hity[5]<fmultcut))
     //if (mult<64&&!fflag_trans)
-    {
+    //{
         if (fisranking){//! newly added
             if (flocalaidaBETA->BetaGetPosNew(fcorrcut,fsumexcut,fsumeycut)){
-                flocalaidaBETA->SetTimestamp(flocalaidaBETA->GetHit(0)->GetTimestamp());
-                if (fflag_filldata) fmtrBETA->Fill();
-                fADBetaEntry++;
-                return true;
+                //if (fflag_filldata) fmtrBETA->Fill();
+                //fADBetaEntry++;
+                //return true;
             }else {
-                return false;
+                //return false;
             }
         }else{
             if (flocalaidaBETA->BetaGetPosAllNew(fcorrcut,fsumexcut,fsumeycut)){
-                flocalaidaBETA->SetTimestamp(flocalaidaBETA->GetHit(0)->GetTimestamp());
-                if (fflag_filldata) fmtrBETA->Fill();
-                fADBetaEntry++;
-                return true;
+                //if (fflag_filldata) fmtrBETA->Fill();
+                //fADBetaEntry++;
+                //return true;
             }else {
-                return false;
+                //return false;
             }
         }
-    }
+    //}
     if (mult>=64){
-        flocalaidaBETA->SetTimestamp(fADtsBETA);
-        if (fflag_filldata) fmtrPULSER->Fill();
+        //flocalaidaBETA->SetTimestamp(flocalaidaBETA->GetHit(0)->GetTimestamp());
+        //if (fflag_filldata) fmtrPULSER->Fill();
         fADPulserEntry++;
         if (fflag_pulser_in_stream) return true;
         else return false;
         //!will not give to the "nextevent" scheme!
-    }    
-    return false;
+    }
+    //if (fflag_filldata) fmtrBETA->Fill();
+    fADBetaEntry++;
+    return true;
 }
 
 //!AIDA event builder also
@@ -344,13 +395,14 @@ bool BuildAIDAEvents::GetNextEvent(){
         flocalaidaION->Clear();
         flocalaidaBETA->Clear();
         if (aidaraw.rangeType==1){
-            flastADIonts = aidaraw.timestamp;
+            fADtsION = aidaraw.extTimestamp;
+            flastADIonts = aidaraw.extTimestamp;
             AddAIDAIonHits(aidaraw);
             fflag_ision = true;
         }else if (aidaraw.rangeType==0){
-            flastADBetats = aidaraw.timestamp;
+            fADtsBETA = aidaraw.extTimestamp;
+            flastADBetats = aidaraw.extTimestamp;
             AddAIDABetaHits(aidaraw);
-
             fflag_ision = false;
         }
         //h1->Fill(aidaraw.timestamp-ftprevcheck);
@@ -370,12 +422,13 @@ bool BuildAIDAEvents::GetNextEvent(){
             if (fflag_firsthit){
                 flocalaidaION->Clear();
                 flocalaidaBETA->Clear();
+                fADtsION = aidaraw.extTimestamp;
+                fADtsBETA = aidaraw.extTimestamp;
                 if (aidaraw.rangeType==1){
-                    flastADIonts = aidaraw.timestamp;
-
+                    flastADIonts = aidaraw.extTimestamp;
                 }
                 else if (aidaraw.rangeType==0){
-                    flastADBetats = aidaraw.timestamp;
+                    flastADBetats = aidaraw.extTimestamp;
                 }
                 flastts = aidaraw.timestamp;
                 fflag_firsthit = false;
@@ -383,13 +436,13 @@ bool BuildAIDAEvents::GetNextEvent(){
             if (aidaraw.timestamp<=flastts+fwindowHits){
                 //! if ion hit
                 if (aidaraw.rangeType==1){
-                    flastADIonts = aidaraw.timestamp;
+                    flastADIonts = aidaraw.extTimestamp;
                     AddAIDAIonHits(aidaraw);
                     fflag_ision = true;
                 }
                 //! if beta hit
                 else if (aidaraw.rangeType==0){
-                    flastADBetats = aidaraw.timestamp;
+                    flastADBetats = aidaraw.extTimestamp;
                     AddAIDABetaHits(aidaraw);
                 }
                 //h1->Fill(aidaraw.timestamp-ftprevcheck);
@@ -397,16 +450,15 @@ bool BuildAIDAEvents::GetNextEvent(){
                 ftprevcheck=-1000;
                 if (fflag_ision) {
                     flag_stop = CloseIonEvent();
-                    fADtsION = aidaraw.extTimestamp*tm_stp_scaler_ratio;
                     if (!flag_stop) {
                         flocalaidaION->Clear();
                         flocalaidaBETA->Clear();
                         if (aidaraw.rangeType==1){
-                            flastADIonts = aidaraw.timestamp;
+                            flastADIonts = aidaraw.extTimestamp;
                             AddAIDAIonHits(aidaraw);
                             fflag_ision = true;
                         }else if (aidaraw.rangeType==0){
-                            flastADBetats = aidaraw.timestamp;
+                            flastADBetats = aidaraw.extTimestamp;
                             AddAIDABetaHits(aidaraw);
                             fflag_ision = false;
                         }
@@ -416,16 +468,15 @@ bool BuildAIDAEvents::GetNextEvent(){
                     }
                 }else{
                     flag_stop = CloseBetaEvent();
-                    fADtsBETA = aidaraw.extTimestamp*tm_stp_scaler_ratio;
                     if (!flag_stop) {
                         flocalaidaION->Clear();//!caution later one can remove it
                         flocalaidaBETA->Clear();
                         if (aidaraw.rangeType==1){
-                            flastADIonts = aidaraw.timestamp;
+                            flastADIonts = aidaraw.extTimestamp;
                             AddAIDAIonHits(aidaraw);
                             fflag_ision = true;
                         }else if (aidaraw.rangeType==0){
-                            flastADBetats = aidaraw.timestamp;
+                            flastADBetats = aidaraw.extTimestamp;
                             AddAIDABetaHits(aidaraw);
                             fflag_ision = false;
                         }
@@ -434,6 +485,8 @@ bool BuildAIDAEvents::GetNextEvent(){
                         fisbeta = true;
                     }
                 }
+                fADtsION = aidaraw.extTimestamp;
+                fADtsBETA = aidaraw.extTimestamp;
             }
             //ftprevcheck=aidaraw.timestamp;
             flastts = aidaraw.timestamp;
@@ -450,7 +503,7 @@ bool BuildAIDAEvents::GetNextEvent(){
                     int chn = (asicsn*16)+i;
                     if (chn<NumChFee){
                         flastfastts[feen][chn] = aidaraw.timestamp;
-                        flastfasttsEXT[feen][chn] = aidaraw.extTimestamp * tm_stp_scaler_ratio;
+                        flastfasttsEXT[feen][chn] = aidaraw.extTimestamp;
                         //cout<<std::dec<<feen<<"-"<<chn<<endl;
                     }else{
                         cout<<"Somethings wrong with the fast discriminator data!"<<endl;
@@ -466,7 +519,7 @@ bool BuildAIDAEvents::GetNextEvent(){
             //if we dont set all things -> memory leak
             hit->SetADC(0);
             hit->SetEnergy(0.);
-            hit->SetTimestamp(aidaraw.extTimestamp*tm_stp_scaler_ratio);
+            hit->SetTimestamp(aidaraw.extTimestamp);
             hit->SetID(9999);
             hit->SetXY(0);
             hit->SetZ(0);
@@ -477,6 +530,13 @@ bool BuildAIDAEvents::GetNextEvent(){
         }
 
     }// flag stop
+
+
+    //! Clear mult
+    memset(fmultxyz,0,sizeof(fmultxyz));
+    memset(foverflowflag,0,sizeof(foverflowflag));
+
+
     return true;
 }
 
@@ -525,6 +585,3 @@ void BuildAIDAEvents::read_threshold_table(char* inf)
     flag_threhold=true;
     inpf.close();
 }
-
-
-

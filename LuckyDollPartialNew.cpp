@@ -282,7 +282,8 @@ int main(int argc, char* argv[]){
                   }
               }
               if (Mode==1) evts->GetAIDABeta()->ClearAllHits();
-              if (Mode==1||Mode==2) evts->GetBetaTree()->Fill();
+              if (Mode==1&&evts->GetAIDABeta()->GetNClusters()>0) evts->GetBetaTree()->Fill();
+              if (Mode==2) evts->GetBetaTree()->Fill();
           }else{
               if (Mode==0){
                   //!sort the timestamp
@@ -320,8 +321,9 @@ int main(int argc, char* argv[]){
                       if (FillFlag) treeaida->Fill();
                   }
               }
-              if (Mode==1) evts->GetAIDABeta()->ClearAllHits();
-              if (Mode==1||Mode==2)evts->GetIonTree()->Fill();
+              if (Mode==1) evts->GetAIDAIon()->ClearAllHits();
+              if (Mode==1&&evts->GetAIDAIon()->GetNClusters()>0) evts->GetBetaTree()->Fill();
+              if (Mode==2) evts->GetAIDAIon()->Fill();
           }
           if (evts->IsBETA()&&Mode==2){
               if (evts->GetAIDABeta()->GetMult()>64) evts->GetPulserTree()->Fill();

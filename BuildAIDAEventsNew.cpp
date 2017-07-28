@@ -321,11 +321,12 @@ bool BuildAIDAEvents::CloseIonEvent()
     }
     flocalaidaION->SetDeltaMaxZ(dmaxz);
 
+    /*
     for (int i=0;i<flocalaidaBETA->GetHits().size();i++){
         AIDAHit* hit=new AIDAHit;
         flocalaidaBETA->GetHit(i)->Copy(*hit);
         flocalaidaION->AddHit(hit);
-    }
+    }*/
 
 
     //if (fflag_filldata) fmtrION->Fill();

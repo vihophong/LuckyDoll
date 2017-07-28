@@ -322,8 +322,8 @@ int main(int argc, char* argv[]){
                   }
               }
               if (Mode==1) evts->GetAIDAIon()->ClearAllHits();
-              if (Mode==1&&evts->GetAIDAIon()->GetNClusters()>0) evts->GetBetaTree()->Fill();
-              if (Mode==2) evts->GetBetaTree()->Fill();
+              if (Mode==1&&evts->GetAIDAIon()->GetNClusters()>0) evts->GetIonTree()->Fill();
+              if (Mode==2) evts->GetIonTree()->Fill();
           }
           if (evts->IsBETA()&&Mode==2){
               if (evts->GetAIDABeta()->GetMult()>64) evts->GetPulserTree()->Fill();

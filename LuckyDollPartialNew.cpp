@@ -323,7 +323,7 @@ int main(int argc, char* argv[]){
               }
               if (Mode==1) evts->GetAIDAIon()->ClearAllHits();
               if (Mode==1&&evts->GetAIDAIon()->GetNClusters()>0) evts->GetBetaTree()->Fill();
-              if (Mode==2) evts->GetAIDAIon()->Fill();
+              if (Mode==2) evts->GetBetaTree()->Fill();
           }
           if (evts->IsBETA()&&Mode==2){
               if (evts->GetAIDABeta()->GetMult()>64) evts->GetPulserTree()->Fill();

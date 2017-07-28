@@ -323,7 +323,7 @@ public:
       fmaxz = -1;
       fclustermultz = 0;
       fhitmultz = 0;
-      fdmaxz = 0;
+      fdmaxz = -1;
       /*
       for (int i=0;i<NumDSSD;i++){
           fmultx[i]=0;
@@ -757,10 +757,10 @@ public:
     unsigned short fnclustersz[NumDSSD];
 
     //! max hit position
-    unsigned short fmaxz;
+    short fmaxz;
 
     //! max hit position correction (delta_{maxz}) (added July 29,2017)
-    unsigned short fdmaxz;
+    short fdmaxz;
 
     //! number of dssd with at least 1 cluster
     unsigned short fclustermultz;

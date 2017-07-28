@@ -273,7 +273,8 @@ int main(int argc, char* argv[]){
 
                       aida.nx = (int)evts->GetAIDABeta()->GetMultX((int)aida.z);
                       aida.ny = (int)evts->GetAIDABeta()->GetMultY((int)aida.z);
-                      aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi((int) aida.z);
+                      aida.nz = (int)evts->GetAIDABeta()->GetZHitMult();
+                      //aida.nz = (int)evts->GetAIDABeta()->GetNClustersZi((int) aida.z);
                   }else{//corrlation scaler
                       aida.ID=IDcorr;
                       aida.T=tsvector_it->first;
@@ -314,7 +315,8 @@ int main(int argc, char* argv[]){
 
                       aida.nx = (int)evts->GetAIDAIon()->GetMultX((int)aida.z);
                       aida.ny = (int)evts->GetAIDAIon()->GetMultY((int)aida.z);
-                      aida.nz = (int)evts->GetAIDAIon()->GetClustersMultZ();
+                      //aida.nz = (int)evts->GetAIDAIon()->GetClustersMultZ();
+                      aida.nz = (int)evts->GetAIDABeta()->GetZHitMult();
                   }else{//corrlation scaler
                       aida.ID=IDcorr;
                       aida.T=tsvector_it->first;

@@ -214,6 +214,7 @@ void BuildAIDAEvents::ReadHECalibTable()
 //! Add AIDA ION hits
 void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
     //if (chMask[aidaraw.feeNo][aidaraw.chNo]==1){ //no disable high energy
+
         AIDAHit* hit = new AIDAHit;
         hit->SetADC(aidaraw.adcData);
         //hit->SetEnergy((double)aidaraw.adcData*dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][1] + dssd_cal_he[aidaraw.dssdNo][aidaraw.stripNo][0]);
@@ -320,13 +321,12 @@ bool BuildAIDAEvents::CloseIonEvent()
     }
     flocalaidaION->SetDeltaMaxZ(dmaxz);
 
-    /*
     for (int i=0;i<flocalaidaBETA->GetHits().size();i++){
         AIDAHit* hit=new AIDAHit;
         flocalaidaBETA->GetHit(i)->Copy(*hit);
         flocalaidaION->AddHit(hit);
     }
-    */
+
 
     //if (fflag_filldata) fmtrION->Fill();
     fADIonEntry++;
@@ -415,7 +415,9 @@ bool BuildAIDAEvents::GetNextEvent(){
             flocalaidaBETA->Clear();
             return false;
         }
+
         aidaraw= aidaunpkg->GetAIDAraw();
+
         fADcurblock = aidaunpkg->GetCurrentBlock();
 
         if (aidaraw.infoCode==0){

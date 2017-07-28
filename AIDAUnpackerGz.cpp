@@ -209,7 +209,7 @@ bool AIDAUnpacker::GetNextHit(){
                 if (!GetNextHitMIDAS())
                     return false;
             }
-        }else{
+        }else{            
             ReconstructRawAIDA();
         }
         if (rawtree!=NULL&&!first_scan_flag) {
@@ -413,7 +413,6 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
             if (rawaida.chNo<NumStrXY&&rawaida.feeNo<NumFee){
                 rawaida.dssdNo=FEEtoDSSD[rawaida.feeNo][rawaida.chNo]; //channel index start from 1 since index must start from 1
                 rawaida.stripNo=FEEtoStrip[rawaida.feeNo][rawaida.chNo];
-
                 if (rawaida.stripNo<NumStrX) rawaida.adcData=pow(2,15)-rawaida.adcData;//X strip, Negative polarity
                 if (rawaida.stripNo>=NumStrX) rawaida.adcData=rawaida.adcData-pow(2,15);//Y strip, Positive polarity
             }else{

@@ -1,7 +1,10 @@
 #include "Merger.h"
-
-Merger::Merger()
+Merger::Merger():fbigrips()
 {
+    fmaxmult=400;
+    fmaxnpixels=3.;
+    fIonBetaTWlow=10000000000;
+    fIonBetaTWup=10000000000;
     fIonPidTWup = 0;
     fIonPidTWlow = 50000;
     fIonNeutronTWup = 800000;
@@ -16,8 +19,19 @@ Merger::Merger()
 
     fNeuGammaTWup = 100000;
     fNeuGammaTWlow = 800000;
-    fNeuAncTWup = 100000;
-    fNeuAncTWlow = 800000;
+
+    fNeuAncTWup = 600000;
+    fNeuAncTWlow = 0;
+
+    //fNeuAncTWup = 1000000;
+    //fNeuAncTWlow = 1000000;
+
+    fNeuBetaTWup = 600000;
+    fNeuBetaTWlow = 600000;
+    fNeuBetaoffset = -22000;
+    //fNeuBetaoffset = 0;//for simulation
+    fNeuBetaTWup= fNeuBetaTWup-fNeuBetaoffset;
+    fNeuBetaTWlow= fNeuBetaTWlow+fNeuBetaoffset;//this is upper :)
 
     fBetaGammaTWup = 0;
     fBetaGammaTWlow = 30000;
@@ -38,6 +52,15 @@ Merger::Merger()
     fF11LGammaTWlow = 1000;
     fF11LGammaTWup = 1000;
 
+    finputAida=NULL;
+    finputBigrips=NULL;
+    finputBriken=NULL;
+
+    fminneue = 100;
+    fmaxneue = 1000;
+
+    fmineneuvetodown=0.5;
+    fmineneuf11=0;
 }
 
 Merger::~Merger()
@@ -45,211 +68,273 @@ Merger::~Merger()
     delete fh1;
 }
 
+
+void Merger::ReadPID(char* pidfile, Int_t ncutpts){
+    std::ifstream ifspid(pidfile);
+    ifspid>>nbinsaoq>>aoqrange[0]>>aoqrange[1]>>nbinszet>>zetrange[0]>>zetrange[1];
+    ifspid>>nri;
+    TString tempriname,tempria;
+    for (Int_t i=0;i<nri;i++){
+        ifspid>>enablepid[i]>>enablepid2[i]>>tempria>>tempriname>>halflife[i];
+        for(Int_t j=0;j<7;j++) ifspid>>parmsri[i][j];
+        nameri[i]=tempriname+tempria;
+        latexnametri[i]=TString("^{")+tempria+TString("}"+tempriname);
+        cout<<nameri[i]<<"\t"<<latexnametri[i]<<"\t"<<halflife[i];
+        for(Int_t j=0;j<7;j++) cout<<"\t"<<parmsri[i][j];
+        cout<<endl;
+    }
+     //! Setup PID cut
+    for (Int_t i=0;i<nri;i++){
+        pidtag[i]=new TLatex(parmsri[i][0],parmsri[i][1]+0.2,latexnametri[i]);
+        pidtag[i]->SetTextSize(0.025);
+        pidtag[i]->SetTextColor(2);
+
+        cutg[i]=new TCutG(nameri[i],ncutpts);
+        cutg[i]->SetTitle(nameri[i]);
+        cutg[i]->SetVarX("decay.aoq");
+        cutg[i]->SetVarY("decay.zet");
+
+        Double_t theta=0;
+        Double_t x1=parmsri[i][0];
+        Double_t y1=parmsri[i][1];
+        Double_t r1=parmsri[i][2];
+        Double_t r2=parmsri[i][3];
+
+        Double_t phi1 = TMath::Min(0,360);
+        Double_t phi2 = TMath::Max(0,360);
+        Double_t kPI = 3.14159265358979323846;
+        Double_t angle,dx,dy;
+
+        Double_t x[ncutpts], y[ncutpts];
+        Double_t dphi = (phi2-phi1)*kPI/(180*ncutpts);
+        Double_t ct   = TMath::Cos(kPI*theta/180);
+        Double_t st   = TMath::Sin(kPI*theta/180);
+
+        for (Int_t j=0;j<ncutpts;j++) {
+           angle = phi1*kPI/180 + Double_t(j)*dphi;
+           dx    = r1*TMath::Cos(angle);
+           dy    = r2*TMath::Sin(angle);
+           x[j]  = x1 + dx*ct - dy*st;
+           y[j]  = y1 + dx*st + dy*ct;
+           //cout<<x[j]<<"<"<<y[j]<<endl;
+           cutg[i]->SetPoint(j,x[j],y[j]);
+        }
+        cutg[i]->SetPoint(ncutpts,x[0],y[0]);
+        cutg[i]->SetName((char*)nameri[i].Data());
+    }
+
+    for (Int_t i=0;i<nri;i++){
+        ftreeRI[i]=new TTree(Form("tree%s",(char*)nameri[i].Data()),Form("tree%s",(char*)nameri[i].Data()));
+    }
+}
+
+void Merger::InitPIDSep()
+{
+    flocalimp=NULL;
+    flocalbetaS = new IonBeta;
+    flocalbetaS->Clear();
+    //! init aida
+    fmergedFile = new TFile(finputMerged);
+    fmergedFile->GetObject("tree",ftrMerged);
+    ftrMerged->SetBranchAddress("idx",&nionbetacorr);
+    ftrMerged->SetBranchAddress("ion",&flocalimp);
+    ftrMerged->GetBranch("beta")->SetAutoDelete(kFALSE);
+    ftrMerged->SetBranchAddress("beta",&flocalbetaS);
+
+    fnentriesMerged = ftrMerged->GetEntries();
+    cout<<"Reading "<<fnentriesMerged<<" enetries in Merged tree"<<endl;
+    cout<<"Printing first few timestamp:"<<endl;
+    for (Long64_t i=0;i<10;i++){
+        ftrMerged->GetEvent(i);
+        cout<<"ionts= "<<flocalimp->GetTimestamp()<<endl;
+        cout<<"ionts= "<<flocalbetaS->GetTimestamp()<<endl;
+    }
+
+    TVectorD* deadtimecontainer=(TVectorD*) fmergedFile->Get(Form("deadtime"));
+    Double_t* deadtimearray=deadtimecontainer->GetMatrixArray();
+    fvetodeadtime=deadtimearray[0];
+    fvetototaltime=deadtimearray[1];
+    ff11vetodeadtime=deadtimearray[2];
+    ff11vetototaltime=deadtimearray[3];
+    fdownstreamvetodeadtime=deadtimearray[4];
+    fdownstreamvetototaltime=deadtimearray[5];
+    cout<<"F11R veto: deadtime="<<ff11vetodeadtime<<"\t---total time---\t"<<ff11vetototaltime<<endl;
+    cout<<"Downstream veto:deadtime="<<fdownstreamvetodeadtime<<"\t---total time---\t"<<fdownstreamvetototaltime<<endl;
+    cout<<"Final veto: deadtime="<<fvetodeadtime<<"\t---total time---\t"<<fvetototaltime<<endl;
+}
+
 void Merger::Init()
 {
+    ftree = 0;
     ftreeImplant = 0;
     ftreeBeta = 0;
-    ftreeNeutron = 0;
-    flocalbeta = new Beta;
-    flocalimp = new Implant;
-    flocalneutron = new Neutron;
-    flocalancillary = new Ancillary;
+    ftreeNeutron = 0;   
 
-    faidaIon = NULL;
-    faidaBeta = NULL;
+
+    flocalbeta = new TClonesArray("IonBeta");
+    flocalbeta->Clear("C");
+    flocalbetaS = new IonBeta;
+    flocalbetaS->Clear();
+
+    flocalimp = new IonBetaMult;
+    flocalimp->Clear();
+    nionbetacorr=0;
+
+    faida = NULL;
+    //faidaIon = NULL;
+    //faidaBeta = NULL;
     fbigrips = NULL;
     fclover = NULL;
     fneutron = NULL;
     fanc = NULL;
 
+    fnentriesAIDA=0;
     fnentriesAIDAIon = 0;
     fnentriesAIDABeta = 0;
     fnentriesBigrips = 0;
     fnentriesGamma = 0;
     fnentriesNeutron = 0;
     fnentriesAnc = 0;
+
+    /*
+    //! init aida
+    if (finputAida!=NULL){
+        fAidaFile = new TFile(finputAida);
+        fAidaFile->GetObject("beta",ftrAIDABeta);
+        fAidaFile->GetObject("ion",ftrAIDAIon);
+        ftrAIDABeta->SetBranchAddress("aida",&faidaBeta);
+        ftrAIDAIon->SetBranchAddress("aida",&faidaIon);
+        fnentriesAIDAIon = ftrAIDAIon->GetEntries();
+        fnentriesAIDABeta = ftrAIDABeta->GetEntries();
+        cout<<"Reading "<<fnentriesAIDABeta<<" betas and "
+           <<fnentriesAIDAIon<<" ions in AIDA tree"<<endl;
+        cout<<"Printing first few timestamp:"<<endl;
+        for (Long64_t i=0;i<10;i++){
+            ftrAIDABeta->GetEvent(i);
+            ftrAIDAIon->GetEvent(i);
+            cout<<"betats "<<faidaBeta->GetTimestamp()<<"- ionts "<<faidaIon->GetTimestamp()<<endl;
+        }
+    }
+    */
 
     //! init aida
-    fAidaFile = new TFile(finputAida);
-    fAidaFile->GetObject("beta",ftrAIDABeta);
-    fAidaFile->GetObject("ion",ftrAIDAIon);
-    ftrAIDABeta->SetBranchAddress("aida",&faidaBeta);
-    ftrAIDAIon->SetBranchAddress("aida",&faidaIon);
-    fnentriesAIDAIon = ftrAIDAIon->GetEntries();
-    fnentriesAIDABeta = ftrAIDABeta->GetEntries();
-    cout<<"Reading "<<fnentriesAIDABeta<<" betas and "
-       <<fnentriesAIDAIon<<" ions in AIDA tree"<<endl;
-    cout<<"Printing first few timestamp:"<<endl;
-    for (Long64_t i=0;i<10;i++){
-        ftrAIDABeta->GetEvent(i);
-        ftrAIDAIon->GetEvent(i);
-        cout<<"betats "<<faidaBeta->GetTimestamp()<<"- ionts "<<faidaIon->GetTimestamp()<<endl;
+    if (finputAida!=NULL){
+        fAidaFile = new TFile(finputAida);
+        fAidaFile->GetObject("aida",ftrAIDA);
+        ftrAIDA->SetBranchAddress("aida",&faida);
+        fnentriesAIDA = ftrAIDA->GetEntries();
+        cout<<"Reading "<<fnentriesAIDA<<" enetries in AIDA tree"<<endl;
+        cout<<"Printing first few timestamp:"<<endl;
+        for (Long64_t i=0;i<10;i++){
+            ftrAIDA->GetEvent(i);
+            cout<<"ts= "<<faida->GetTimestamp()<<endl;
+        }
     }
 
-    //! init briken
-    fBrikenFile = new TFile(finputBriken);
-    fBrikenFile->GetObject("neutron",ftrNeutron);
-    fBrikenFile->GetObject("gamma",ftrGamma);
-    fBrikenFile->GetObject("anc",ftrAnc);
-    ftrNeutron->SetBranchAddress("neutron",&fneutron);
-    ftrGamma->SetBranchAddress("gamma",&fclover);
-    ftrAnc->SetBranchAddress("anc",&fanc);
-    fnentriesNeutron = ftrNeutron->GetEntries();
-    fnentriesGamma = ftrGamma->GetEntries();
-    fnentriesAnc = ftrAnc->GetEntries();
-    cout<<"Reading "<<fnentriesNeutron<<" neutrons, "
-       <<fnentriesGamma<<" gammas and "<<fnentriesAnc<<" anc hits in AIDA tree"<<endl;
-    cout<<"Printing first few timestamp:"<<endl;
-    for (Long64_t i=0;i<10;i++){
-        ftrNeutron->GetEvent(i);
-        ftrGamma->GetEvent(i);
-        ftrAnc->GetEvent(i);
-        cout<<"neutronts "<<fneutron->GetTimestamp()<<"- gammats "<<fclover->GetTimestamp()<<"- ancts"<<fanc->GetTimestamp()<<endl;
+
+    if (finputBriken!=NULL){
+        //! init briken
+        fBrikenFile = new TFile(finputBriken);
+        fBrikenFile->GetObject("neutron",ftrNeutron);
+        fBrikenFile->GetObject("gamma",ftrGamma);
+        fBrikenFile->GetObject("anc",ftrAnc);
+        ftrNeutron->SetBranchAddress("neutron",&fneutron);
+        ftrGamma->SetBranchAddress("gamma",&fclover);
+        ftrAnc->SetBranchAddress("anc",&fanc);
+        fnentriesNeutron = ftrNeutron->GetEntries();
+        fnentriesGamma = ftrGamma->GetEntries();
+        fnentriesAnc = ftrAnc->GetEntries();
+        cout<<"Reading "<<fnentriesNeutron<<" neutrons, "
+           <<fnentriesGamma<<" gammas and "<<fnentriesAnc<<" anc hits in AIDA tree"<<endl;
+        cout<<"Printing first few timestamp:"<<endl;
+        for (Long64_t i=0;i<10;i++){
+            ftrNeutron->GetEvent(i);
+            ftrGamma->GetEvent(i);
+            ftrAnc->GetEvent(i);
+            cout<<"neutronts "<<fneutron->GetTimestamp()<<"- gammats "<<fclover->GetTimestamp()<<"- ancts"<<fanc->GetTimestamp()<<endl;
+        }
     }
 
-    //! init bigrips
-    fBigripsFile = new TFile(finputBigrips);
-    cout<<finputBigrips<<endl;
-    fBigripsFile->GetObject("tree",ftrBigrips);
-    ftrBigrips->SetBranchAddress("bigrips",&fbigrips);
-    fnentriesBigrips = ftrBigrips->GetEntries();
 
-    cout<<"Reading "<<fnentriesBigrips<<" bigrips items"<<endl;
-    cout<<"Printing first few timestamp:"<<endl;
-    for (Long64_t i=0;i<10;i++){
-        ftrBigrips->GetEvent(i);
-        cout<<"bigripsts "<<fbigrips->GetTimestamp()<<endl;
+    if (finputBigrips!=NULL){
+        //! init bigrips
+        fBigripsFile = new TFile(finputBigrips);
+        cout<<finputBigrips<<endl;
+        fBigripsFile->GetObject("tree",ftrBigrips);
+        ftrBigrips->SetBranchAddress("bigrips",&fbigrips);
+        fnentriesBigrips = ftrBigrips->GetEntries();
+
+        cout<<"Reading "<<fnentriesBigrips<<" bigrips items"<<endl;
+        cout<<"Printing first few timestamp:"<<endl;
+        for (Long64_t i=0;i<10;i++){
+            ftrBigrips->GetEvent(i);
+            cout<<"bigripsts "<<fbigrips->ts<<endl;
+        }
+        cout<<"\n\t\t\t****************************************\n"<<endl;
     }
-    cout<<"\n\t\t\t****************************************\n"<<endl;
 
-    fh1=new TH1F("h1","h1",500,0,100e3);
+    fh1=new TH1F("h1","h1",5000,-1000,1000);
 }
 
 
-void Merger::InitBRIKEN()
-{
-    ftreeImplant = 0;
-    ftreeBeta = 0;
-    ftreeNeutron = 0;
-    flocalneutron = new Neutron;
 
-    faidaIon = NULL;
-    faidaBeta = NULL;
-    fbigrips = NULL;
-    fclover = NULL;
-    fneutron = NULL;
-    fanc = NULL;
+void Merger::BookTreeTClone(TTree* tree,TTree* treemlh,TTree* treemlhp1n,TTree* treemlhp2n,TTree* treemlhp1nb,TTree* treemlhp2nb){
+    ftree = tree;
+    ftree->Branch("idx",&nionbetacorr,"idx/I");
+    ftree->Branch("ion",&flocalimp);
+    ftree->Branch("beta",&flocalbeta);
+    ftree->BranchRef();
+}
 
-    fnentriesAIDAIon = 0;
-    fnentriesAIDABeta = 0;
-    fnentriesBigrips = 0;
-    fnentriesGamma = 0;
-    fnentriesNeutron = 0;
-    fnentriesAnc = 0;
+void Merger::BookTreeSingle(TTree* tree){
+    ftree = tree;
+    ftree->Branch("idx",&nionbetacorr,"idx/I");
+    ftree->Branch("ion",&flocalimp);
+    ftree->Branch("beta",&flocalbetaS);
+    ftree->BranchRef();
+}
 
-
-    //! init briken
-    fBrikenFile = new TFile(finputBriken);
-    fBrikenFile->GetObject("neutron",ftrNeutron);
-    fBrikenFile->GetObject("gamma",ftrGamma);
-    fBrikenFile->GetObject("anc",ftrAnc);
-    ftrNeutron->SetBranchAddress("neutron",&fneutron);
-    ftrGamma->SetBranchAddress("gamma",&fclover);
-    ftrAnc->SetBranchAddress("anc",&fanc);
-    fnentriesNeutron = ftrNeutron->GetEntries();
-    fnentriesGamma = ftrGamma->GetEntries();
-    fnentriesAnc = ftrAnc->GetEntries();
-    cout<<"Reading "<<fnentriesNeutron<<" neutrons, "
-       <<fnentriesGamma<<" gammas and "<<fnentriesAnc<<" anc hits in AIDA tree"<<endl;
-    cout<<"Printing first few timestamp:"<<endl;
-    for (Long64_t i=0;i<10;i++){
-        ftrNeutron->GetEvent(i);
-        ftrGamma->GetEvent(i);
-        ftrAnc->GetEvent(i);
-        cout<<"neutronts "<<fneutron->GetTimestamp()<<"- gammats "<<fclover->GetTimestamp()<<"- ancts"<<fanc->GetTimestamp()<<endl;
+void Merger::BookPIDSepTree(){
+    ftree=new TTree("tree","tree");
+    ftree->Branch("idx",&nionbetacorr,"idx/I");
+    ftree->Branch("ion",&flocalimp);
+    ftree->Branch("beta",&flocalbetaS);
+    ftree->BranchRef();
+    for (Int_t i=0;i<nri;i++){
+        ftreeRI[i]->Branch("idx",&nionbetacorr,"idx/I");
+        ftreeRI[i]->Branch("ion",&flocalimp);
+        ftreeRI[i]->Branch("beta",&flocalbetaS);
+        ftreeRI[i]->BranchRef();
     }
-    fh1=new TH1F("h1","h1",500,0,100e3);
-}
-void Merger::BookTreeBRIKEN(TTree* treeAnc){
-    ftreeAncillary = treeAnc;
-    ftreeAncillary->Branch("beam",&flocalancillary);
-    ftreeAncillary->BranchRef();
 }
 
-
-/*
-void Merger::InitTemp()
-{
-    flocalancillary = new Ancillary;
-    fanc = NULL;
-    fnentriesAnc = 0;
-    //! init briken
-    fBrikenFile = new TFile(finputBriken);
-    fBrikenFile->GetObject("anc",ftrAnc);
-    ftrAnc->SetBranchAddress("anc",&fanc);
-    fnentriesAnc = ftrAnc->GetEntries();
-    fh1=new TH1F("h1","h1",500,0,100e3);
-}
-
-void Merger::BookTreeTemp(TTree* treeAnc){
-    ftreeAncillary = treeAnc;
-    ftreeAncillary->Branch("beam",&flocalancillary);
-}
-*/
-
-void Merger::BookTree(TTree* treeImplant, TTree* treeBeta, TTree* treeNeutron, TTree* treeAnc){
-    ftreeImplant = treeImplant;
-    ftreeBeta = treeBeta;
-    ftreeNeutron = treeNeutron;
-    ftreeAncillary = treeAnc;
-
-    ftreeImplant->Branch("implant",&flocalimp);
-    ftreeImplant->BranchRef();
-    ftreeBeta->Branch("beta",&flocalbeta);
-    ftreeBeta->BranchRef();
-    ftreeNeutron->Branch("neutron",&flocalneutron);
-    ftreeNeutron->BranchRef();
-    ftreeAncillary->Branch("beam",&flocalancillary);
-    ftreeAncillary->Branch("bigrips",&fbigrips);
-    ftreeAncillary->BranchRef();
-}
-
-void Merger::ReadAIDA(unsigned int startI, unsigned int stopI,unsigned int startB, unsigned int stopB)
+void Merger::ReadAIDA(unsigned int start, unsigned int stop)
 {
     //! read ion
     unsigned int sstartI,sstopI;
-    if (startI==0) sstartI = 0; else sstartI = startI;
-    if (stopI==0) sstopI = (unsigned int) fnentriesAIDAIon; else sstopI = stopI;
+    if (start==0) sstartI = 0; else sstartI = start;
+    if (stop==0) sstopI = (unsigned int) fnentriesAIDA; else sstopI = stop;
 
     for (unsigned int jentry = sstartI;jentry < sstopI;jentry++){
-        ftrAIDAIon->GetEvent(jentry);
-        unsigned short lastclusterID = faidaIon->GetNClusters()-1;
-        if (faidaIon->GetCluster(lastclusterID)->GetHitPositionZ()==faidaIon->GetMaxZ()){
-            faidaIonMap.insert(make_pair(faidaIon->GetCluster(lastclusterID)->GetTimestamp()*ClockResolution,jentry));
-        }else{
-            cout<<"something wrong!"<<endl;
+        ftrAIDA->GetEvent(jentry);
+        if (faida->GetID()==4){
+            AIDASimpleStruct* aidasimple=new AIDASimpleStruct;
+            faida->Copy(*aidasimple);
+            faidaIonMap.insert(make_pair(faida->GetTimestamp(),aidasimple));
+        }else if (faida->GetID()==5&&faida->GetMultiplicity()<fmaxmult){
+            AIDASimpleStruct* aidasimple=new AIDASimpleStruct;
+            faida->Copy(*aidasimple);
+            faidaBetaMap.insert(make_pair(faida->GetTimestamp(),aidasimple));
         }
     }
-    cout<<"Finished reading ion  ts table with "<<faidaIonMap.size()<<" rows"<<endl;
-    //! read beta
-    unsigned int sstartB,sstopB;
-    if (startB==0) sstartB = 0; else sstartB = startB;
-    if (stopB==0) sstopB = (unsigned int) fnentriesAIDABeta; else sstopB = stopB;
-    for (unsigned int jentry = sstartB;jentry < sstopB;jentry++){
-        ftrAIDABeta->GetEvent(jentry);
-        for (unsigned short i = 0;i<faidaBeta->GetNClusters();i++){
-            //if (jentry<10) cout<<i<<" - "<<faidaBeta->GetCluster(i)->GetTimestamp()<<endl;
-            faidaBetaMap.insert(make_pair(faidaBeta->GetCluster(i)->GetTimestamp()*ClockResolution,make_pair(jentry,i)));
-        }
-    }
-    cout<<"Finished reading beta ts table with "<<faidaBetaMap.size()<<" rows"<<endl;
+    cout<<"Finished reading AIDA time table with "<<faidaIonMap.size()<<" entries for ion, and "<<faidaBetaMap.size()<<" entries for beta"<<endl;
 }
 
 void Merger::ReadBigrips()
 {
     for (unsigned int jentry = 0;jentry < (unsigned int) fnentriesBigrips;jentry++){
         ftrBigrips->GetEvent(jentry);
-        fbigripsMap.insert(make_pair(fbigrips->GetTimestamp(),jentry));
+        fbigripsMap.insert(make_pair(fbigrips->ts,jentry));
     }
     cout<<"Finished reading bigrips ts table with "<<fbigripsMap.size()<<" rows"<<endl;
 }
@@ -263,7 +348,9 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
 
     for (unsigned int jentry = sstartN;jentry < sstopN;jentry++){
         ftrNeutron->GetEvent(jentry);
-        fhe3Map.insert(make_pair(fneutron->GetTimestamp(),jentry));
+        BELENHit* hit=new BELENHit;
+        fneutron->Copy(*hit);
+        if (fneutron->GetEnergy()<fmaxneue&&fneutron->GetEnergy()>fminneue) fhe3Map.insert(make_pair(fneutron->GetTimestamp(),hit));
     }
     cout<<"Finished reading neutron  ts table with "<<fhe3Map.size()<<" rows"<<endl;
 
@@ -307,1092 +394,719 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
     cout<<"Finished reading Veto Down ts table with "<<fVetoDownMap.size()<<" rows"<<endl;
 }
 
-void Merger::ReadTemp()
+
+void Merger::DoMergeTClone()
 {
-    //! read anc
-    for (unsigned int jentry = 0;jentry < (unsigned int) fnentriesAnc;jentry++){
-        ftrAnc->GetEvent(jentry);
-        if (fanc->GetMyPrecious()==1&&fanc->GetID()==1) fF11RMap.insert(make_pair(fanc->GetTimestamp(),jentry));
-        if (fanc->GetMyPrecious()==1&&fanc->GetID()==2) fF11LMap.insert(make_pair(fanc->GetTimestamp(),jentry));
-        if (fanc->GetMyPrecious()==2&&fanc->GetID()==1) fVetoTopMap.insert(make_pair(fanc->GetTimestamp(),jentry));
-        if (fanc->GetMyPrecious()==2&&fanc->GetID()==2) fVetoBotMap.insert(make_pair(fanc->GetTimestamp(),jentry));
-        if (fanc->GetMyPrecious()==3&&fanc->GetID()==1) fdETopMap.insert(make_pair(fanc->GetTimestamp(),jentry));
-        if (fanc->GetMyPrecious()==3&&fanc->GetID()==2) fdEBotMap.insert(make_pair(fanc->GetTimestamp(),jentry));
-        if (fanc->GetMyPrecious()==4) fVetoDownMap.insert(make_pair(fanc->GetTimestamp(),jentry));
-    }
-    cout<<"Finished reading F11R  ts table with "<<fF11RMap.size()<<" rows"<<endl;
-    cout<<"Finished reading F11L  ts table with "<<fF11LMap.size()<<" rows"<<endl;
-    cout<<"Finished reading Veto Top ts table with "<<fVetoTopMap.size()<<" rows"<<endl;
-    cout<<"Finished reading Veto Bottom ts table with "<<fVetoBotMap.size()<<" rows"<<endl;
-    cout<<"Finished reading Veto Down ts table with "<<fVetoDownMap.size()<<" rows"<<endl;
-}
-
-void Merger::DoMergeImp()
-{
-    unsigned int ncorrwBR = 0;
-    unsigned int ncorrwNeutron = 0;
-    unsigned int ncorrwGamma = 0;
-    unsigned int ncorrwAnc = 0;
-    unsigned int ncorrwF11R = 0;
-    unsigned int ncorrwF11L = 0;
-    unsigned int ncorrwVetoTop = 0;
-    unsigned int ncorrwVetoBot = 0;
-    unsigned int ncorrwVetoDown = 0;
-
-    unsigned int ncorrwdETop = 0;
-    unsigned int ncorrwdEBot = 0;
-
-
+    Int_t k=0;
+    Int_t ktotal=faidaIonMap.size();
+    Int_t ncorrwbigrips=0;
+    Int_t ncorrwbeta=0;
 
     for (faidaIonMap_it=faidaIonMap.begin();faidaIonMap_it!=faidaIonMap.end();faidaIonMap_it++){
-        unsigned long long ts  = faidaIonMap_it->first;
-        unsigned int entry = faidaIonMap_it->second;
-        ftrAIDAIon->GetEvent(entry);
-
         flocalimp->Clear();
+        flocalbeta->Clear("C");
+        //flocalbeta->Clear();
+        if (k%1000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w bigrips "<<ncorrwbigrips<<endl;
+        //if (k>500) break;
+        unsigned long long ts=faidaIonMap_it->first;
+        AIDASimpleStruct* ion=(AIDASimpleStruct*) faidaIonMap_it->second;
+        double impx=ion->GetHitPositionX();
+        double impy=ion->GetHitPositionY();
+        short impz=ion->GetHitPositionZ()+ion->GetDZ();//! correct dZ
 
-        //! fill ion first
-        /*
-        unsigned short lastclusterID = faidaIon->GetNClusters()-1;
-        if (faidaIon->GetCluster(lastclusterID)->GetHitPositionZ()==faidaIon->GetMaxZ()){
-            faidaIon->GetCluster(lastclusterID)->Copy(*flocalimp->GetIon());
-        }else{
-            cout<<"something wrong!"<<endl;
-        }
-        */
-        faidaIon->Copy(*flocalimp->GetIon());
-
-        flocalimp->SetTimeStamp(ts);
-        //! correlated event with bigrips
+        //! fill imp data here
+        //AIDASimpleStruct* iontofill = flocalimp->GetIonBetaCluster();
+        //ion->Copy(*iontofill);
+        flocalimp->CopyFromAIDA(ion);
+        //! Correlate imp with bigrips
         Long64_t ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;
         Long64_t ts2 = (Long64_t)ts + (Long64_t)fIonPidTWup;
-        Long64_t ncorr = 0;
         Long64_t corrts = 0;
+        Int_t ncorr=0;
         unsigned int correntry = 0;
         Long64_t check_time = 0;
-
         fbigripsMap_it = fbigripsMap.lower_bound(ts1);
         while(fbigripsMap_it!=fbigripsMap.end()&&fbigripsMap_it->first<ts2){
             corrts = (Long64_t) fbigripsMap_it->first;
             correntry = fbigripsMap_it->second;
             if (corrts!=check_time){
-                ftrBigrips->GetEvent(correntry);
-                fbigrips->Copy(*flocalimp->GetBeam());               
                 check_time=corrts;
-                flocalimp->SetNBeam(1);
-                fh1->Fill(-(Long64_t)flocalimp->GetBeam()->GetTimestamp()+(Long64_t)flocalimp->GetIon()->GetTimestamp());
-                 ncorrwBR++;
+                //! fill data here
+                ftrBigrips->GetEvent(correntry);
+                flocalimp->AddBeam(*fbigrips);
+                ncorr++;
                 break;
             }
             fbigripsMap_it++;
         }
+        if (ncorr>0) ncorrwbigrips++;
 
-        //! correlated event with neutron
-        ts1 = (Long64_t)ts - (Long64_t)fIonNeutronTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonNeutronTWup;
-        ncorr = 0;
+        //! Correlate with beta
+        ts1 = (Long64_t)ts - fIonBetaTWlow;
+        ts2 = (Long64_t)ts + fIonBetaTWup;
         corrts = 0;
         correntry = 0;
-        check_time =0;
+        check_time = 0;
+        nionbetacorr=0;
+        faidaBetaMap_it = faidaBetaMap.lower_bound(ts1);
+        while(faidaBetaMap_it!=faidaBetaMap.end()&&faidaBetaMap_it->first<ts2){
+            corrts = (Long64_t) faidaBetaMap_it->first;
+            AIDASimpleStruct* beta = faidaBetaMap_it->second;
+            double betax= beta->GetHitPositionX();
+            double betay= beta->GetHitPositionY();
+            short betaz= beta->GetHitPositionZ();
+            if (corrts!=check_time&&betaz==impz){
+                if (!((betax-impx>=-fmaxnpixels)&&(betax-impx<=fmaxnpixels)&&(betay-impy>=-fmaxnpixels)&&(betay-impy<=fmaxnpixels))){
+                    faidaBetaMap_it++;
+                    continue;
+                }
+                //! fill beta here
+                //fh1->Fill((Long64_t)corrts-(Long64_t)ts);
+
+
+                //flocalbeta->Clear();
+                //flocalbeta->CopyFromAIDA(beta);
+                //ftree->Fill();
+
+                IonBeta* simplestructbeta=(IonBeta*)flocalbeta->ConstructedAt(nionbetacorr);
+                simplestructbeta->CopyFromAIDA(beta);
+
+                nionbetacorr++;
+            }
+            faidaBetaMap_it++;
+        }
+        if (nionbetacorr>0) ncorrwbeta++;
+        ftree->Fill();
+        k++;
+    }
+}
+
+void Merger::DoMergeSingle()
+{
+    Int_t k=0;
+    Int_t ktotal=faidaIonMap.size();
+    Int_t ncorrwbigrips=0;
+    Int_t ncorrwneutron=0;
+    Int_t ncorrwbeta=0;
+
+
+    Long64_t deadtime_start=-9999;
+    Long64_t deadtime_reset=-9999;
+    ff11vetodeadtime=0;
+    ff11vetototaltime = 0;
+    unsigned long long lastts = 0;
+    for (fF11MapR_it=fF11RMap.begin();fF11MapR_it!=fF11RMap.end();fF11MapR_it++){
+        unsigned long long ts=fF11MapR_it->first;
+        unsigned long long entry=fF11MapR_it->second;
+        if (ff11vetototaltime==0) ff11vetototaltime=(Long64_t)ts;
+        lastts=ts;
+        //ftrAnc->GetEntry(entry);
+        //cout<<"ts="<<ts<<"\te="<<fanc->GetEnergy()<<endl;
+        //! estimate dead time using paralyzable model(note: fNeuAncTWlow must be 0!)
+        if (deadtime_reset<ts){
+            if(deadtime_start>0) {
+                ff11vetodeadtime+=deadtime_reset-deadtime_start;//prev window
+                //cout<<"deadtime=\t"<<deadtime_reset-deadtime_start<<endl;
+            }
+            deadtime_start=ts;
+            deadtime_reset=ts+fNeuAncTWup;
+        }else{
+            deadtime_reset=ts+fNeuAncTWup;
+        }
+        //unsigned int entry=fF11MapR_it->second;
+        //ftrAnc->GetEntry(entry);
+        //if (fanc->GetEnergy()<fmineneuvetodown) continue;
+        //! Correlate f11 with neutron
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
+        Long64_t corrts = 0;
+        Int_t ncorr=0;
+        Long64_t check_time = 0;
         fhe3Map_it = fhe3Map.lower_bound(ts1);
         while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
             corrts = (Long64_t) fhe3Map_it->first;
-            correntry = fhe3Map_it->second;
+            BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
             if (corrts!=check_time){
-                ftrNeutron->GetEvent(correntry);
                 check_time=corrts;
-                BELENHit* hit=new BELENHit;
-                fneutron->Copy(*hit);
-                flocalimp->AddNeutronHit(hit);
+                //! fill neutron here
+                double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
+                double currtdiff=neuhit->GetF11Time();
+                if (currtdiff<999998.) neuhit->SetF11Time(tdiff);
+                else if (tdiff<currtdiff) neuhit->SetF11Time(tdiff);
                 ncorr++;
             }
             fhe3Map_it++;
         }
-        if (ncorr>0) ncorrwNeutron++;
 
-        //! correlated event with gamma
-        ts1 = (Long64_t)ts - (Long64_t)fIonGammaTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonGammaTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fcloverMap_it = fcloverMap.lower_bound(ts1);
-        while(fcloverMap_it!=fcloverMap.end()&&fcloverMap_it->first<ts2){
-            corrts = (Long64_t) fcloverMap_it->first;
-            correntry = fcloverMap_it->second;
-            if (corrts!=check_time){
-                ftrGamma->GetEvent(correntry);
-                check_time=corrts;
-                CloverHit* hit=new CloverHit;
-                fclover->Copy(*hit);
-                flocalimp->AddGammaHit(hit);
-                ncorr++;
-            }
-            fcloverMap_it++;
-        }
-        if (ncorr>0) ncorrwGamma++;
-
-        /*
-        //! correlated event with anc
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-
-        fancMap_it = fancMap.lower_bound(ts1);
-        while(fancMap_it!=fancMap.end()&&fancMap_it->first<ts2){
-            corrts = (Long64_t) fancMap_it->first;
-            correntry = fancMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                BELENHit* hit=new BELENHit;
-                fanc->Copy(*hit);
-                flocalimp->AddAncHit(hit);
-                ncorr++;
-            }
-            fancMap_it++;
-        }
-        if (ncorr>0) ncorrwAnc++;
-        */
-
-        //! correlated event with f11l
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fF11MapL_it = fF11LMap.lower_bound(ts1);
-        while(fF11MapL_it!=fF11LMap.end()&&fF11MapL_it->first<ts2){
-            corrts = (Long64_t) fF11MapL_it->first;
-            correntry = fF11MapL_it->second;
-            //if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalimp->GetF11Beam()->SetTF11L(fanc->GetTimestamp());
-                flocalimp->GetF11Beam()->SetEF11L(fanc->GetEnergy());
-                flocalimp->GetF11Beam()->SetNF11L(1);
-                ncorr++;
-                break;
-            //}
-            fF11MapL_it++;
-        }
-        if (ncorr>0) ncorrwF11L++;
-
-        //! correlated event with f11r
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fF11MapR_it = fF11RMap.lower_bound(ts1);
-        while(fF11MapR_it!=fF11RMap.end()&&fF11MapR_it->first<ts2){
-            corrts = (Long64_t) fF11MapR_it->first;
-            correntry = fF11MapR_it->second;
-            //if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalimp->GetF11Beam()->SetTF11R(fanc->GetTimestamp());
-                flocalimp->GetF11Beam()->SetEF11R(fanc->GetEnergy());
-                flocalimp->GetF11Beam()->SetNF11R(1);
-                ncorr++;
-                break;
-            //}
-            fF11MapR_it++;
-        }
-        if (ncorr>0) ncorrwF11R++;
-
-
-        //! correlate event with vetotop
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoTopMap_it = fVetoTopMap.lower_bound(ts1);
-        while(fVetoTopMap_it!=fVetoTopMap.end()&&fVetoTopMap_it->first<ts2){
-            corrts = (Long64_t) fVetoTopMap_it->first;
-            correntry = fVetoTopMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalimp->GetF11Beam()->SetTVetoTop(fanc->GetTimestamp());
-                flocalimp->GetF11Beam()->SetEVetoTop(fanc->GetEnergy());
-                flocalimp->GetF11Beam()->SetNVetoTop(1);
-                ncorr++;
-                break;
-            }
-            fVetoTopMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoTop++;
-
-        //! correlate event with vetobot
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoBotMap_it = fVetoBotMap.lower_bound(ts1);
-        while(fVetoBotMap_it!=fVetoBotMap.end()&&fVetoBotMap_it->first<ts2){
-            corrts = (Long64_t) fVetoBotMap_it->first;
-            correntry = fVetoBotMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalimp->GetF11Beam()->SetTVetoBot(fanc->GetTimestamp());
-                flocalimp->GetF11Beam()->SetEVetoBot(fanc->GetEnergy());
-                flocalimp->GetF11Beam()->SetNVetoBot(1);
-                ncorr++;
-                break;
-            }
-            fVetoBotMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoBot++;
-
-
-        //! correlate event with detop
-        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fdETopMap_it = fdETopMap.lower_bound(ts1);
-        while(fdETopMap_it!=fdETopMap.end()&&fdETopMap_it->first<ts2){
-            corrts = (Long64_t) fdETopMap_it->first;
-            correntry = fdETopMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalimp->GetF11Beam()->SetTdETop(fanc->GetTimestamp());
-                flocalimp->GetF11Beam()->SetEdETop(fanc->GetEnergy());
-                flocalimp->GetF11Beam()->SetNdETop(1);
-                ncorr++;
-                break;
-            }
-            fdETopMap_it++;
-        }
-        if (ncorr>0) ncorrwdETop++;
-
-        //! correlate event with debot
-        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fdEBotMap_it = fdEBotMap.lower_bound(ts1);
-        while(fdEBotMap_it!=fdEBotMap.end()&&fdEBotMap_it->first<ts2){
-            corrts = (Long64_t) fdEBotMap_it->first;
-            correntry = fdEBotMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalimp->GetF11Beam()->SetTdEBot(fanc->GetTimestamp());
-                flocalimp->GetF11Beam()->SetEdEBot(fanc->GetEnergy());
-                flocalimp->GetF11Beam()->SetNdEBot(1);
-                ncorr++;
-                break;
-            }
-            fdEBotMap_it++;
-        }
-        if (ncorr>0) ncorrwdEBot++;
-
-
-
-        //! correlate event with vetodown
-        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoDownMap_it = fVetoDownMap.lower_bound(ts1);
-        while(fVetoDownMap_it!=fVetoDownMap.end()&&fVetoDownMap_it->first<ts2){
-            corrts = (Long64_t) fVetoDownMap_it->first;
-            correntry = fVetoDownMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalimp->GetF11Beam()->SetTVetoDown(fanc->GetTimestamp());
-                flocalimp->GetF11Beam()->SetEVetoDown(fanc->GetEnergy());
-                flocalimp->GetF11Beam()->SetNVetoDown(1);
-                ncorr++;
-                break;
-            }
-            fVetoDownMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoDown++;
-
-        ftreeImplant->Fill();
+        //! add all veto map
+        fvetoMap.insert(make_pair(ts,entry));
     }
-    cout<<"finished merging Implantation" <<endl;
-    cout<<ncorrwBR<<" "<<ncorrwNeutron<<" "<<ncorrwGamma<<endl;
-    cout<<ncorrwF11L<<" "<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<endl;
-    cout<<ncorrwdEBot<<" "<<ncorrwdETop<<endl;
-}
+    ff11vetototaltime=(Long64_t)lastts+fNeuAncTWup-ff11vetototaltime;
+    ff11vetodeadtime+=fNeuAncTWup;
 
-void Merger::DoMergeBeta()
-{
-    unsigned int ncorrwGamma = 0;
-    unsigned int ncorrwAnc = 0;
-    unsigned int ncorrwF11R = 0;
-    unsigned int ncorrwF11L = 0;
-    unsigned int ncorrwVetoTop = 0;
-    unsigned int ncorrwVetoBot = 0;
-    unsigned int ncorrwVetoDown = 0;
-    unsigned int ncorrwdEBot = 0;
-    unsigned int ncorrwdETop = 0;
+    cout<<"F11R veto: deadtime="<<ff11vetodeadtime<<"\t---total time---\t"<<ff11vetototaltime<<endl;
 
+    deadtime_start=-9999;
+    deadtime_reset=-9999;
+    fdownstreamvetodeadtime=0;
+    fdownstreamvetototaltime=0;
+    lastts=0;
+    //! Neutron correlation with downstream veto
+    for (fVetoDownMap_it=fVetoDownMap.begin();fVetoDownMap_it!=fVetoDownMap.end();fVetoDownMap_it++){
+        unsigned long long ts=fVetoDownMap_it->first;
+        unsigned int entry=fVetoDownMap_it->second;
+        if (fdownstreamvetototaltime==0) fdownstreamvetototaltime=(Long64_t)ts;
+        lastts=ts;
+        ftrAnc->GetEntry(entry);
+        if (fanc->GetEnergy()<fmineneuvetodown) continue;
 
-    int jentry=0;
-    int nentries=faidaBetaMap.size();
-    for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
-        if (jentry%1000==0) cout<<jentry<<"/"<<nentries<<" entries \r"<<flush;
-        jentry++;
-        unsigned long long ts  = faidaBetaMap_it->first;
-        unsigned int entry = faidaBetaMap_it->second.first;
-        unsigned short clusterId = faidaBetaMap_it->second.second;
-        ftrAIDABeta->GetEvent(entry);
-        flocalbeta->Clear();
-
-        //! fill beta clusters first
-
-        faidaBeta->GetCluster(clusterId)->Copy(*flocalbeta->GetBeta());
-        flocalbeta->SetTimeStamp(ts);
-        //! and some commond stuff for light particles rejection
-        flocalbeta->SetMult(faidaBeta->GetMult());
-        flocalbeta->SetHitMultZ(faidaBeta->GetZHitMult());
-        flocalbeta->SetNHitZ(faidaBeta->GetNHitZ());
-        flocalbeta->SetMultX(faidaBeta->GetMultXs());
-        flocalbeta->SetMultY(faidaBeta->GetMultYs());
-        flocalbeta->SetNClusters(faidaBeta->GetNClusters());
-        flocalbeta->SetClusterMultZ(faidaBeta->GetClustersMultZ());
-        flocalbeta->SetNClusterZ(faidaBeta->GetNClustersZ());
-        flocalbeta->SetMaxZ(faidaBeta->GetMaxZ());
-
-        //! correlate event with gamma
-        Long64_t ts1 = (Long64_t)ts - (Long64_t)fBetaGammaTWlow;
-        Long64_t ts2 = (Long64_t)ts + (Long64_t)fBetaGammaTWup;
-        Long64_t ncorr = 0;
+        if (deadtime_reset<ts){
+            if(deadtime_start>0) {
+                fdownstreamvetodeadtime+=deadtime_reset-deadtime_start;//prev window
+                //cout<<"deadtime=\t"<<deadtime_reset-deadtime_start<<endl;
+            }
+            deadtime_start=ts;
+            deadtime_reset=ts+fNeuAncTWup;
+        }else{
+            deadtime_reset=ts+fNeuAncTWup;
+        }
+        //! Correlate f11 with neutron
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
         Long64_t corrts = 0;
-        unsigned int correntry = 0;
+        Int_t ncorr=0;
         Long64_t check_time = 0;
-
-        fcloverMap_it = fcloverMap.lower_bound(ts1);
-        while(fcloverMap_it!=fcloverMap.end()&&fcloverMap_it->first<ts2){
-            corrts = (Long64_t) fcloverMap_it->first;
-            correntry = fcloverMap_it->second;
+        fhe3Map_it = fhe3Map.lower_bound(ts1);
+        while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
+            corrts = (Long64_t) fhe3Map_it->first;
+            BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
             if (corrts!=check_time){
-                ftrGamma->GetEvent(correntry);
                 check_time=corrts;
-                CloverHit* hit=new CloverHit;
-                fclover->Copy(*hit);
-                flocalbeta->AddGammaHit(hit);
+                //! fill neutron here
+                double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
+                double currtdiff=neuhit->GetDownstreamVetoTime();
+                if (currtdiff<999998.) neuhit->SetDownstreamVetoTime(tdiff);
+                else if (tdiff<currtdiff) neuhit->SetDownstreamVetoTime(tdiff);
                 ncorr++;
+                fh1->Fill(tdiff);
             }
-            fcloverMap_it++;
+            fhe3Map_it++;
         }
-        if (ncorr>0) ncorrwGamma++;
-
-        /*
-        //! correlated event with anc
-        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fancMap_it = fancMap.lower_bound(ts1);
-        while(fancMap_it!=fancMap.end()&&fancMap_it->first<ts2){
-            corrts = (Long64_t) fancMap_it->first;
-            correntry = fancMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                BELENHit* hit=new BELENHit;
-                fanc->Copy(*hit);
-                flocalbeta->AddAncHit(hit);
-                ncorr++;
-            }
-            fancMap_it++;
-        }
-        if (ncorr>0) ncorrwAnc++;
-        */
-
-
-        //! correlated event with f11l
-        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fF11MapL_it = fF11LMap.lower_bound(ts1);
-        while(fF11MapL_it!=fF11LMap.end()&&fF11MapL_it->first<ts2){
-            corrts = (Long64_t) fF11MapL_it->first;
-            correntry = fF11MapL_it->second;
-            //if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalbeta->GetF11Beam()->SetTF11L(fanc->GetTimestamp());
-                flocalbeta->GetF11Beam()->SetEF11L(fanc->GetEnergy());
-                flocalbeta->GetF11Beam()->SetNF11L(1);
-                ncorr++;
-                break;
-            //}
-            fF11MapL_it++;
-        }
-        if (ncorr>0) ncorrwF11L++;
-
-        //! correlated event with f11r
-        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fF11MapR_it = fF11RMap.lower_bound(ts1);
-        while(fF11MapR_it!=fF11RMap.end()&&fF11MapR_it->first<ts2){
-            corrts = (Long64_t) fF11MapR_it->first;
-            correntry = fF11MapR_it->second;
-            //if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalbeta->GetF11Beam()->SetTF11R(fanc->GetTimestamp());
-                flocalbeta->GetF11Beam()->SetEF11R(fanc->GetEnergy());
-                flocalbeta->GetF11Beam()->SetNF11R(1);
-                ncorr++;
-                break;
-            //}
-            fF11MapR_it++;
-        }
-        if (ncorr>0) ncorrwF11R++;
-
-
-        //! correlate event with vetotop
-        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoTopMap_it = fVetoTopMap.lower_bound(ts1);
-        while(fVetoTopMap_it!=fVetoTopMap.end()&&fVetoTopMap_it->first<ts2){
-            corrts = (Long64_t) fVetoTopMap_it->first;
-            correntry = fVetoTopMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalbeta->GetF11Beam()->SetTVetoTop(fanc->GetTimestamp());
-                flocalbeta->GetF11Beam()->SetEVetoTop(fanc->GetEnergy());
-                flocalbeta->GetF11Beam()->SetNVetoTop(1);
-                ncorr++;
-                break;
-            }
-            fVetoTopMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoTop++;
-
-        //! correlate event with vetobot
-        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoBotMap_it = fVetoBotMap.lower_bound(ts1);
-        while(fVetoBotMap_it!=fVetoBotMap.end()&&fVetoBotMap_it->first<ts2){
-            corrts = (Long64_t) fVetoBotMap_it->first;
-            correntry = fVetoBotMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalbeta->GetF11Beam()->SetTVetoBot(fanc->GetTimestamp());
-                flocalbeta->GetF11Beam()->SetEVetoBot(fanc->GetEnergy());
-                flocalbeta->GetF11Beam()->SetNVetoBot(1);
-                ncorr++;
-                break;
-            }
-            fVetoBotMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoBot++;
-
-        //! correlate event with detop
-        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fdETopMap_it = fdETopMap.lower_bound(ts1);
-        while(fdETopMap_it!=fdETopMap.end()&&fdETopMap_it->first<ts2){
-            corrts = (Long64_t) fdETopMap_it->first;
-            correntry = fdETopMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalbeta->GetF11Beam()->SetTdETop(fanc->GetTimestamp());
-                flocalbeta->GetF11Beam()->SetEdETop(fanc->GetEnergy());
-                flocalbeta->GetF11Beam()->SetNdETop(1);
-                ncorr++;
-                break;
-            }
-            fdETopMap_it++;
-        }
-        if (ncorr>0) ncorrwdETop++;
-        //! correlate event with debot
-        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fdEBotMap_it = fdEBotMap.lower_bound(ts1);
-        while(fdEBotMap_it!=fdEBotMap.end()&&fdEBotMap_it->first<ts2){
-            corrts = (Long64_t) fdEBotMap_it->first;
-            correntry = fdEBotMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalbeta->GetF11Beam()->SetTdEBot(fanc->GetTimestamp());
-                flocalbeta->GetF11Beam()->SetEdEBot(fanc->GetEnergy());
-                flocalbeta->GetF11Beam()->SetNdEBot(1);
-                ncorr++;
-                break;
-            }
-            fdEBotMap_it++;
-        }
-        if (ncorr>0) ncorrwdEBot++;
-
-        //! correlate event with vetodown
-        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoDownMap_it = fVetoDownMap.lower_bound(ts1);
-        while(fVetoDownMap_it!=fVetoDownMap.end()&&fVetoDownMap_it->first<ts2){
-            corrts = (Long64_t) fVetoDownMap_it->first;
-            correntry = fVetoDownMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalbeta->GetF11Beam()->SetTVetoDown(fanc->GetTimestamp());
-                flocalbeta->GetF11Beam()->SetEVetoDown(fanc->GetEnergy());
-                flocalbeta->GetF11Beam()->SetNVetoDown(1);
-                ncorr++;
-                break;
-            }
-            fVetoDownMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoDown++;
-
-        ftreeBeta->Fill();
+        //! add all veto map
+        fvetoMap.insert(make_pair(ts,entry));
     }
-    cout<<"finished merging Beta" <<endl;
-    cout<<ncorrwGamma<<endl;
-    cout<<ncorrwF11L<<" "<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<endl;
-    cout<<ncorrwdEBot<<" "<<ncorrwdETop<<endl;
-}
+    fdownstreamvetototaltime=(Long64_t)lastts+fNeuAncTWup-fdownstreamvetototaltime;
+    fdownstreamvetodeadtime+=fNeuAncTWup;
+    cout<<"Downstream veto:deadtime="<<fdownstreamvetodeadtime<<"\t---total time---\t"<<fdownstreamvetototaltime<<endl;
 
-void Merger::DoMergeNeutron()
-{
-    unsigned int ncorrwGamma = 0;
-    unsigned int ncorrwAnc = 0;
-    unsigned int ncorrwF11R = 0;
-    unsigned int ncorrwF11L = 0;
-    unsigned int ncorrwVetoTop = 0;
-    unsigned int ncorrwVetoBot = 0;
-    unsigned int ncorrwVetoDown = 0;
-    unsigned int ncorrwdEBot = 0;
-    unsigned int ncorrwdETop = 0;
+    //! allveto map
+    deadtime_start=-9999;
+    deadtime_reset=-9999;
+    fvetodeadtime=0;
+    fvetototaltime=0;
+    lastts=0;
+    //! Neutron correlation with downstream veto
+    for (fvetoMap_it=fvetoMap.begin();fvetoMap_it!=fvetoMap.end();fvetoMap_it++){
+        unsigned long long ts=fvetoMap_it->first;
+        //unsigned int entry=fvetoMap_it->second;
+        if (fvetototaltime==0) fvetototaltime=(Long64_t)ts;
+        lastts=ts;
+        //ftrAnc->GetEntry(entry);
 
+        if (deadtime_reset<ts){
+            if(deadtime_start>0) {
+                fvetodeadtime+=deadtime_reset-deadtime_start;//prev window
+                //cout<<"deadtime=\t"<<deadtime_reset-deadtime_start<<endl;
+            }
+            deadtime_start=ts;
+            deadtime_reset=ts+fNeuAncTWup;
+        }else{
+            deadtime_reset=ts+fNeuAncTWup;
+        }
+        //! Correlate f11 with neutron
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
+        Long64_t corrts = 0;
+        Int_t ncorr=0;
+        Long64_t check_time = 0;
+        fhe3Map_it = fhe3Map.lower_bound(ts1);
+        while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
+            corrts = (Long64_t) fhe3Map_it->first;
+            BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
+            if (corrts!=check_time){
+                check_time=corrts;
+                //! fill neutron here
+                double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
+                double currtdiff=neuhit->GetFinalVetoTime();
+                if (currtdiff<999998.) neuhit->SetFinalVetoTime(tdiff);
+                else if (tdiff<currtdiff) neuhit->SetFinalVetoTime(tdiff);
+                ncorr++;
+                fh1->Fill(tdiff);
+            }
+            fhe3Map_it++;
+        }
+    }
+    fvetototaltime=(Long64_t)lastts+fNeuAncTWup-fvetototaltime;
+    fvetodeadtime+=fNeuAncTWup;
+    cout<<"Final veto: deadtime="<<fvetodeadtime<<"\t---total time---\t"<<fvetototaltime<<endl;
+
+    //! Counter for neutron veto
+    Int_t nvetoneu=0;
+    Int_t ntotalneu=0;
     for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
-        unsigned long long ts  = fhe3Map_it->first;
-        unsigned int entry = fhe3Map_it->second;
-        ftrNeutron->GetEvent(entry);
-        flocalneutron->Clear();
-
-        //! fill neutron first
-        fneutron->Copy(*flocalneutron->GetNeutron());
-        flocalneutron->SetTimeStamp(ts);
-
-        //! correlate event with gamma
-        Long64_t ts1 = (Long64_t)ts - (Long64_t)fNeuGammaTWlow;
-        Long64_t ts2 = (Long64_t)ts + (Long64_t)fNeuGammaTWup;
-        Long64_t ncorr = 0;
-        Long64_t corrts = 0;
-        unsigned int correntry = 0;
-        Long64_t check_time = 0;
-
-        fcloverMap_it = fcloverMap.lower_bound(ts1);
-        while(fcloverMap_it!=fcloverMap.end()&&fcloverMap_it->first<ts2){
-            corrts = (Long64_t) fcloverMap_it->first;
-            correntry = fcloverMap_it->second;
-            if (corrts!=check_time){
-                ftrGamma->GetEvent(correntry);
-                check_time=corrts;
-                CloverHit* hit=new CloverHit;
-                fclover->Copy(*hit);
-                flocalneutron->AddGammaHit(hit);
-                ncorr++;
-            }
-            fcloverMap_it++;
+        BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
+        if (neuhit->GetEnergy()<860&&neuhit->GetEnergy()>160) {
+            if (neuhit->GetFinalVetoTime()>0) nvetoneu++;
+            ntotalneu++;
         }
-        if (ncorr>0) ncorrwGamma++;
-
-        /*
-        //! correlate event with anc
-        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fancMap_it = fancMap.lower_bound(ts1);
-        while(fancMap_it!=fancMap.end()&&fancMap_it->first<ts2){
-            corrts = (Long64_t) fancMap_it->first;
-            correntry = fancMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                BELENHit* hit=new BELENHit;
-                fanc->Copy(*hit);
-                flocalneutron->AddAncHit(hit);
-                ncorr++;
-            }
-            fancMap_it++;
-        }
-        if (ncorr>0) ncorrwAnc++;
-        */
-
-        //! correlated event with f11l
-        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fF11MapL_it = fF11LMap.lower_bound(ts1);
-        while(fF11MapL_it!=fF11LMap.end()&&fF11MapL_it->first<ts2){
-            corrts = (Long64_t) fF11MapL_it->first;
-            correntry = fF11MapL_it->second;
-            //if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalneutron->GetF11Beam()->SetTF11L(fanc->GetTimestamp());
-                flocalneutron->GetF11Beam()->SetEF11L(fanc->GetEnergy());
-                flocalneutron->GetF11Beam()->SetNF11L(1);
-                ncorr++;
-                break;
-            //}
-            fF11MapL_it++;
-        }
-        if (ncorr>0) ncorrwF11L++;
-
-        //! correlated event with f11r
-        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fF11MapR_it = fF11RMap.lower_bound(ts1);
-        while(fF11MapR_it!=fF11RMap.end()&&fF11MapR_it->first<ts2){
-            corrts = (Long64_t) fF11MapR_it->first;
-            correntry = fF11MapR_it->second;
-            //if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalneutron->GetF11Beam()->SetTF11R(fanc->GetTimestamp());
-                flocalneutron->GetF11Beam()->SetEF11R(fanc->GetEnergy());
-                flocalneutron->GetF11Beam()->SetNF11R(1);
-                ncorr++;
-                break;
-            //}
-            fF11MapR_it++;
-        }
-        if (ncorr>0) ncorrwF11R++;
-
-
-        //! correlate event with vetotop
-        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoTopMap_it = fVetoTopMap.lower_bound(ts1);
-        while(fVetoTopMap_it!=fVetoTopMap.end()&&fVetoTopMap_it->first<ts2){
-            corrts = (Long64_t) fVetoTopMap_it->first;
-            correntry = fVetoTopMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalneutron->GetF11Beam()->SetTVetoTop(fanc->GetTimestamp());
-                flocalneutron->GetF11Beam()->SetEVetoTop(fanc->GetEnergy());
-                flocalneutron->GetF11Beam()->SetNVetoTop(1);
-                ncorr++;
-                break;
-            }
-            fVetoTopMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoTop++;
-
-        //! correlate event with vetobot
-        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoBotMap_it = fVetoBotMap.lower_bound(ts1);
-        while(fVetoBotMap_it!=fVetoBotMap.end()&&fVetoBotMap_it->first<ts2){
-            corrts = (Long64_t) fVetoBotMap_it->first;
-            correntry = fVetoBotMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalneutron->GetF11Beam()->SetTVetoBot(fanc->GetTimestamp());
-                flocalneutron->GetF11Beam()->SetEVetoBot(fanc->GetEnergy());
-                flocalneutron->GetF11Beam()->SetNVetoBot(1);
-                ncorr++;
-                break;
-            }
-            fVetoBotMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoBot++;
-
-
-
-        //! correlate event with detop
-        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fdETopMap_it = fdETopMap.lower_bound(ts1);
-        while(fdETopMap_it!=fdETopMap.end()&&fdETopMap_it->first<ts2){
-            corrts = (Long64_t) fdETopMap_it->first;
-            correntry = fdETopMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalneutron->GetF11Beam()->SetTdETop(fanc->GetTimestamp());
-                flocalneutron->GetF11Beam()->SetEdETop(fanc->GetEnergy());
-                flocalneutron->GetF11Beam()->SetNdETop(1);
-                ncorr++;
-                break;
-            }
-            fdETopMap_it++;
-        }
-        if (ncorr>0) ncorrwdETop++;
-
-        //! correlate event with debot
-        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fdEBotMap_it = fdEBotMap.lower_bound(ts1);
-        while(fdEBotMap_it!=fdEBotMap.end()&&fdEBotMap_it->first<ts2){
-            corrts = (Long64_t) fdEBotMap_it->first;
-            correntry = fdEBotMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalneutron->GetF11Beam()->SetTdEBot(fanc->GetTimestamp());
-                flocalneutron->GetF11Beam()->SetEdEBot(fanc->GetEnergy());
-                flocalneutron->GetF11Beam()->SetNdEBot(1);
-                ncorr++;
-                break;
-            }
-            fdEBotMap_it++;
-        }
-        if (ncorr>0) ncorrwdEBot++;
-
-        //! correlate event with vetodown
-        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoDownMap_it = fVetoDownMap.lower_bound(ts1);
-        while(fVetoDownMap_it!=fVetoDownMap.end()&&fVetoDownMap_it->first<ts2){
-            corrts = (Long64_t) fVetoDownMap_it->first;
-            correntry = fVetoDownMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalneutron->GetF11Beam()->SetTVetoDown(fanc->GetTimestamp());
-                flocalneutron->GetF11Beam()->SetEVetoDown(fanc->GetEnergy());
-                flocalneutron->GetF11Beam()->SetNVetoDown(1);
-                ncorr++;
-                break;
-            }
-            fVetoDownMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoDown++;
-
-        ftreeNeutron->Fill();
     }
-    cout<<"finished merging Neutrons" <<endl;
-    cout<<ncorrwGamma<<endl;
-    cout<<ncorrwF11L<<" "<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<endl;
-    cout<<ncorrwdEBot<<" "<<ncorrwdETop<<endl;
-}
-void Merger::DoMergeAnc()
-{
-    unsigned int ncorrwF11R = 0;
-    unsigned int ncorrwVetoTop = 0;
-    unsigned int ncorrwVetoBot = 0;
-    unsigned int ncorrwVetoDown = 0;
-    unsigned int ncorrwNeutron = 0;
-    unsigned int ncorrwdETop = 0;
-    unsigned int ncorrwdEBot = 0;
-    unsigned int ncorrwGamma = 0;
-    unsigned int ncorrwBR = 0;
+    cout<<"Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu<<endl;
 
 
-    for (fF11MapL_it=fF11LMap.begin();fF11MapL_it!=fF11LMap.end();fF11MapL_it++){
-        unsigned long long ts  = fF11MapL_it->first;
-        unsigned int entry = fF11MapL_it->second;
-        ftrAnc->GetEvent(entry);
-        flocalancillary->Clear();
-        flocalancillary->SetEF11L(fanc->GetEnergy());
-        flocalancillary->SetTF11L(fanc->GetTimestamp());
-        flocalancillary->SetNF11L(1);
+    //! AIDA-BIGRIPS correlation
+    for (faidaIonMap_it=faidaIonMap.begin();faidaIonMap_it!=faidaIonMap.end();faidaIonMap_it++){
+        flocalimp->Clear();
+        flocalbeta->Clear("C");
+        //flocalbeta->Clear();
+        if (k%1000==0) cout<<k<<"/"<<ktotal<<"\t ncorr w bigrips "<<ncorrwbigrips<<endl;
+        //if (k>500) break;
+        unsigned long long ts=faidaIonMap_it->first;
+        AIDASimpleStruct* ion=(AIDASimpleStruct*) faidaIonMap_it->second;
 
-        //! correlate event with F11Rs
-        Long64_t ts1 = (Long64_t)ts - (Long64_t)fF11LRTWlow;
-        Long64_t ts2 = (Long64_t)ts + (Long64_t)fF11LRTWup;
-        Long64_t ncorr = 0;
+        ImplantCorrelationVector* corrvector=new ImplantCorrelationVector;
+        corrvector->correntrybrips=-9999;
+        corrvector->correntryf11r=-9999;
+        corrvector->correntrydEbot=-9999;
+        corrvector->correntrydEtop=-9999;
+        corrvector->correntryvetodown=-9999;
+
+        //! Correlate imp with bigrips
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fIonPidTWup;
         Long64_t corrts = 0;
-        unsigned int correntry = 0;
+        Int_t ncorr=0;
         Long64_t check_time = 0;
-
-        fF11MapR_it = fF11RMap.lower_bound(ts1);
-        while(fF11MapR_it!=fF11RMap.end()&&fF11MapR_it->first<ts2){
-            corrts = (Long64_t) fF11MapR_it->first;
-            correntry = fF11MapR_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalancillary->SetTF11R(fanc->GetTimestamp());
-                flocalancillary->SetEF11R(fanc->GetEnergy());
-                flocalancillary->SetNF11R(1);
-                ncorr++;
-                break;
-            }
-            fF11MapR_it++;
-        }
-        if (ncorr>0) ncorrwF11R++;
-
-        //! correlate event with vetotop
-        ts1 = (Long64_t)ts - (Long64_t)fF11LVetoTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fF11LVetoTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoTopMap_it = fVetoTopMap.lower_bound(ts1);
-        while(fVetoTopMap_it!=fVetoTopMap.end()&&fVetoTopMap_it->first<ts2){
-            corrts = (Long64_t) fVetoTopMap_it->first;
-            correntry = fVetoTopMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalancillary->SetTVetoTop(fanc->GetTimestamp());
-                flocalancillary->SetEVetoTop(fanc->GetEnergy());
-                flocalancillary->SetNVetoTop(1);
-                ncorr++;
-                break;
-            }
-            fVetoTopMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoTop++;
-
-        //! correlate event with vetobot
-        ts1 = (Long64_t)ts - (Long64_t)fF11LVetoTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fF11LVetoTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoBotMap_it = fVetoBotMap.lower_bound(ts1);
-        while(fVetoBotMap_it!=fVetoBotMap.end()&&fVetoBotMap_it->first<ts2){
-            corrts = (Long64_t) fVetoBotMap_it->first;
-            correntry = fVetoBotMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalancillary->SetTVetoBot(fanc->GetTimestamp());
-                flocalancillary->SetEVetoBot(fanc->GetEnergy());
-                flocalancillary->SetNVetoBot(1);
-                ncorr++;
-                break;
-            }
-            fVetoBotMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoBot++;
-
-
-        //! correlate event with detop
-        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fdETopMap_it = fdETopMap.lower_bound(ts1);
-        while(fdETopMap_it!=fdETopMap.end()&&fdETopMap_it->first<ts2){
-            corrts = (Long64_t) fdETopMap_it->first;
-            correntry = fdETopMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalancillary->SetTdETop(fanc->GetTimestamp());
-                flocalancillary->SetEdETop(fanc->GetEnergy());
-                flocalancillary->SetNdETop(1);
-                ncorr++;
-                break;
-            }
-            fdETopMap_it++;
-        }
-        if (ncorr>0) ncorrwdETop++;
-
-        //! correlate event with debot
-        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fdEBotMap_it = fdEBotMap.lower_bound(ts1);
-        while(fdEBotMap_it!=fdEBotMap.end()&&fdEBotMap_it->first<ts2){
-            corrts = (Long64_t) fdEBotMap_it->first;
-            correntry = fdEBotMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalancillary->SetTdEBot(fanc->GetTimestamp());
-                flocalancillary->SetEdEBot(fanc->GetEnergy());
-                flocalancillary->SetNdEBot(1);
-                ncorr++;
-                break;
-            }
-            fdEBotMap_it++;
-        }
-        if (ncorr>0) ncorrwdEBot++;
-
-        //! correlate event with vetodown
-        ts1 = (Long64_t)ts - (Long64_t)fF11LVetoDownlow;
-        ts2 = (Long64_t)ts + (Long64_t)fF11LVetoDownup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fVetoDownMap_it = fVetoDownMap.lower_bound(ts1);
-        while(fVetoDownMap_it!=fVetoDownMap.end()&&fVetoDownMap_it->first<ts2){
-            corrts = (Long64_t) fVetoDownMap_it->first;
-            correntry = fVetoDownMap_it->second;
-            if (corrts!=check_time){
-                ftrAnc->GetEvent(correntry);
-                check_time=corrts;
-                flocalancillary->SetTVetoDown(fanc->GetTimestamp());
-                flocalancillary->SetEVetoDown(fanc->GetEnergy());
-                flocalancillary->SetNVetoDown(1);
-                ncorr++;
-                break;
-            }
-            fVetoDownMap_it++;
-        }
-        if (ncorr>0) ncorrwVetoDown++;
-
-        //! correlated event with neutron
-        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWup;
-        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWlow;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fhe3Map_it = fhe3Map.lower_bound(ts1);
-        while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
-            corrts = (Long64_t) fhe3Map_it->first;
-            correntry = fhe3Map_it->second;
-            if (corrts!=check_time){
-                ftrNeutron->GetEvent(correntry);
-                check_time=corrts;
-                BELENHit* hit=new BELENHit;
-                fneutron->Copy(*hit);
-                flocalancillary->AddNeutronHit(hit);
-                ncorr++;
-            }
-            fhe3Map_it++;
-        }
-        if (ncorr>0) ncorrwNeutron++;
-
-        //! correlated event with gamma
-        ts1 = (Long64_t)ts - (Long64_t)fF11LGammaTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fF11LGammaTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-        fcloverMap_it = fcloverMap.lower_bound(ts1);
-        while(fcloverMap_it!=fcloverMap.end()&&fcloverMap_it->first<ts2){
-            corrts = (Long64_t) fcloverMap_it->first;
-            correntry = fcloverMap_it->second;
-            if (corrts!=check_time){
-                ftrGamma->GetEvent(correntry);
-                check_time=corrts;
-                CloverHit* hit=new CloverHit;
-                fclover->Copy(*hit);
-                flocalancillary->AddCloverHit(hit);
-                ncorr++;
-            }
-            fcloverMap_it++;
-        }
-        if (ncorr>0) ncorrwGamma++;
-
-        //! correlated event with bigrips
-        ts1 = (Long64_t)ts - (Long64_t)fF11LGammaTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fF11LGammaTWup;
-        ncorr = 0;
-        corrts = 0;
-        correntry = 0;
-        check_time =0;
-
-        fbigrips->Clear();//found recently
         fbigripsMap_it = fbigripsMap.lower_bound(ts1);
         while(fbigripsMap_it!=fbigripsMap.end()&&fbigripsMap_it->first<ts2){
             corrts = (Long64_t) fbigripsMap_it->first;
-            correntry = fbigripsMap_it->second;
             if (corrts!=check_time){
-                ftrBigrips->GetEvent(correntry);
                 check_time=corrts;
-                ncorrwBR++;
+                corrvector->correntrybrips = (int) fbigripsMap_it->second;
+
+                //! fill data here
+                //ftrBigrips->GetEvent(correntry);
+                ncorr++;
                 break;
             }
             fbigripsMap_it++;
         }
 
-        ftreeAncillary->Fill();
+        //! Correlate imp with f11r
+        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
+        corrts = 0;
+        ncorr=0;
+        check_time = 0;
+        fF11MapR_it = fF11RMap.lower_bound(ts1);
+        while(fF11MapR_it!=fF11RMap.end()&&fF11MapR_it->first<ts2){
+            corrts = (Long64_t) fF11MapR_it->first;
+            if (corrts!=check_time){
+                check_time=corrts;
+                corrvector->correntryf11r = (int) fF11MapR_it->second;
+                ncorr++;
+                break;
+            }
+            fF11MapR_it++;
+        }
+
+        //! Correlate imp with topde
+        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        corrts = 0;
+        ncorr=0;
+        check_time = 0;
+        fdETopMap_it = fdETopMap.lower_bound(ts1);
+        while(fdETopMap_it!=fdETopMap.end()&&fdETopMap_it->first<ts2){
+            corrts = (Long64_t) fdETopMap_it->first;
+            if (corrts!=check_time){
+                check_time=corrts;
+                corrvector->correntrydEtop = (int) fdETopMap_it->second;
+                ncorr++;
+                break;
+            }
+            fdETopMap_it++;
+        }
+
+        //! Correlate imp with botde
+        ts1 = (Long64_t)ts - (Long64_t)fIondETWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIondETWup;
+        corrts = 0;
+        ncorr=0;
+        check_time = 0;
+        fdEBotMap_it = fdEBotMap.lower_bound(ts1);
+        while(fdEBotMap_it!=fdEBotMap.end()&&fdEBotMap_it->first<ts2){
+            corrts = (Long64_t) fdEBotMap_it->first;
+            if (corrts!=check_time){
+                check_time=corrts;
+                corrvector->correntrydEbot = (int) fdEBotMap_it->second;
+                ncorr++;
+                break;
+            }
+            fdEBotMap_it++;
+        }
+
+        //! Correlate imp with vetodown
+        ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
+        corrts = 0;
+        ncorr=0;
+        check_time = 0;
+        fVetoDownMap_it = fVetoDownMap.lower_bound(ts1);
+        while(fVetoDownMap_it!=fVetoDownMap.end()&&fVetoDownMap_it->first<ts2){
+            corrts = (Long64_t) fVetoDownMap_it->first;
+            if (corrts!=check_time){
+                check_time=corrts;
+                corrvector->correntryvetodown = (int) fVetoDownMap_it->second;
+                ncorr++;
+                break;
+            }
+            fVetoDownMap_it++;
+        }
+
+        faidaImplantMap.insert(make_pair(ts,make_pair(corrvector,ion)));
+        if (ncorr>0) ncorrwbigrips++;
+        k++;
     }
-    cout<<"Finished merging F11L" <<endl;
-    cout<<ncorrwF11R<<" "<<ncorrwVetoTop<<" "<<ncorrwVetoBot<<" "<<ncorrwVetoDown<<" "<<ncorrwNeutron<<endl;
-    cout<<ncorrwdEBot<<" "<<ncorrwdETop<<" "<<ncorrwGamma<<endl;
-    cout<<"br "<<ncorrwBR<<endl;
+
+
+    //! Build Decay
+    //!**************
+    ktotal=faidaBetaMap.size();
+    k=0;
+    for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
+        flocalbetaS->Clear();
+        if (k%10000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w neutron "<<ncorrwneutron<<endl;
+        //if (k>500) break;
+        unsigned long long ts=faidaBetaMap_it->first;
+        AIDASimpleStruct* beta=(AIDASimpleStruct*) faidaBetaMap_it->second;
+        double betax=beta->GetHitPositionX();
+        double betay=beta->GetHitPositionY();
+        short betaz=beta->GetHitPositionZ();//! correct dZ
+
+
+        //! Time correlation with neutron
+        int ndelayedneutron=0;
+        //! with neutron
+        Long64_t ts1 = ts - fNeuBetaTWup;
+        Long64_t ts2 = ts + fNeuBetaTWlow;// this is upper :)
+        Long64_t corrts = 0;
+        Int_t ncorr=0;
+        unsigned int correntry = 0;
+        Long64_t check_time = 0;
+
+        fhe3Map_it = fhe3Map.lower_bound(ts1);
+        while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
+            corrts = (Long64_t) fhe3Map_it->first;
+            BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
+            if (corrts!=check_time){
+                check_time=corrts;
+                //! fill neutron here
+                BELENHit* neuhitclone=new BELENHit;
+                neuhit->Copy(*neuhitclone);
+                if ((corrts-(Long64_t)ts)>=fNeuBetaoffset) flocalbetaS->AddNeutronForward(neuhitclone);
+                else flocalbetaS->AddNeutronBackward(neuhitclone);
+                //fh1->Fill(neutronts-(Long64_t)ts);
+                ndelayedneutron++;
+            }
+            fhe3Map_it++;
+        }
+        if (ndelayedneutron>0) ncorrwneutron++;
+
+        //!******************************ANCINARY detector****************
+        //! Correlate imp with f11r
+        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
+        corrts = 0;
+        ncorr=0;
+        correntry = 0;
+        check_time = 0;
+        fF11MapR_it = fF11RMap.lower_bound(ts1);
+        while(fF11MapR_it!=fF11RMap.end()&&fF11MapR_it->first<ts2){
+            corrts = (Long64_t) fF11MapR_it->first;
+            correntry = fF11MapR_it->second;
+            if (corrts!=check_time){
+                check_time=corrts;
+                ftrAnc->GetEvent(correntry);
+                BELENHit* hit=new BELENHit;
+                fanc->Copy(*hit);
+                flocalbetaS->AddAnc(hit);
+                ncorr++;
+                break;
+            }
+            fF11MapR_it++;
+        }
+
+        //! Correlate with vetodown
+        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
+        corrts = 0;
+        ncorr=0;
+        correntry = 0;
+        check_time = 0;
+        fVetoDownMap_it = fVetoDownMap.lower_bound(ts1);
+        while(fVetoDownMap_it!=fVetoDownMap.end()&&fVetoDownMap_it->first<ts2){
+            corrts = (Long64_t) fVetoDownMap_it->first;
+            correntry = fVetoDownMap_it->second;
+            if (corrts!=check_time){
+                check_time=corrts;
+                ftrAnc->GetEvent(correntry);
+                BELENHit* hit=new BELENHit;
+                fanc->Copy(*hit);
+                flocalbetaS->AddAnc(hit);
+                ncorr++;
+                break;
+            }
+            fVetoDownMap_it++;
+        }
+
+
+        //!******************************Implantation****************
+        //! Time correlation with implantation (Build Decay Curve)
+        ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIonPidTWup;
+        corrts = 0;
+        ncorr=0;
+        correntry = 0;
+        check_time = 0;
+
+        //! Correlate with beta
+        ts1 = (Long64_t)ts - fIonBetaTWlow;
+        ts2 = (Long64_t)ts + fIonBetaTWup;
+        corrts = 0;
+        correntry = 0;
+        check_time = 0;
+        nionbetacorr=0;
+        faidaImplantMap_it = faidaImplantMap.lower_bound(ts1);
+        while(faidaImplantMap_it!=faidaImplantMap.end()&&faidaImplantMap_it->first<ts2){
+            flocalimp->Clear();
+            corrts = (Long64_t) faidaImplantMap_it->first;
+            AIDASimpleStruct* imp = faidaImplantMap_it->second.second;
+            ImplantCorrelationVector* corrvectorimp= (ImplantCorrelationVector*)faidaImplantMap_it->second.first;
+
+            double impx= imp->GetHitPositionX();
+            double impy= imp->GetHitPositionY();
+            short impz= imp->GetHitPositionZ();
+            if (corrts!=check_time&&betaz==impz){
+                if (!((betax-impx>=-fmaxnpixels)&&(betax-impx<=fmaxnpixels)&&(betay-impy>=-fmaxnpixels)&&(betay-impy<=fmaxnpixels))){
+                    faidaImplantMap_it++;
+                    continue;
+                }
+                check_time=corrts;
+                //! fill bigrips data here
+                if (corrvectorimp->correntrybrips>=0) {
+                    ftrBigrips->GetEvent(corrvectorimp->correntrybrips);
+                    flocalimp->AddBeam(*fbigrips);
+                }
+
+                //! fill anc data here
+                if (corrvectorimp->correntryf11r>=0){
+                    ftrAnc->GetEvent(corrvectorimp->correntryf11r);
+                    BELENHit* hit=new BELENHit;
+                    fanc->Copy(*hit);
+                    flocalimp->AddAnc(hit);
+                }
+                if (corrvectorimp->correntrydEtop>=0){
+                    ftrAnc->GetEvent(corrvectorimp->correntrydEtop);
+                    BELENHit* hit=new BELENHit;
+                    fanc->Copy(*hit);
+                    flocalimp->AddAnc(hit);
+                }
+                if (corrvectorimp->correntrydEbot>=0){
+                    ftrAnc->GetEvent(corrvectorimp->correntrydEbot);
+                    BELENHit* hit=new BELENHit;
+                    fanc->Copy(*hit);
+                    flocalimp->AddAnc(hit);
+                }
+                if (corrvectorimp->correntryvetodown>=0){
+                    ftrAnc->GetEvent(corrvectorimp->correntryvetodown);
+                    BELENHit* hit=new BELENHit;
+                    fanc->Copy(*hit);
+                    flocalimp->AddAnc(hit);
+                }
+
+
+                //! fill beta data here
+
+                flocalbetaS->CopyFromAIDA(beta);
+                flocalimp->CopyFromAIDA(imp);               
+                ftree->Fill();
+
+                //fh1->Fill((Long64_t)ts-(Long64_t)corrts);
+
+                nionbetacorr++;
+            }
+            faidaImplantMap_it++;
+        }
+        if (nionbetacorr>0) ncorrwbeta++;
+        k++;
+    }
+
+}
+
+
+void Merger::DoMergeTest()
+{
+    Int_t k=0;
+    Int_t ktotal=faidaBetaMap.size();
+    Int_t ncorrwbigrips=0;
+    Int_t ncorrwbeta=0;
+    for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
+        flocalimp->Clear();
+        flocalbeta->Clear("C");
+        //flocalbeta->Clear();
+        if (k%1000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w bigrips "<<ncorrwbigrips<<endl;
+        //if (k>500) break;
+        unsigned long long ts=faidaBetaMap_it->first;
+        AIDASimpleStruct* ion=(AIDASimpleStruct*) faidaBetaMap_it->second;
+        double impx=ion->GetHitPositionX();
+        double impy=ion->GetHitPositionY();
+        short impz=ion->GetHitPositionZ()+ion->GetDZ();//! correct dZ
+
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fIonPidTWup;
+        Long64_t corrts = 0;
+        Int_t ncorr=0;
+        unsigned int correntry = 0;
+        Long64_t check_time = 0;
+
+        //! Correlate with beta
+        ts1 = (Long64_t)ts - fIonBetaTWlow;
+        ts2 = (Long64_t)ts + fIonBetaTWup;
+        corrts = 0;
+        correntry = 0;
+        check_time = 0;
+        nionbetacorr=0;
+        faidaIonMap_it = faidaIonMap.lower_bound(ts1);
+        while(faidaIonMap_it!=faidaIonMap.end()&&faidaIonMap_it->first<ts2){
+            corrts = (Long64_t) faidaIonMap_it->first;
+            AIDASimpleStruct* beta = faidaIonMap_it->second;
+            double betax= beta->GetHitPositionX();
+            double betay= beta->GetHitPositionY();
+            short betaz= beta->GetHitPositionZ();
+            if (corrts!=check_time&&betaz==impz){
+                if (!((betax-impx>=-fmaxnpixels)&&(betax-impx<=fmaxnpixels)&&(betay-impy>=-fmaxnpixels)&&(betay-impy<=fmaxnpixels))){
+                    faidaIonMap_it++;
+                    continue;
+                }
+                check_time=corrts;
+                //! fill beta here
+                //fh1->Fill((Long64_t)ts-(Long64_t)corrts);
+                nionbetacorr++;
+            }
+            faidaIonMap_it++;
+        }
+        if (nionbetacorr>0) ncorrwbeta++;
+        k++;
+    }
+}
+
+
+void Merger::DoMergeYOnly()
+{
+    Int_t k=0;
+    Int_t ktotal=faidaIonMap.size();
+    Int_t ncorrwbigrips=0;
+    Int_t ncorrwbeta=0;
+    for (faidaIonMap_it=faidaIonMap.begin();faidaIonMap_it!=faidaIonMap.end();faidaIonMap_it++){
+        flocalimp->Clear();
+        flocalbeta->Clear("C");
+        //flocalbeta->Clear();
+        if (k%1000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w bigrips "<<ncorrwbigrips<<endl;
+        //if (k>500) break;
+        unsigned long long ts=faidaIonMap_it->first;
+        AIDASimpleStruct* ion=(AIDASimpleStruct*) faidaIonMap_it->second;
+        double impx=ion->GetHitPositionX();
+        double impy=ion->GetHitPositionY();
+        short impz=ion->GetHitPositionZ()+ion->GetDZ();//! correct dZ
+
+        //! fill imp data here
+        //AIDASimpleStruct* iontofill = flocalimp->GetIonBetaCluster();
+        //ion->Copy(*iontofill);
+        flocalimp->CopyFromAIDA(ion);
+        //! Correlate imp with bigrips
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fIonPidTWup;
+        Long64_t corrts = 0;
+        Int_t ncorr=0;
+        unsigned int correntry = 0;
+        Long64_t check_time = 0;
+        fbigripsMap_it = fbigripsMap.lower_bound(ts1);
+        while(fbigripsMap_it!=fbigripsMap.end()&&fbigripsMap_it->first<ts2){
+            corrts = (Long64_t) fbigripsMap_it->first;
+            correntry = fbigripsMap_it->second;
+            if (corrts!=check_time){
+                check_time=corrts;
+                //! fill data here
+                ftrBigrips->GetEvent(correntry);
+                flocalimp->AddBeam(*fbigrips);
+                ncorr++;
+                break;
+            }
+            fbigripsMap_it++;
+        }
+        if (ncorr>0) ncorrwbigrips++;
+
+        //! Correlate with beta
+        ts1 = (Long64_t)ts - fIonBetaTWlow;
+        ts2 = (Long64_t)ts + fIonBetaTWup;
+        corrts = 0;
+        correntry = 0;
+        check_time = 0;
+        nionbetacorr=0;
+        faidaBetaMap_it = faidaBetaMap.lower_bound(ts1);
+        while(faidaBetaMap_it!=faidaBetaMap.end()&&faidaBetaMap_it->first<ts2){
+            corrts = (Long64_t) faidaBetaMap_it->first;
+            AIDASimpleStruct* beta = faidaBetaMap_it->second;
+            double betax= beta->GetHitPositionX();
+            double betay= beta->GetHitPositionY();
+            short betaz= beta->GetHitPositionZ();
+            if (corrts!=check_time&&betaz==impz){
+                if (!((betay-impy>=-fmaxnpixels)&&(betay-impy<=fmaxnpixels))){
+                    faidaBetaMap_it++;
+                    continue;
+                }
+                //! fill beta here
+                fh1->Fill((Long64_t)corrts-(Long64_t)ts);
+
+                //flocalbeta->Clear();
+                //flocalbeta->CopyFromAIDA(beta);
+                //ftree->Fill();
+
+                IonBeta* simplestructbeta=(IonBeta*)flocalbeta->ConstructedAt(nionbetacorr);
+                simplestructbeta->CopyFromAIDA(beta);
+
+                nionbetacorr++;
+            }
+            faidaBetaMap_it++;
+        }
+        if (nionbetacorr>0) ncorrwbeta++;
+        ftree->Fill();
+        k++;
+    }
+}
+
+void Merger::DoSeparatePID()
+{
+    for (Long64_t jentry=0;jentry<fnentriesMerged;jentry++){        
+        ftrMerged->GetEntry(jentry);
+        double zet=flocalimp->GetBeamHit()->zet;
+        double aoq=flocalimp->GetBeamHit()->aoq;
+        for (Int_t j=0;j<nri;j++){
+            if (!enablepid2[j]) continue;
+            if (cutg[j]->IsInside(aoq,zet)){
+                ftreeRI[j]->Fill();
+            }
+        }
+        ftree->Fill();
+    }
 }

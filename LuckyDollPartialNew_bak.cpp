@@ -235,7 +235,7 @@ int main(int argc, char* argv[]){
 
 
       int nbeta=0;
-      int nion=0;
+      int nbetawcut=0;
       //!event loop
       while(evts->GetNextEvent()){
           ttotal++;
@@ -250,7 +250,7 @@ int main(int argc, char* argv[]){
                (Float_t)nevtion/(time_end - local_time_start) <<" ions/s "<<
                (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r"<<flush;
             time_last = time_end;
-          }
+          }          
           //! special for test
           if (evts->IsBETA()){
               //!sort the timestamp
@@ -258,20 +258,34 @@ int main(int argc, char* argv[]){
               std::multimap<unsigned long long, int>::iterator tsvector_it;
               tsvector.clear();
               //! cluster XY map
+              std::map < Double_t ,Double_t> fxmap[6];
+              std::map < Double_t ,Double_t> fymap[6];
+              std::map < Double_t ,Double_t> ::iterator fxmap_it[6];
+              std::map < Double_t ,Double_t> ::iterator fymap_it[6];
               for (int i = 0;i<evts->GetAIDABeta()->GetNClusters();i++){
                   tsvector.insert(std::make_pair(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
+                  Double_t xpos=evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
+                  Double_t ypos=evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
+                  Int_t zpos=(Int_t)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
+                  fxmap[zpos].insert(std::make_pair(xpos,-1.));
+                  fymap[zpos].insert(std::make_pair(ypos,-1.));
               }
-
-              //! for vetoing purpose
-              Double_t maxeveto=-9999.;
-              if (evts->GetAIDABeta()->GetMultY(NumDSSD-1)>0){
-                  for (int i = 0;i<evts->GetAIDABeta()->GetMult();i++){
-                      if (evts->GetAIDABeta()->GetHit(i)->GetZ()==5&&evts->GetAIDABeta()->GetHit(i)->GetXY()>=128){//select Y strips only
-                          if (evts->GetAIDABeta()->GetHit(i)->GetEnergy()>maxeveto) maxeveto = evts->GetAIDABeta()->GetHit(i)->GetEnergy();
-                      }
+              double mindx[NumDSSD];
+              double mindy[NumDSSD];
+              for (int i=0;i<NumDSSD;i++){
+                  double xprev=-1;
+                  double yprev=-1;
+                  mindx[i]=9999;
+                  mindy[i]=9999;
+                  for (fxmap_it[i]=fxmap[i].begin();fxmap_it[i]!=fxmap[i].end();fxmap_it[i]++){
+                      if (xprev>0&&((fxmap_it[i]->first-xprev)<mindx[i])) mindx[i]=fxmap_it[i]->first-xprev;
+                      xprev=fxmap_it[i]->first;
+                  }
+                  for (fymap_it[i]=fymap[i].begin();fymap_it[i]!=fymap[i].end();fymap_it[i]++){
+                      if (yprev>0&&((fymap_it[i]->first-yprev)<mindy[i])) mindy[i]=fymap_it[i]->first-yprev;
+                      yprev=fymap_it[i]->first;
                   }
               }
-              Int_t zmult=0; for (int i=0;i<NumDSSD;i++) if (evts->GetAIDABeta()->GetMultY(i)>0) zmult++;
               if (Mode==0){
                   //!fill tree according to the time stamp
                   for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){
@@ -280,7 +294,6 @@ int main(int argc, char* argv[]){
                       Double_t ey = evts->GetAIDABeta()->GetCluster(i)->GetYEnergy();
                       aida->Clear();
                       aida->SetID(IDbeta);
-                      aida->SetEventNumber(nbeta);
                       aida->SetXEnergy(ex);
                       aida->SetYEnergy(ey);
                       aida->SetTimestamp(tsvector_it->first);
@@ -291,23 +304,20 @@ int main(int argc, char* argv[]){
                       aida->SetYClusterMult(evts->GetAIDABeta()->GetNYClustersZi((int)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetXMult((unsigned short)evts->GetAIDABeta()->GetMultX((int)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetYMult((unsigned short)evts->GetAIDABeta()->GetMultY((int)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()));
-                      aida->SetZMult(zmult);
                       //aida->SetZMult((unsigned short)evts->GetAIDABeta()->GetZHitMult());
-                      //aida->SetZMult((unsigned short)evts->GetAIDABeta()->GetNClustersZi((int)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()));
+                      aida->SetZMult((unsigned short)evts->GetAIDABeta()->GetNClustersZi((int)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetStripMultFlag((unsigned short)evts->GetAIDABeta()->GetStripMultFlag((int)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetTimeWidth((double)(evts->GetAIDABeta()->GetTimeWindow()*ClockResolution)/1000.);
                       aida->SetDZ((unsigned short) evts->GetAIDABeta()->GetDeltaMaxZ());
                       aida->SetRankingFlag(evts->GetAIDABeta()->GetCluster(i)->GetRankingFlag());
-                      aida->SetEDiffRankingFlag(evts->GetAIDABeta()->GetCluster(i)->GetEDiffRankingFlag());
                       aida->SetDtIon((double)(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp()-evts->GetAIDABeta()->GetPrevIonTimestamp())*ClockResolution/1000.);
-                      aida->SetMinimumDistanceX(evts->GetAIDABeta()->GetMinDistanceX((unsigned short)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()));
-                      aida->SetMinimumDistanceY(evts->GetAIDABeta()->GetMinDistanceY((unsigned short)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()));
-                      aida->SetSumEXYRank(evts->GetAIDABeta()->GetCluster(i)->GetSumEXYRank());
-                      aida->SetMaxELastDSSD(maxeveto);
-                      //! for vetoing purpose
+
+                      aida->SetMinimumDistanceX(mindx[(int)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()]);
+                      aida->SetMinimumDistanceY(mindy[(int)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()]);
+                      if ((int)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()==2&&evts->GetAIDABeta()->GetMult()<400) nbeta++;
+
                       if (FillFlag) treeaida->Fill();
                   }
-                  if (tsvector.size()>0) nbeta++;
               }
               if (Mode==1) evts->GetAIDABeta()->ClearAllHits();
               if (Mode==1&&evts->GetAIDABeta()->GetNClusters()>0) evts->GetBetaTree()->Fill();
@@ -345,7 +355,6 @@ int main(int argc, char* argv[]){
                   yprev=fymap_it->first;
               }
 
-              Int_t zmult=0; for (int i=0;i<NumDSSD;i++) if (evts->GetAIDABeta()->GetMultY(i)>0) zmult++;
               if (Mode==0){
                   //!fill tree according to the time stamp
                   for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){
@@ -353,7 +362,6 @@ int main(int argc, char* argv[]){
                       Double_t ex = evts->GetAIDAIon()->GetCluster(i)->GetXEnergy();
                       Double_t ey = evts->GetAIDAIon()->GetCluster(i)->GetYEnergy();
                       aida->Clear();
-                      aida->SetEventNumber(nion);
                       aida->SetID(IDion);
                       aida->SetXEnergy(ex);
                       aida->SetYEnergy(ey);
@@ -366,21 +374,17 @@ int main(int argc, char* argv[]){
 
                       aida->SetXMult((unsigned short)evts->GetAIDAIon()->GetMultX((int)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetYMult((unsigned short)evts->GetAIDAIon()->GetMultY((int)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
-                      aida->SetZMult(zmult);
                       //aida->SetZMult((unsigned short)evts->GetAIDAIon()->GetZHitMult());
-                      //aida->SetZMult((unsigned short)evts->GetAIDAIon()->GetNClustersZi((int)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
+                      aida->SetZMult((unsigned short)evts->GetAIDAIon()->GetNClustersZi((int)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetStripMultFlag((unsigned short)evts->GetAIDAIon()->GetStripMultFlag((int)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetTimeWidth((double)(evts->GetAIDAIon()->GetTimeWindow()*ClockResolution)/1000.);
                       aida->SetDZ((unsigned short) evts->GetAIDAIon()->GetDeltaMaxZ());
                       aida->SetRankingFlag(evts->GetAIDAIon()->GetCluster(i)->GetRankingFlag());
-                      aida->SetEDiffRankingFlag(evts->GetAIDAIon()->GetCluster(i)->GetEDiffRankingFlag());
                       aida->SetDtIon((double)(evts->GetAIDAIon()->GetCluster(i)->GetTimestamp()-evts->GetAIDAIon()->GetPrevIonTimestamp())*ClockResolution/1000.);
-                      aida->SetMinimumDistanceX(evts->GetAIDABeta()->GetMinDistanceX((unsigned short)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
-                      aida->SetMinimumDistanceY(evts->GetAIDABeta()->GetMinDistanceY((unsigned short)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
-                      aida->SetSumEXYRank(evts->GetAIDAIon()->GetCluster(i)->GetSumEXYRank());
+                      aida->SetMinimumDistanceX(mindx);
+                      aida->SetMinimumDistanceY(mindy);
                       if (FillFlag) treeaida->Fill();
                   }
-                  if (tsvector.size()>0) nion++;
               }
               if (Mode==1) evts->GetAIDAIon()->ClearAllHits();
               if (Mode==1&&evts->GetAIDAIon()->GetNClusters()>0) evts->GetIonTree()->Fill();

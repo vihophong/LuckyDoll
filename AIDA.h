@@ -13,6 +13,276 @@
 #include "AIDAdefs.h"
 using namespace std;
 
+class AIDASimpleStruct : public TObject {
+public:
+  //! default constructor
+  AIDASimpleStruct(){
+    Clear();
+  }
+  virtual ~AIDASimpleStruct(){}
+
+  //! Clear the music information
+  virtual void Clear(){
+      fid=0.;
+      fts=0;
+      fevt=0;
+      fx=-9999.;
+      fy=-9999.;
+      fz=-1;
+      fex=-9999.;
+      fey=-9999.;
+      fncx=0;
+      fncy=0;
+      fnx=0;
+      fny=0;
+      fnz=0;
+      fniz=0;
+      frflag=0;
+      fdrflag=0;
+      ftw=-9999.;
+      fdtion=-9999.;
+      fdz=0;
+      fmult=0;
+      fmindy=9999;
+      fmindx=9999;
+      fsumexyrank=0;
+      fmaxelastdssd=-9999;
+  }
+
+  //! copy cluster
+  virtual void Copy(AIDASimpleStruct& obj){
+      obj.SetID(fid);
+      obj.SetTimestamp(fts);
+      obj.SetMult(fmult);
+      obj.SetHitPosition(fx,fy,fz);
+      obj.SetXEnergy(fex);
+      obj.SetYEnergy(fey);
+      obj.SetXClusterMult(fncx);
+      obj.SetYClusterMult(fncy);
+      obj.SetXMult(fnx);
+      obj.SetYMult(fny);
+      obj.SetZMult(fnz);
+      obj.SetStripMultFlag(fniz);
+      obj.SetRankingFlag(frflag);
+      obj.SetEDiffRankingFlag(fdrflag);
+      obj.SetTimeWidth(ftw);
+      obj.SetDtIon(fdtion);
+      obj.SetDZ(fdz);
+      obj.SetMinimumDistanceX(fmindx);
+      obj.SetMinimumDistanceY(fmindy);
+      obj.SetSumEXYRank(fsumexyrank);
+      obj.SetMaxELastDSSD(fmaxelastdssd);
+  }
+
+  //! Set XY
+  void SetHitPosition(double x,double y,short z){
+      fx=x;
+      fy=y;
+      fz=z;
+  }
+
+  //! Set ID of evnt
+  void SetID(unsigned char id){fid = id;}
+
+  //! Set Evt number
+  void SetEventNumber(unsigned int evt){fevt = evt;}
+
+  //! Set the X strips sum energy
+  void SetXEnergy(double xenergy){fex = xenergy;}
+  //! Set the Y strips sum energy
+  void SetYEnergy(double yenergy){fey = yenergy;}
+
+  //! Set the event multiplicity
+  void SetMult(unsigned short mult){fmult = mult;}
+
+  //! Set the X strips multiplicity
+  void SetXMult(unsigned short xmult){fnx = xmult;}
+  //! Set the Y strips multiplicity
+  void SetYMult(unsigned short ymult){fny = ymult;}
+
+  //! Set the X strips multiplicity
+  void SetXClusterMult(unsigned short xcmult){fncx = xcmult;}
+  //! Set the Y strips multiplicity
+  void SetYClusterMult(unsigned short ycmult){fncy = ycmult;}
+
+
+  //! Set the DSSD  multiplicity
+  void SetZMult(unsigned short zmult){fnz = zmult;}
+
+  //! Set the timestamp
+  void SetTimestamp(unsigned long long ts){fts = ts;}
+
+  //! Set Energy ratio ranking flag
+  void SetRankingFlag(unsigned char rankingflag){frflag = rankingflag;}
+
+  //! Set Energy difference ranking flag
+  void SetEDiffRankingFlag(unsigned char rankingflag){fdrflag = rankingflag;}
+
+
+  //! Set Minimum distance X
+  void SetMinimumDistanceX(double mindx){fmindx=mindx;}
+  //! Set Minimum distance Y
+  void SetMinimumDistanceY(double mindy){fmindy=mindy;}
+
+  //! Set Multiple hit in strip flag
+  void SetStripMultFlag(unsigned short niz){fniz = niz;}
+
+  //! Set Event Time Width
+  void SetTimeWidth(double tw){ftw=tw;}
+
+  //! Set time distance to ion
+  void SetDtIon(double dtion){fdtion=dtion;}
+
+  //! Set Z correction
+  void SetDZ(unsigned short dz){fdz=dz;}
+
+  //! Set EX+EY rank
+  void SetSumEXYRank(unsigned short sumexyrank){fsumexyrank = sumexyrank;}
+
+  //! Set Max Energy of last layer
+  void SetMaxELastDSSD(double maxelastdssd){fmaxelastdssd = maxelastdssd;}
+
+  //! Get ID of evnt
+  unsigned char GetID(){return fid;}
+
+  unsigned int GetEventNumber(){return fevt;}
+
+  double GetHitPositionX(){return fx;}
+  double GetHitPositionY(){return fy;}
+  short GetHitPositionZ(){return fz;}
+
+  //! Get the X strips sum energy
+  double GetXEnergy(){return fex;}
+  //! Get the Y strips sum energy
+  double GetYEnergy(){return fey;}
+
+  //! Get the event multiplicity
+  unsigned short GetMultiplicity(){return fmult;}
+
+
+  //! Get the X clusters multiplicity
+  unsigned short GetXClusterMultiplicity(){return fncx;}
+  //! Get the Y clusters multiplicity
+  unsigned short GetYClusterMultiplicity(){return fncy;}
+
+  //! Get the X strips multiplicity
+  unsigned short GetXMultiplicity(){return fnx;}
+  //! Get the Y strips multiplicity
+  unsigned short GetYMultiplicity(){return fny;}
+
+  //! Get the Z strips multiplicity
+  unsigned short GetZMultiplicity(){return fnz;}
+
+  //! Get the timestamp
+  unsigned long long GetTimestamp(){return fts;}
+
+  //! Get Energy ratio ranking flag
+  unsigned char GetRankingFlag(){return frflag;}
+
+  //! Get Energy difference ranking flag
+  unsigned char GetEDiffRankingFlag(){return fdrflag;}
+
+  //! Get minimum cluster distance X
+  double GetMinimumDistanceX(){return fmindx;}
+  //! Get minimum cluster distance Y
+  double GetMinimumDistanceY(){return fmindy;}
+
+  //! Get Multiple hit in strip flag
+  unsigned short GetStripMultFlag(){return fniz;}
+
+  //! Get time distance to ion
+  double GetDtIon(){return fdtion;}
+
+  //! Get even time width
+  double GetTimeWidth(){return ftw;}
+
+  //! Get Multiple hit in strip flag
+  unsigned short GetDZ(){return fdz;}
+
+  //! Get ex+ey rank
+  unsigned short GetSumEXYRank(){return fsumexyrank;}
+
+  //! Set Max Energy of last layer
+  double GetMaxELastDSSD(){return fmaxelastdssd;}
+
+
+  //! Printing information
+  void Print(Option_t *option = "") const {
+    cout <<"\tts "<< fts;
+    cout << "\tX " << fx;
+    cout << "\tY " << fy;
+    cout << "\tZ " << fz;
+    cout << "\tX energy " << fex;
+    cout << "\tY energy " << fey;
+    cout << "\tX multiplicity " << fnx;
+    cout << "\tY multiplicity " << fny;
+    cout << "\ttimestamp " << fts;
+    cout << "\tranking flag " << frflag;
+    return;
+  }
+
+protected:
+  unsigned long long fts;
+
+  unsigned int fevt;
+
+  //! id :ion or beta
+  unsigned char fid;
+
+  //! event multiplicity
+  unsigned short fmult;
+
+  //! DSSDs coordinator
+  double fx;
+  double fy;
+  short fz;
+  //! store the hit number
+  //vector<short*> fhitsno;
+
+  //! the energy lab system
+  double fex;
+  double fey;
+  //! xy hit multiplicity
+  unsigned short fnx;
+  unsigned short fny;
+  //! xy cluster multiplicity
+  unsigned short fncx;
+  unsigned short fncy;
+  //! number of clusters
+  unsigned short fnz;
+  //! number of event with mult>1 for 1 dssd
+  unsigned short fniz;
+  //! ranking flag
+  unsigned char frflag;
+  //! ranking flag EY-EX
+  unsigned char fdrflag;
+
+  //! ex+ey rank
+  unsigned short fsumexyrank=0;
+
+  //! minimum cluster distance x
+  double fmindx;
+  //! minimum cluster distance y
+  double fmindy;
+
+  //! event time width in us
+  double ftw;
+  //! time distance with prev ion in us
+  double fdtion;
+
+  //! z correction (if applicable)
+  unsigned short fdz;
+
+  //! max energy of the last layer (for light particle veto method)
+  double fmaxelastdssd;
+
+  /// \cond CLASSIMP
+  ClassDef(AIDASimpleStruct,1);
+  /// \endcond
+};
+
+
+
 class AIDAHit : public TObject {
 public:
   //! default constructor
@@ -173,7 +443,7 @@ public:
   virtual ~AIDACluster(){}
   //! constructor with individual values
   AIDACluster(unsigned short x, unsigned short y, unsigned short z, unsigned short multx,unsigned short multy,
-              double xenergy,double yenergy,unsigned short clustersadded, unsigned long long int ts)
+              double xenergy,double yenergy,unsigned short clustersadded, unsigned long long int ts, unsigned char rankingflag,unsigned char ediffrankingflag, unsigned short sumexyrank)
   {
     fpos.SetXYZ(x,y,z);
     fsumenx=xenergy;
@@ -181,7 +451,10 @@ public:
     fnx=multx;
     fny=multy;
     fclustersadded = clustersadded;
-    fcts = ts;
+    fcts = ts;    
+    frankingflag = rankingflag;
+    fediffrankingflag = ediffrankingflag;
+    fsumexyrank = sumexyrank;
   }
   //! Clear the music information
   virtual void Clear(){
@@ -193,6 +466,9 @@ public:
       fnx=0;
       fny=0;
       fcfastts=0;
+      frankingflag = 0;
+      fediffrankingflag=0;
+      fsumexyrank=0;
   }
 
   //! copy cluster
@@ -205,6 +481,9 @@ public:
       obj.SetYMult(fny);
       obj.SetFastTimestamp(fcfastts);
       obj.SetClustersAdded(fclustersadded);
+      obj.SetRankingFlag(frankingflag);
+      obj.SetEDiffRankingFlag(fediffrankingflag);
+      obj.SetSumEXYRank(fsumexyrank);
   }
 
   //! Set XY
@@ -228,6 +507,15 @@ public:
 
   //! Set current cluster number
   void SetClustersAdded(unsigned short clustersadded){fclustersadded = clustersadded;}
+
+  //! Set XY energy diffrence
+  void SetRankingFlag(unsigned char rankingflag){frankingflag = rankingflag;}
+
+  //! Set Energy difference ranking flag
+  void SetEDiffRankingFlag(unsigned char rankingflag){fediffrankingflag = rankingflag;}
+
+  //! Set Sum energy of X and Y rank
+  void SetSumEXYRank(unsigned short sumexyrank){fsumexyrank = sumexyrank;}
 
 
   TVector3 GetHitPosition(){return fpos;}
@@ -254,6 +542,15 @@ public:
   //! Get current cluster number
   unsigned short GetClustersAdded(){return fclustersadded;}
 
+  //! Get Energy diffrence ranking flag
+  unsigned char GetRankingFlag(){return frankingflag;}
+
+  //! Get Energy difference ranking flag
+  unsigned char GetEDiffRankingFlag(){return fediffrankingflag;}
+
+  //! Get Sum energy ranking
+  unsigned short GetSumEXYRank(){return fsumexyrank;}
+
   //! Printing information
   void Print(Option_t *option = "") const {
     cout << "Cluster No. " << fclustersadded;
@@ -265,6 +562,7 @@ public:
     cout << "\tX multiplicity " << fnx;
     cout << "\tY multiplicity " << fny;
     cout << "\ttimestamp " << fcts;
+    cout << "\tranking flag " << frankingflag;
     return;
   }
 
@@ -291,6 +589,14 @@ protected:
 
   //! current hits
   unsigned short fclustersadded;
+
+  //! ranking mode: if cluster satisfy ranking mode condition = 1, otherwise =0
+  unsigned char frankingflag;
+
+  unsigned char fediffrankingflag;
+
+
+  unsigned short fsumexyrank;
 
   /// \cond CLASSIMP
   ClassDef(AIDACluster,1);
@@ -320,10 +626,10 @@ public:
       ftsprevion = 0;
       fmult = 0;
       fnclusters = 0;
-      fmaxz = -1;
+      fmaxz = 0;
       fclustermultz = 0;
       fhitmultz = 0;
-      fdmaxz = -1;
+      fdmaxz = 0;
       /*
       for (int i=0;i<NumDSSD;i++){
           fmultx[i]=0;
@@ -346,6 +652,12 @@ public:
       memset(fstripsmultx2,0,sizeof(fstripsmultx2));
       memset(fstripsmulty1,0,sizeof(fstripsmulty1));
       memset(fstripsmulty2,0,sizeof(fstripsmulty2));
+
+      memset(fnxclustersz,0,sizeof(fnxclustersz));
+      memset(fnyclustersz,0,sizeof(fnyclustersz));
+
+      memset(fmindx,0,sizeof(fmindx));
+      memset(fmindy,0,sizeof(fmindy));
 
 
       //! Dealocating memory
@@ -550,6 +862,13 @@ public:
 
     //! Set number of cluster
     void SetNClusters(unsigned short ncluster){fnclusters = ncluster;}
+
+    //! Set number of X clusters
+    void SetNXClustersZ(int dssd, unsigned short ncluster){fnyclustersz[dssd] = ncluster;}
+
+    //! Set number of Y clusters
+    void SetNYClustersZ(int dssd, unsigned short ncluster){fnyclustersz[dssd] = ncluster;}
+
     //! Set number of dssd with at least 1 cluster
     void SetClusterMultZ(unsigned short clustermultz){
         fclustermultz = clustermultz;
@@ -565,6 +884,11 @@ public:
 
     //! Set delta max Z (added July 29,2017)
     void SetDeltaMaxZ(unsigned short dmaxz){fdmaxz = dmaxz;}
+
+    //! Set min distance between clusters
+    void SetMinDistanceX(unsigned short dssd,double mindx){fmindx[dssd]=mindx;}
+    void SetMinDistanceY(unsigned short dssd,double mindy){fmindy[dssd]=mindy;}
+
 
     //! Set event type
     void SetType(short type){ftype = type;}
@@ -630,6 +954,11 @@ public:
 
     unsigned short GetNClustersZi(int dssd){return fnclustersz[dssd];}
 
+    unsigned short GetNXClustersZi(int dssd){return fnxclustersz[dssd];}
+
+    unsigned short GetNYClustersZi(int dssd){return fnyclustersz[dssd];}
+
+
     //! Returns the number of clusters
     unsigned short GetNClusters(){return fnclusters;}
 
@@ -685,6 +1014,14 @@ public:
         return fstripsmulty2[dssd];
     }
 
+    //! get min distance between clusters
+    double GetMinDistanceX(unsigned short dssd){
+        return fmindx[dssd];
+    }
+    double GetMinDistanceY(unsigned short dssd){
+        return fmindy[dssd];
+    }
+
     //! Printing information
     void Print(Option_t *option = "") const {
       cout <<"timestamp " << faidats << endl;
@@ -705,9 +1042,18 @@ public:
     bool BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Get all Beta position new
     bool BetaGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
+    //! Get all Beta position with position assignment using max. energy
+    bool BetaGetPosAllNewMax(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Ion position with clustering algorithm
     bool IonGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     bool IonGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
+    //! Get all ion position with position assignment using max. energy
+    bool IonGetPosAllNewMax(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
+
+
+    //! only Y strips
+    bool BetaGetPosYonly();
+    bool ConstructEdiffRankingFlags();
 
   protected:
     //! aida time stamp (ealiest timestamp within event)
@@ -756,15 +1102,23 @@ public:
     //! total clusters
     unsigned short fnclustersz[NumDSSD];
 
+    //! total X clusters
+    unsigned short fnxclustersz[NumDSSD];
+    //! total Y clusters
+    unsigned short fnyclustersz[NumDSSD];
+
     //! max hit position
-    short fmaxz;
+    unsigned short fmaxz;
 
     //! max hit position correction (delta_{maxz}) (added July 29,2017)
-    short fdmaxz;
+    unsigned short fdmaxz;
 
     //! number of dssd with at least 1 cluster
     unsigned short fclustermultz;
 
+    //! Min distance between cluster
+    double fmindx[NumDSSD];
+    double fmindy[NumDSSD];
 
     //!Threshold table
     //Double_t fdssd_thr[NumDSSD][NumStrXY];
@@ -774,6 +1128,7 @@ public:
 
     //! vector with the hits
     vector<AIDAHit*> fhits;
+
     //! vector with the clusters
     vector<AIDACluster*> fclusters;
 

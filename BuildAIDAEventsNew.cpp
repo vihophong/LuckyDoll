@@ -314,19 +314,21 @@ bool BuildAIDAEvents::CloseIonEvent()
 
     //! check overflow channels
     unsigned short dmaxz=0;
+    
     if (flocalaidaION->GetMaxZ()!=NumDSSD-1){
         for (int i=flocalaidaION->GetMaxZ()+1;i<NumDSSD;i++){
            if (foverflowflag[i]>0) dmaxz=(unsigned short)(i-flocalaidaION->GetMaxZ());
         }
     }
     flocalaidaION->SetDeltaMaxZ(dmaxz);
-
+    
     /*
     for (int i=0;i<flocalaidaBETA->GetHits().size();i++){
         AIDAHit* hit=new AIDAHit;
         flocalaidaBETA->GetHit(i)->Copy(*hit);
         flocalaidaION->AddHit(hit);
-    }*/
+    }
+    */
 
 
     //if (fflag_filldata) fmtrION->Fill();
@@ -365,6 +367,7 @@ bool BuildAIDAEvents::CloseBetaEvent()
                 //return false;
             }
         }else{
+            //flocalaidaBETA->BetaGetPosYonly();
             if (flocalaidaBETA->BetaGetPosAllNew(fcorrcut,fsumexcut,fsumeycut)){
                 //if (fflag_filldata) fmtrBETA->Fill();
                 //fADBetaEntry++;

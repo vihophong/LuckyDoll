@@ -29,7 +29,6 @@ public:
         fen = en;
         fpos.SetXYZ(posx,posy,posz);
         fhitsadded = hitsadded;
-
     }
     virtual void Clear(){
         fid = -1;
@@ -42,6 +41,11 @@ public:
         fadc = -1;
         fen = -1;
         fhitsadded = 0;
+
+        //for veto
+        fdvetotime = -999999.;
+        ff11time = -999999.;
+        fvetotime = -999999.;
     }
     virtual void Copy(BELENHit& obj){
         obj.SetID(fid);
@@ -54,6 +58,10 @@ public:
         obj.SetADC(fadc);
         obj.SetEnergy(fen);
         obj.SetHitsAdded(fhitsadded);
+        //for veto
+        obj.SetF11Time(ff11time);
+        obj.SetDownstreamVetoTime(fdvetotime);
+        obj.SetFinalVetoTime(fvetotime);
     }
 
     //! Set the energy
@@ -84,6 +92,12 @@ public:
     void SetHitsAdded(unsigned short hitsadded){fhitsadded = hitsadded;}
 
 
+    //! for veto
+    void SetF11Time(double f11time){ff11time = f11time;}
+    void SetDownstreamVetoTime(double dvetotime){fdvetotime = dvetotime;}
+    void SetFinalVetoTime(double vetotime){fvetotime = vetotime;}
+
+
     //! Get the ID
     short GetID(){return fid;}
     //! Get the ID
@@ -105,6 +119,12 @@ public:
 
     //! Get current hits
     unsigned short GetHitsAdded(){return fhitsadded;}
+
+
+    //! for veto
+    double GetF11Time(){return ff11time;}
+    double GetDownstreamVetoTime(){return fdvetotime;}
+    double GetFinalVetoTime(){return fvetotime;}
 
     //! Printing information
     void Print(Option_t *option = "") const {
@@ -148,6 +168,12 @@ protected:
     double fen;
     //! timestamp value
     unsigned long long fts;
+
+    //! special added
+    double ff11time;//in us
+    double fdvetotime;//in us
+    double fvetotime; //in us
+
 
     /// \cond CLASSIMP
     ClassDef(BELENHit,1);

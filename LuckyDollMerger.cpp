@@ -52,8 +52,12 @@ int main(int argc, char* argv[]){
     int BAbeg = 0;
     int BAend = 0;
 
+    char* InputMerged = NULL;
+    char* InputPID = NULL;
+
 
     CommandLineInterface* interface = new CommandLineInterface();
+
     interface->Add("-bl", "BELEN input file", &InputBELEN);
     interface->Add("-a", "AIDA input file", &InputAIDA);
     interface->Add("-br", "Bigrips input file", &InputBIGRIPS);
@@ -70,24 +74,28 @@ int main(int argc, char* argv[]){
     interface->Add("-babeg", "start entry for anc in BRIKEN", &BAbeg);
     interface->Add("-baend", "stop entry for anc in BRIKEN", &BAend);
 
+    interface->Add("-i", "Input Merged file", &InputMerged);
+
+    interface->Add("-pid", "Input PID file", &InputPID);
+
     interface->CheckFlags(argc, argv);
     //Complain about missing mandatory arguments
     if(InputBELEN == NULL){
       cout << "No BELEN input list of files given " << endl;
-      return 1;
+      //return 1;
     }
     if(InputAIDA == NULL){
       cout << "No AIDA input list of files given " << endl;
-      return 1;
+      //return 1;
     }
     if(InputBIGRIPS == NULL){
       cout << "No Bigrips input list of files given " << endl;
-      return 1;
+      //return 1;
     }
     if(OutFile == NULL){
       cout << "No output ROOT file given " << endl;
-      return 2;
-    }
+      //return 2;
+    }    
 
 
 
@@ -95,34 +103,84 @@ int main(int argc, char* argv[]){
     cout<<"output file: "<<OutFile<< endl;
     TFile* ofile = new TFile(OutFile,"recreate");
     ofile->cd();
+    TVectorD deadtimecontainer(6);
+    for (Int_t i=0;i<6;i++) deadtimecontainer[i]=0;
 
-    TTree* treeImplant = new TTree("implant","implant");
-    TTree* treeBeta = new TTree("beta","beta");
-    TTree* treeNeutron = new TTree("neutron","neutron");
-    TTree* treeBeam = new TTree("beam","beam");
+    if (!(InputAIDA==NULL)){
+        cout<<"Merging"<<endl;
+        TTree* tree = new TTree("tree","tree");
+        Merger *merge=new Merger();
+        merge->SetAIDAFile(InputAIDA);
+        merge->SetBrikenFile(InputBELEN);
+        merge->SetBigripsFile(InputBIGRIPS);
+        merge->Init();
+        merge->ReadAIDA();        
+        if (InputBIGRIPS!=NULL) merge->ReadBigrips();
+        if (InputBELEN!=NULL) merge->ReadBRIKEN();
 
-    Merger *merge=new Merger();
-    merge->SetAIDAFile(InputAIDA);
-    merge->SetBrikenFile(InputBELEN);
-    merge->SetBigripsFile(InputBIGRIPS);
-    merge->Init();
-    merge->ReadAIDA(AIbeg,AIend);
-    merge->ReadBRIKEN(BNbeg,BNend,BGbeg,BGend,BAbeg,BAend);
-    merge->ReadBigrips();
-    merge->BookTree(treeImplant,treeBeta,treeNeutron,treeBeam);
-    ofile->cd();
-    merge->DoMergeImp();
-    merge->DoMergeBeta();
-    merge->DoMergeNeutron();
-    merge->DoMergeAnc();
-    delete merge;
+        //merge->BookTreeTClone(tree);
+        //merge->DoMergeYOnly();
 
-    treeImplant->Write();
-    treeBeta->Write();
-    treeNeutron->Write();
-    treeBeam->Write();
-    ofile->Close();
-    //! Finish----------------
+        //merge->BookTreeTClone(tree);
+        //merge->DoMergeTClone();
+
+        merge->BookTreeSingle(tree);
+        merge->DoMergeSingle();
+
+        /*
+        merge->ReadAIDA(AIbeg,AIend);
+        merge->ReadBRIKEN(BNbeg,BNend,BGbeg,BGend,BAbeg,BAend);
+        merge->ReadBigrips();
+        merge->BookTree(treeImplant,treeBeta);
+        ofile->cd();
+        */
+
+        //! get deadtime,total time
+        deadtimecontainer[0]=merge->GetFinalVetoDeadtime();
+        deadtimecontainer[1]=merge->GetFinalVetoTotaltime();
+        deadtimecontainer[2]=merge->GetF11VetoDeadtime();
+        deadtimecontainer[3]=merge->GetF11VetoTotaltime();
+        deadtimecontainer[4]=merge->GetDownstreamVetoDeadtime();
+        deadtimecontainer[5]=merge->GetDownstreamVetoTotaltime();
+        ofile->cd();
+        tree->Write();
+
+        merge->GetHist1()->Write();
+        deadtimecontainer.Write("deadtime");
+        ofile->Close();
+        delete merge;
+        //! Finish----------------
+    }
+
+    if (!(InputMerged==NULL)){
+        cout<<"Separate PID"<<endl;
+        Merger *merge=new Merger();
+        merge->ReadPID(InputPID);
+        merge->SetMergedFile(InputMerged);
+        merge->InitPIDSep();
+
+        deadtimecontainer[0]=merge->GetFinalVetoDeadtime();
+        deadtimecontainer[1]=merge->GetFinalVetoTotaltime();
+        deadtimecontainer[2]=merge->GetF11VetoDeadtime();
+        deadtimecontainer[3]=merge->GetF11VetoTotaltime();
+        deadtimecontainer[4]=merge->GetDownstreamVetoDeadtime();
+        deadtimecontainer[5]=merge->GetDownstreamVetoTotaltime();
+        ofile->cd();
+        merge->BookPIDSepTree();
+        merge->DoSeparatePID();
+
+        for (Int_t i=0;i<merge->GetNri();i++){
+            merge->GetCUTRI(i)->Write();
+        }
+        for (Int_t i=0;i<merge->GetNri();i++){
+            merge->GetTreeRI(i)->Write();
+        }
+        merge->GetTreeRI(-1)->Write();
+        deadtimecontainer.Write("deadtime");
+        ofile->Close();
+        delete merge;
+    }
+
     double time_end = get_time();
     cout << "\nProgram Run time: " << time_end - time_start << " s." << endl;
     timer.Stop();

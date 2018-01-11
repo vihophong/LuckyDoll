@@ -435,6 +435,7 @@ bool AIDAUnpacker::ReconstructRawAIDA(){
                     nresetwarning ++;
                 }
                 //corrTS->Fill(temp);
+                //cout<<"eee"<<temp<<endl;
             }else{
                 rawaida.extTimestamp=my_time_offset+rawaida.timestamp; //convert to ext timestamp unit
             }

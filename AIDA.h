@@ -118,7 +118,6 @@ public:
   //! Set Energy difference ranking flag
   void SetEDiffRankingFlag(unsigned char rankingflag){fdrflag = rankingflag;}
 
-
   //! Set Minimum distance X
   void SetMinimumDistanceX(double mindx){fmindx=mindx;}
   //! Set Minimum distance Y

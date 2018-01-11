@@ -57,7 +57,7 @@ int main(int argc, char* argv[]){
   //long long int TransientTime = 20000;
 
   long long int WindowDiscriminator = 0;
-  long long int Window = 200;
+  long long int Window = 201;
 
   int FillFlag = 1;
   int GzFlag = 0;

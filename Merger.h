@@ -21,6 +21,32 @@
 
 #define MaxNRI 1000
 
+
+const Int_t kMaxGamma = 50;
+const Int_t kMaxNeutron = 50;
+
+typedef struct {
+    ULong64_t evt;
+    ULong64_t ts; 	 //timestamp in ns
+    Double_t t,x,y,ex,ey,ion_x,ion_y,ion_ex,ion_ey,zet,aoq,deltaxy;//ts diff in ns
+    Short_t z,ion_z,multx,multy,multz,ndecay,nbeta;
+
+    Int_t gc_hit;
+    Double_t gc_E[kMaxGamma];
+    Double_t gc_T[kMaxGamma];//gamma time in ns
+    Int_t gc_ch[kMaxGamma];
+
+    Int_t neu_hit;
+    Double_t neu_E[kMaxNeutron];
+    Double_t neu_T[kMaxNeutron];//moderation time in us
+    Int_t neu_ch[kMaxNeutron];
+    Double_t neu_x[kMaxNeutron];
+    Double_t neu_y[kMaxNeutron];
+    Int_t neub_hit;
+
+
+} datatype;
+
 typedef struct{
     int correntrybrips;
     int correntryf11r;
@@ -49,6 +75,13 @@ public:
     void DoMergeYOnly();
     void BookTreeTClone(TTree* tree, TTree* treemlh, TTree* treemlhp1n, TTree* treemlhp2n, TTree *treemlhp1nb, TTree *treemlhp2nb);
     void BookTreeSingle(TTree* tree);
+    void BookTreeNeutron(TTree* tree);
+    void BookTreeImplant(TTree* tree);
+
+    void SetNeutronOffsetTime(long long offset){fNeuBetaoffset=offset;}
+    long long GetNeutronOffsetTime(){return fNeuBetaoffset;}
+    void SetSumERankCut(Int_t rankcut){sumexyrankcut = rankcut;}
+    Int_t GetSumERankCut(){return sumexyrankcut;}
 
 
     //! for pid separation
@@ -56,10 +89,15 @@ public:
     void SetMergedFile(char* mergedfile){finputMerged = mergedfile;}
     void InitPIDSep();
     void BookPIDSepTree();
+    void BookPIDSepSimpleTree();
     Int_t GetNri(){return nri;}
     TTree* GetTreeRI(Int_t i){if (i<0) return ftree; else return ftreeRI[i];}
+    TTree* GetTreeImpRI(Int_t i){if (i<0) return ftreeimplantAll;return ftreeimplantRI[i];}
+
     TCutG* GetCUTRI(Int_t i){return cutg[i];}
     void DoSeparatePID();
+
+    void DoSeparatePIDFinalTree();
 
     TH1F* GetHist1(){return fh1;}
 
@@ -71,6 +109,7 @@ public:
     Long64_t GetDownstreamVetoTotaltime(){return fdownstreamvetototaltime;}
     Long64_t GetFinalVetoTotaltime(){return fvetototaltime;}
 
+    void ResetSimpleData();
 
 protected:
     char* finputAida;
@@ -172,10 +211,16 @@ protected:
 
      TTree* ftree;
 
-     //! data struct to be filled
+     //! data struct to be filled (for decay builder)
      IonBetaMult* flocalimp;
      TClonesArray* flocalbeta;
      IonBeta* flocalbetaS;
+
+     BELENHit* flocalneutron;
+     IonBetaMult* flocalimp2;
+
+     //! simple data
+     datatype decay;
 
      //! timewindows
      unsigned short fmaxmult;
@@ -257,6 +302,34 @@ protected:
      Long64_t fnentriesMerged;
 
      TTree* ftreeRI[MaxNRI];
+     TTree* ftreeimplantRI[MaxNRI];
+     TTree* ftreeimplantAll;
+     Long64_t fnentriesImp;
+
+
+
+
+     Double_t dtioncut;
+     Int_t sumexyrankcut;
+     Int_t lightp_nzcut;
+     Double_t neutronecut[2];
+     Double_t deltaxcut;
+     Double_t deltaycut;
+
+
+     //! gamma calibration provided by JJ
+     Double_t fsep[8];
+     Double_t flow_offset[8];
+     Double_t flow_gain[8];
+     Double_t flow_se[8];
+     Double_t fhigh_offset[8];
+     Double_t fhigh_gain[8];
+     Double_t fhigh_se[8];
+
+     Double_t fcgainold[8];
+     Double_t fcoffsetold[8];
+
+
 
      //! temp
      TH1F* fh1;

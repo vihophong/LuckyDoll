@@ -213,6 +213,8 @@ void BuildAIDAEvents::ReadHECalibTable()
 
 //! Add AIDA ION hits
 void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
+    //! flag check (for briken2015)
+    if (aidaraw.dssdNo<0||aidaraw.stripNo<0) return;
     //if (chMask[aidaraw.feeNo][aidaraw.chNo]==1){ //no disable high energy
 
         AIDAHit* hit = new AIDAHit;
@@ -235,6 +237,8 @@ void BuildAIDAEvents::AddAIDAIonHits(rawaida_info aidaraw){
 
 //! Add AIDA Beta hitsflocalbeta
 void BuildAIDAEvents::AddAIDABetaHits(rawaida_info aidaraw){
+    //! flag check (for briken2015)
+    if (aidaraw.dssdNo<0||aidaraw.stripNo<0) return;
     //! make flag
     fmultxyz[aidaraw.dssdNo*128+aidaraw.stripNo]++;
     if(fmultxyz[aidaraw.dssdNo*128+aidaraw.stripNo]>1){

@@ -350,4 +350,3 @@ protected:
 };
 
 #endif // MERGER_H
-

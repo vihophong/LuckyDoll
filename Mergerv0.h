@@ -10,13 +10,11 @@
 #include "TFile.h"
 
 #include "TH1.h"
-#include "TH2.h"
 #include "TH1F.h"
 
 #include "TCut.h"
 #include "TCutG.h"
 #include "TLatex.h"
-#include "TSpectrum.h"
 
 #include "fstream"
 
@@ -71,7 +69,11 @@ public:
     void ReadBigrips();
     void ReadAIDA(unsigned int start = 0, unsigned int stop = 0);
     void ReadBRIKEN(unsigned int startN=0, unsigned int stopN=0,unsigned int startG=0, unsigned int stopG=0,unsigned int startA=0, unsigned int stopA=0);
+    void DoMergeTClone();
     void DoMergeSingle();
+    void DoMergeTest();
+    void DoMergeYOnly();
+    void BookTreeTClone(TTree* tree, TTree* treemlh, TTree* treemlhp1n, TTree* treemlhp2n, TTree *treemlhp1nb, TTree *treemlhp2nb);
     void BookTreeSingle(TTree* tree);
     void BookTreeNeutron(TTree* tree);
     void BookTreeImplant(TTree* tree);
@@ -106,11 +108,6 @@ public:
     Long64_t GetF11VetoTotaltime(){return ff11vetototaltime;}
     Long64_t GetDownstreamVetoTotaltime(){return fdownstreamvetototaltime;}
     Long64_t GetFinalVetoTotaltime(){return fvetototaltime;}
-
-
-    TH2F* GetH2DeadtimeHist(){return fh2deadtime;}
-    TH1F* GetH1DeadtimeHist(){return fh1deadtime;}
-    TH1F* GetPulserHist(Int_t id){return fhpulser[id];}
 
     void ResetSimpleData();
 
@@ -166,7 +163,6 @@ protected:
     std::multimap < unsigned long long, AIDASimpleStruct* > faidaBetaMap;
     std::multimap < unsigned long long, AIDASimpleStruct* > faidaIonMap;
     std::multimap < unsigned long long, pair<ImplantCorrelationVector*, AIDASimpleStruct* > > faidaImplantMap;
-    std::multimap < unsigned long long, IonBetaMult* > faidaImplantMapFull;
     std::multimap < unsigned long long, BELENHit*> fhe3Map;
     std::multimap < unsigned long long, unsigned int> fcloverMap;
     std::multimap < unsigned long long, unsigned int> fancMap;
@@ -174,7 +170,6 @@ protected:
     std::multimap < unsigned long long, AIDASimpleStruct* >::iterator faidaBetaMap_it;
     std::multimap < unsigned long long, AIDASimpleStruct* >::iterator faidaIonMap_it;
     std::multimap < unsigned long long, pair<ImplantCorrelationVector*, AIDASimpleStruct* > >::iterator faidaImplantMap_it;
-    std::multimap < unsigned long long, IonBetaMult* > ::iterator faidaImplantMapFull_it;
     std::multimap < unsigned long long, BELENHit*>::iterator fhe3Map_it;
     std::multimap < unsigned long long, unsigned int>::iterator fcloverMap_it;
     std::multimap < unsigned long long, unsigned int>::iterator fancMap_it;
@@ -218,12 +213,11 @@ protected:
 
      //! data struct to be filled (for decay builder)
      IonBetaMult* flocalimp;
-
-     TClonesArray* flocalimparray;
-
+     TClonesArray* flocalbeta;
      IonBeta* flocalbetaS;
 
      BELENHit* flocalneutron;
+     IonBetaMult* flocalimp2;
 
      //! simple data
      datatype decay;
@@ -336,13 +330,6 @@ protected:
      Double_t fcoffsetold[8];
 
 
-     TH1F* fhpulser[140];
-
-     Long64_t ftsbeginf11r;
-     Long64_t ftsendf11r;
-     TH2F* fh2deadtime;
-     TH1F* fh1deadtime;
-
 
      //! temp
      TH1F* fh1;
@@ -350,4 +337,3 @@ protected:
 };
 
 #endif // MERGER_H
-

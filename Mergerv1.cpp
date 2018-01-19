@@ -3,8 +3,8 @@ Merger::Merger():fbigrips(),decay()
 {
     fmaxmult=400;
     fmaxnpixels=4.;
-    fIonBetaTWlow=10000000000;
-    //fIonBetaTWlow=50000000000;
+    //fIonBetaTWlow=10000000000;
+    fIonBetaTWlow=50000000000;
     fIonBetaTWup=10000000000;
     fIonPidTWup = 0;
     fIonPidTWlow = 50000;
@@ -708,7 +708,6 @@ void Merger::DoMergeSingle()
 
 
 
-
     //! secondary veto scheme
     Int_t nvetoneu2=0;
     for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
@@ -781,6 +780,7 @@ void Merger::DoMergeSingle()
     cout<<"******Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu2<<endl;
 
 
+
     //! Counter for neutron veto
     nvetoneu=0;
     ntotalneu=0;
@@ -794,6 +794,7 @@ void Merger::DoMergeSingle()
         }
     }
     cout<<"************Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu<<endl;
+
 
     //! Write out neutron tree
     if (ftreeNeutron!=0){

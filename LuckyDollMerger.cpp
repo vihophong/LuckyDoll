@@ -133,12 +133,6 @@ int main(int argc, char* argv[]){
         if (InputBIGRIPS!=NULL) merge->ReadBigrips();
         if (InputBELEN!=NULL) merge->ReadBRIKEN();
 
-        //merge->BookTreeTClone(tree);
-        //merge->DoMergeYOnly();
-
-        //merge->BookTreeTClone(tree);
-        //merge->DoMergeTClone();
-
         merge->BookTreeSingle(tree);
         merge->BookTreeNeutron(treeneutron);
         merge->BookTreeImplant(treeimplant);
@@ -164,7 +158,11 @@ int main(int argc, char* argv[]){
         treeneutron->Write();
         treeimplant->Write();
 
+        //for (Int_t tubeid=0;tubeid<140;tubeid++)
+        //merge->GetPulserHist(tubeid)->Write();
         merge->GetHist1()->Write();
+        //merge->GetH2DeadtimeHist()->Write();
+        //merge->GetH1DeadtimeHist()->Write();
         deadtimecontainer.Write("deadtime");
         ofile->Close();
         delete merge;
@@ -173,6 +171,7 @@ int main(int argc, char* argv[]){
 
     if (!(InputMerged==NULL)){
         if (Mode==0){
+            /*
             cout<<"Separate PID"<<endl;
             Merger *merge=new Merger();
             merge->ReadPID(InputPID);
@@ -199,6 +198,7 @@ int main(int argc, char* argv[]){
             deadtimecontainer.Write("deadtime");
             ofile->Close();
             delete merge;
+            */
         }else{
             cout<<"Separate PID and make simple tree"<<endl;
             Merger *merge=new Merger();

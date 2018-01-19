@@ -4,7 +4,6 @@ Merger::Merger():fbigrips(),decay()
     fmaxmult=400;
     fmaxnpixels=4.;
     fIonBetaTWlow=10000000000;
-    //fIonBetaTWlow=50000000000;
     fIonBetaTWup=10000000000;
     fIonPidTWup = 0;
     fIonPidTWlow = 50000;
@@ -173,43 +172,37 @@ void Merger::ReadPID(char* pidfile, Int_t ncutpts){
 void Merger::InitPIDSep()
 {
     ResetSimpleData();
-
-    flocalimparray = new TClonesArray("IonBetaMult");
-    flocalimparray->Clear("C");
+    flocalimp=NULL;
+    flocalimp2 = NULL;
     flocalbetaS = new IonBeta;
     flocalbetaS->Clear();
     //! init aida
     fmergedFile = new TFile(finputMerged);
     fmergedFile->GetObject("tree",ftrMerged);
     ftrMerged->SetBranchAddress("idx",&nionbetacorr);
-    ftrMerged->SetBranchAddress("ion",&flocalimparray);
+    ftrMerged->SetBranchAddress("ion",&flocalimp);
     ftrMerged->GetBranch("beta")->SetAutoDelete(kFALSE);
     ftrMerged->SetBranchAddress("beta",&flocalbetaS);
+
+    //! init tree implant
+    fmergedFile->GetObject("treeimplant",ftreeImplant);
+    ftreeImplant->SetBranchAddress("implant",&flocalimp2);
+    fnentriesImp=ftreeImplant->GetEntries();
+    cout<<"Reading "<<fnentriesImp<<" enetries in Implant tree"<<endl;
+    cout<<"Printing first few timestamp:"<<endl;
+    for (Long64_t i=0;i<10;i++){
+        ftreeImplant->GetEvent(i);
+        cout<<"ionts= "<<flocalimp2->GetTimestamp()<<endl;
+    }
 
     fnentriesMerged = ftrMerged->GetEntries();
     cout<<"Reading "<<fnentriesMerged<<" enetries in Merged tree"<<endl;
     cout<<"Printing first few timestamp:"<<endl;
     for (Long64_t i=0;i<10;i++){
         ftrMerged->GetEvent(i);
-        Int_t nimpevt=flocalimparray->GetEntriesFast();
-        for (Int_t j=0;j<nimpevt;j++){
-            IonBetaMult* imp=(IonBetaMult*)flocalimparray->At(j);
-            cout<<"ionts="<<imp->GetTimestamp()<<endl;
-            cout<<"betats= "<<flocalbetaS->GetTimestamp()<<endl;
-        }
-    }
-
-    //! init tree implant
-    fmergedFile->GetObject("treeimplant",ftreeImplant);
-    ftreeImplant->SetBranchAddress("implant",&flocalimp);
-    fnentriesImp=ftreeImplant->GetEntries();
-    cout<<"Reading "<<fnentriesImp<<" enetries in Implant tree"<<endl;
-    cout<<"Printing first few timestamp:"<<endl;
-    for (Long64_t i=0;i<10;i++){
-        ftreeImplant->GetEvent(i);
         cout<<"ionts= "<<flocalimp->GetTimestamp()<<endl;
+        cout<<"betats= "<<flocalbetaS->GetTimestamp()<<endl;
     }
-
 
     TVectorD* deadtimecontainer=(TVectorD*) fmergedFile->Get(Form("deadtime"));
     Double_t* deadtimearray=deadtimecontainer->GetMatrixArray();
@@ -229,13 +222,11 @@ void Merger::Init()
     ftree = 0;
     ftreeImplant = 0;
     ftreeBeta = 0;
-    ftreeNeutron = 0;
+    ftreeNeutron = 0;   
 
 
-
-    flocalimparray = new TClonesArray("IonBetaMult");
-    flocalimparray->Clear("C");
-
+    flocalbeta = new TClonesArray("IonBeta");
+    flocalbeta->Clear("C");
     flocalbetaS = new IonBeta;
     flocalbetaS->Clear();
 
@@ -243,12 +234,16 @@ void Merger::Init()
     flocalimp = new IonBetaMult;
     flocalimp->Clear();
 
+    flocalimp2 = new IonBetaMult;
+
 
     flocalneutron = new BELENHit;
 
     nionbetacorr=0;
 
     faida = NULL;
+    //faidaIon = NULL;
+    //faidaBeta = NULL;
     fbigrips = NULL;
     fclover = NULL;
     fneutron = NULL;
@@ -262,6 +257,26 @@ void Merger::Init()
     fnentriesNeutron = 0;
     fnentriesAnc = 0;
 
+    /*
+    //! init aida
+    if (finputAida!=NULL){
+        fAidaFile = new TFile(finputAida);
+        fAidaFile->GetObject("beta",ftrAIDABeta);
+        fAidaFile->GetObject("ion",ftrAIDAIon);
+        ftrAIDABeta->SetBranchAddress("aida",&faidaBeta);
+        ftrAIDAIon->SetBranchAddress("aida",&faidaIon);
+        fnentriesAIDAIon = ftrAIDAIon->GetEntries();
+        fnentriesAIDABeta = ftrAIDABeta->GetEntries();
+        cout<<"Reading "<<fnentriesAIDABeta<<" betas and "
+           <<fnentriesAIDAIon<<" ions in AIDA tree"<<endl;
+        cout<<"Printing first few timestamp:"<<endl;
+        for (Long64_t i=0;i<10;i++){
+            ftrAIDABeta->GetEvent(i);
+            ftrAIDAIon->GetEvent(i);
+            cout<<"betats "<<faidaBeta->GetTimestamp()<<"- ionts "<<faidaIon->GetTimestamp()<<endl;
+        }
+    }
+    */
 
     //! init aida
     if (finputAida!=NULL){
@@ -319,25 +334,23 @@ void Merger::Init()
         cout<<"\n\t\t\t****************************************\n"<<endl;
     }
 
-
-    //! stuffs for deadtime estimation using pulser
-    for (Int_t i=0;i<140;i++){
-        ftsbeginf11r=0;
-        ftsendf11r=0;
-        fhpulser[i]=new TH1F(Form("hpulser%d",i+1),Form("hpulser%d",i+1),2000,1500,3500);
-    }
-    fh2deadtime=new TH2F("h2deadtime","h2deadtime",140,0,140,2000,0,20);
-    fh1deadtime=new TH1F("h1deadtime","h1deadtime",2000,0,20);
-
     fh1=new TH1F("h1","h1",5000,-1000,1000);
 }
 
 
 
+void Merger::BookTreeTClone(TTree* tree,TTree* treemlh,TTree* treemlhp1n,TTree* treemlhp2n,TTree* treemlhp1nb,TTree* treemlhp2nb){
+    ftree = tree;
+    ftree->Branch("idx",&nionbetacorr,"idx/I");
+    ftree->Branch("ion",&flocalimp);
+    ftree->Branch("beta",&flocalbeta);
+    ftree->BranchRef();
+}
+
 void Merger::BookTreeSingle(TTree* tree){
     ftree = tree;
     ftree->Branch("idx",&nionbetacorr,"idx/I");
-    ftree->Branch("ion",&flocalimparray);
+    ftree->Branch("ion",&flocalimp);
     ftree->Branch("beta",&flocalbetaS);
     ftree->BranchRef();
 }
@@ -350,7 +363,7 @@ void Merger::BookTreeNeutron(TTree* tree)
 void Merger::BookTreeImplant(TTree* tree)
 {
     ftreeImplant = tree;
-    ftreeImplant->Branch("implant",&flocalimp);
+    ftreeImplant->Branch("implant",&flocalimp2);
     ftreeImplant->BranchRef();
 }
 
@@ -364,8 +377,10 @@ void Merger::BookPIDSepTree(){
         ftreeRI[i]->Branch("idx",&nionbetacorr,"idx/I");
         ftreeRI[i]->Branch("ion",&flocalimp);
         ftreeRI[i]->Branch("beta",&flocalbetaS);
-        ftreeRI[i]->BranchRef();
+        ftreeRI[i]->BranchRef();       
     }
+
+
 }
 
 void Merger::BookPIDSepSimpleTree(){
@@ -386,10 +401,10 @@ void Merger::BookPIDSepSimpleTree(){
         ftreeRI[i]->Branch("neu_y",decay.neu_y,"neu_y[neu_hit]/D");
         ftreeRI[i]->Branch("neub_hit",&decay.neub_hit,"neub_hit/I");
         //ftreeRI[i]->BranchRef();
-        ftreeimplantRI[i]->Branch("implant",&flocalimp);
+        ftreeimplantRI[i]->Branch("implant",&flocalimp2);
     }
     ftreeimplantAll=new TTree("treeimpall","treeimpall");
-    ftreeimplantAll->Branch("implant",&flocalimp);
+    ftreeimplantAll->Branch("implant",&flocalimp2);
 
     ftree=new TTree("tree","tree");
     ftree->Branch("decay",&decay,"evt/l:ts/l:t/D:x/D:y/D:ex/D:ey/D:ion_x/D:ion_y/D:ion_ex/D:ion_ey/D:zet/D:aoq/D:deltaxy/D:z/S:ion_z/S:multx/S:multy/S:multz/S:ndecay/S:nbeta/S");
@@ -477,10 +492,10 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
         ftrNeutron->GetEvent(jentry);
         BELENHit* hit=new BELENHit;
         fneutron->Copy(*hit);
-        fhe3Map.insert(make_pair(fneutron->GetTimestamp(),hit));
-        //if (fneutron->GetEnergy()<fmaxneue&&fneutron->GetEnergy()>fminneue) fhe3Map.insert(make_pair(fneutron->GetTimestamp(),hit));
+        if (fneutron->GetEnergy()<fmaxneue&&fneutron->GetEnergy()>fminneue) fhe3Map.insert(make_pair(fneutron->GetTimestamp(),hit));
     }
     cout<<"Finished reading neutron  ts table with "<<fhe3Map.size()<<" rows"<<endl;
+
     //! read gamma
     unsigned int sstartG,sstopG;
     if (startG==0) sstartG = 0; else sstartG = startG;
@@ -500,11 +515,7 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
     for (unsigned int jentry = sstartA;jentry < sstopA;jentry++){
         ftrAnc->GetEvent(jentry);
         //fancMap.insert(make_pair(fanc->GetTimestamp(),jentry));
-        if (fanc->GetMyPrecious()==1&&fanc->GetID()==1) {
-            if (ftsbeginf11r==0) ftsbeginf11r=fanc->GetTimestamp();
-            ftsendf11r=fanc->GetTimestamp();
-            fF11RMap.insert(make_pair(fanc->GetTimestamp(),jentry));
-        }
+        if (fanc->GetMyPrecious()==1&&fanc->GetID()==1) fF11RMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==1&&fanc->GetID()==2) fF11LMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==1) fVetoTopMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==2) fVetoBotMap.insert(make_pair(fanc->GetTimestamp(),jentry));
@@ -525,6 +536,92 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
     cout<<"Finished reading Veto Down ts table with "<<fVetoDownMap.size()<<" rows"<<endl;
 }
 
+
+void Merger::DoMergeTClone()
+{
+    Int_t k=0;
+    Int_t ktotal=faidaIonMap.size();
+    Int_t ncorrwbigrips=0;
+    Int_t ncorrwbeta=0;
+
+    for (faidaIonMap_it=faidaIonMap.begin();faidaIonMap_it!=faidaIonMap.end();faidaIonMap_it++){
+        flocalimp->Clear();
+        flocalbeta->Clear("C");
+        //flocalbeta->Clear();
+        if (k%1000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w bigrips "<<ncorrwbigrips<<endl;
+        //if (k>500) break;
+        unsigned long long ts=faidaIonMap_it->first;
+        AIDASimpleStruct* ion=(AIDASimpleStruct*) faidaIonMap_it->second;
+        double impx=ion->GetHitPositionX();
+        double impy=ion->GetHitPositionY();
+        short impz=ion->GetHitPositionZ()+ion->GetDZ();//! correct dZ
+
+        //! fill imp data here
+        //AIDASimpleStruct* iontofill = flocalimp->GetIonBetaCluster();
+        //ion->Copy(*iontofill);
+        flocalimp->CopyFromAIDA(ion);
+        //! Correlate imp with bigrips
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fIonPidTWup;
+        Long64_t corrts = 0;
+        Int_t ncorr=0;
+        unsigned int correntry = 0;
+        Long64_t check_time = 0;
+        fbigripsMap_it = fbigripsMap.lower_bound(ts1);
+        while(fbigripsMap_it!=fbigripsMap.end()&&fbigripsMap_it->first<ts2){
+            corrts = (Long64_t) fbigripsMap_it->first;
+            correntry = fbigripsMap_it->second;
+            if (corrts!=check_time){
+                check_time=corrts;
+                //! fill data here
+                ftrBigrips->GetEvent(correntry);
+                flocalimp->AddBeam(*fbigrips);
+                ncorr++;
+                break;
+            }
+            fbigripsMap_it++;
+        }
+        if (ncorr>0) ncorrwbigrips++;
+
+        //! Correlate with beta
+        ts1 = (Long64_t)ts - fIonBetaTWlow;
+        ts2 = (Long64_t)ts + fIonBetaTWup;
+        corrts = 0;
+        correntry = 0;
+        check_time = 0;
+        nionbetacorr=0;
+        faidaBetaMap_it = faidaBetaMap.lower_bound(ts1);
+        while(faidaBetaMap_it!=faidaBetaMap.end()&&faidaBetaMap_it->first<ts2){
+            corrts = (Long64_t) faidaBetaMap_it->first;
+            AIDASimpleStruct* beta = faidaBetaMap_it->second;
+            double betax= beta->GetHitPositionX();
+            double betay= beta->GetHitPositionY();
+            short betaz= beta->GetHitPositionZ();
+            if (corrts!=check_time&&betaz==impz){
+                if (!((betax-impx>-fmaxnpixels)&&(betax-impx<fmaxnpixels)&&(betay-impy>-fmaxnpixels)&&(betay-impy<fmaxnpixels))){
+                    faidaBetaMap_it++;
+                    continue;
+                }
+                //! fill beta here
+                //fh1->Fill((Long64_t)corrts-(Long64_t)ts);
+
+
+                //flocalbeta->Clear();
+                //flocalbeta->CopyFromAIDA(beta);
+                //ftree->Fill();
+
+                IonBeta* simplestructbeta=(IonBeta*)flocalbeta->ConstructedAt(nionbetacorr);
+                simplestructbeta->CopyFromAIDA(beta);
+
+                nionbetacorr++;
+            }
+            faidaBetaMap_it++;
+        }
+        if (nionbetacorr>0) ncorrwbeta++;
+        ftree->Fill();
+        k++;
+    }
+}
 
 void Merger::DoMergeSingle()
 {
@@ -699,108 +796,19 @@ void Merger::DoMergeSingle()
     Int_t ntotalneu=0;
     for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
         BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
-        if (neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]) {
+        if (neuhit->GetEnergy()<860&&neuhit->GetEnergy()>160) {
             if (neuhit->GetFinalVetoTime()>0) nvetoneu++;
             ntotalneu++;
         }
     }
     cout<<"Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu<<endl;
 
-
-
-
-    //! secondary veto scheme
-    Int_t nvetoneu2=0;
-    for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
-        BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
-
-        //! set default veto
-        neuhit->SetF11Time(-200);
-        neuhit->SetDownstreamVetoTime(-200);
-        neuhit->SetFinalVetoTime(-200);
-
-        unsigned long long ts=fhe3Map_it->first;
-        Long64_t ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWup;
-        Long64_t ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWlow;
-        Long64_t corrts = 0;
-        Long64_t check_time = 0;
-        Int_t ncorr=0;
-
-        //! f11 veto map
-        fF11MapR_it = fF11RMap.lower_bound(ts1);
-        while(fF11MapR_it!=fF11RMap.end()&&fF11MapR_it->first<ts2){
-            corrts = (Long64_t) fF11MapR_it->first;
-            if (corrts!=check_time){
-                check_time=corrts;
-                double tdiff=(Double_t)((Long64_t)ts-corrts)/1000.;//in us
-                neuhit->SetF11Time(tdiff);
-                ncorr++;
-                //break;
-            }
-            fF11MapR_it++;
-        }
-
-        //! downstream veto map
-        corrts = 0;
-        check_time = 0;
-        ncorr=0;
-        //! all veto map
-        fVetoDownMap_it = fVetoDownMap.lower_bound(ts1);
-        while(fVetoDownMap_it!=fVetoDownMap.end()&&fVetoDownMap_it->first<ts2){
-            corrts = (Long64_t) fvetoMap_it->first;
-            if (corrts!=check_time){
-                check_time=corrts;
-                double tdiff=(Double_t)((Long64_t)ts-corrts)/1000.;//in us
-                neuhit->SetDownstreamVetoTime(tdiff);
-                ncorr++;
-                //break;
-            }
-            fVetoDownMap_it++;
-        }
-
-
-        //! all veto map
-        corrts = 0;
-        check_time = 0;
-        ncorr=0;
-        fvetoMap_it = fvetoMap.lower_bound(ts1);
-        while(fvetoMap_it!=fvetoMap.end()&&fvetoMap_it->first<ts2){
-            corrts = (Long64_t) fvetoMap_it->first;
-            if (corrts!=check_time){
-                check_time=corrts;
-                double tdiff=(Double_t)((Long64_t)ts-corrts)/1000.;//in us
-
-                if (ncorr==0&&neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]) nvetoneu2++;
-                neuhit->SetFinalVetoTime(tdiff);
-                ncorr++;
-                //break;
-            }
-            fvetoMap_it++;
-        }
-    }
-    cout<<"******Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu2<<endl;
-
-
-    //! Counter for neutron veto
-    nvetoneu=0;
-    ntotalneu=0;
-    for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
-        BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
-        Int_t id=neuhit->GetID()-1;
-        if (neuhit->GetF11Time()<0&&neuhit->GetTimestamp()>ftsbeginf11r&&neuhit->GetTimestamp()<ftsendf11r) fhpulser[id]->Fill(neuhit->GetEnergy());
-        if (neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]) {
-            if (neuhit->GetFinalVetoTime()>=0) nvetoneu++;
-            ntotalneu++;
-        }
-    }
-    cout<<"************Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu<<endl;
-
     //! Write out neutron tree
     if (ftreeNeutron!=0){
         cout<<"MAKING NEUTRON TREE"<<endl;
         for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
             flocalneutron->Clear();
-            BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
+            BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;            
             neuhit->Copy(*flocalneutron);
             ftreeNeutron->Fill();
         }
@@ -809,6 +817,9 @@ void Merger::DoMergeSingle()
 
     //! AIDA-BIGRIPS correlation
     for (faidaIonMap_it=faidaIonMap.begin();faidaIonMap_it!=faidaIonMap.end();faidaIonMap_it++){
+        flocalimp->Clear();
+        flocalbeta->Clear("C");
+        //flocalbeta->Clear();
         if (k%1000==0) cout<<k<<"/"<<ktotal<<"\t ncorr w bigrips "<<ncorrwbigrips<<endl;
         //if (k>500) break;
         unsigned long long ts=faidaIonMap_it->first;
@@ -923,62 +934,41 @@ void Merger::DoMergeSingle()
     if (ftreeImplant!=0){
         cout<<"MAKING IMPLANT TREE"<<endl;
         for (faidaImplantMap_it=faidaImplantMap.begin();faidaImplantMap_it!=faidaImplantMap.end();faidaImplantMap_it++){
-            flocalimp->Clear();
-            unsigned long long tsimp=faidaImplantMap_it->first;
+            flocalimp2->Clear();
             AIDASimpleStruct* imp = faidaImplantMap_it->second.second;
             ImplantCorrelationVector* corrvectorimp= (ImplantCorrelationVector*)faidaImplantMap_it->second.first;
-
-
-            //! make a copy of implant object and dum into vector
-            IonBetaMult* impcpy=new IonBetaMult;
-
             //! fill bigrips data here
             if (corrvectorimp->correntrybrips>=0) {
                 ftrBigrips->GetEvent(corrvectorimp->correntrybrips);
-                flocalimp->AddBeam(*fbigrips);
-                impcpy->AddBeam(*fbigrips);
+                flocalimp2->AddBeam(*fbigrips);
             }
             //! fill anc data here
             if (corrvectorimp->correntryf11r>=0){
                 ftrAnc->GetEvent(corrvectorimp->correntryf11r);
                 BELENHit* hit=new BELENHit;
                 fanc->Copy(*hit);
-                flocalimp->AddAnc(hit);
-                BELENHit* hit2=new BELENHit;
-                fanc->Copy(*hit2);
-                impcpy->AddAnc(hit2);
+                flocalimp2->AddAnc(hit);
             }
             if (corrvectorimp->correntrydEtop>=0){
                 ftrAnc->GetEvent(corrvectorimp->correntrydEtop);
                 BELENHit* hit=new BELENHit;
                 fanc->Copy(*hit);
-                flocalimp->AddAnc(hit);
-                BELENHit* hit2=new BELENHit;
-                fanc->Copy(*hit2);
-                impcpy->AddAnc(hit2);
-
+                flocalimp2->AddAnc(hit);
             }
             if (corrvectorimp->correntrydEbot>=0){
                 ftrAnc->GetEvent(corrvectorimp->correntrydEbot);
                 BELENHit* hit=new BELENHit;
                 fanc->Copy(*hit);
-                flocalimp->AddAnc(hit);
-                BELENHit* hit2=new BELENHit;
-                fanc->Copy(*hit2);
-                impcpy->AddAnc(hit2);
+                flocalimp2->AddAnc(hit);
             }
             if (corrvectorimp->correntryvetodown>=0){
                 ftrAnc->GetEvent(corrvectorimp->correntryvetodown);
                 BELENHit* hit=new BELENHit;
                 fanc->Copy(*hit);
-                flocalimp->AddAnc(hit);
-                BELENHit* hit2=new BELENHit;
-                fanc->Copy(*hit2);
-                impcpy->AddAnc(hit2);
+                flocalimp2->AddAnc(hit);
             }
-            flocalimp->CopyFromAIDA(imp);
-            impcpy->CopyFromAIDA(imp);
-            faidaImplantMapFull.insert(make_pair(tsimp,impcpy));
+
+            flocalimp2->CopyFromAIDA(imp);
             ftreeImplant->Fill();
         }
     }
@@ -991,15 +981,14 @@ void Merger::DoMergeSingle()
     k=0;
     for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
         flocalbetaS->Clear();
-        flocalimparray->Clear("C");
-
         if (k%10000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w neutron "<<ncorrwneutron<<endl;
-        //if (k>107204) break;
+        //if (k>500) break;
         unsigned long long ts=faidaBetaMap_it->first;
         AIDASimpleStruct* beta=(AIDASimpleStruct*) faidaBetaMap_it->second;
         double betax=beta->GetHitPositionX();
         double betay=beta->GetHitPositionY();
         short betaz=beta->GetHitPositionZ();//! correct dZ
+
 
         //! Time correlation with neutron
         int ndelayedneutron=0;
@@ -1015,11 +1004,6 @@ void Merger::DoMergeSingle()
         while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
             corrts = (Long64_t) fhe3Map_it->first;
             BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
-            if (!(neuhit->GetEnergy()<fmaxneue&&neuhit->GetEnergy()>fminneue))
-            {
-                fhe3Map_it++;
-                continue;
-            }
             if (corrts!=check_time){
                 check_time=corrts;
                 //! fill neutron here
@@ -1121,72 +1105,218 @@ void Merger::DoMergeSingle()
         correntry = 0;
         check_time = 0;
         nionbetacorr=0;
-        faidaImplantMapFull_it = faidaImplantMapFull.lower_bound(ts1);
-        while(faidaImplantMapFull_it!=faidaImplantMapFull.end()&&faidaImplantMapFull_it->first<ts2){
-            corrts = (Long64_t) faidaImplantMapFull_it->first;
-            IonBetaMult* imp = faidaImplantMapFull_it->second;
+        faidaImplantMap_it = faidaImplantMap.lower_bound(ts1);
+        while(faidaImplantMap_it!=faidaImplantMap.end()&&faidaImplantMap_it->first<ts2){
+            flocalimp->Clear();
+            corrts = (Long64_t) faidaImplantMap_it->first;
+            AIDASimpleStruct* imp = faidaImplantMap_it->second.second;
+            ImplantCorrelationVector* corrvectorimp= (ImplantCorrelationVector*)faidaImplantMap_it->second.first;
+
             double impx= imp->GetHitPositionX();
             double impy= imp->GetHitPositionY();
             short impz= imp->GetHitPositionZ();
             if (corrts!=check_time&&betaz==impz){
                 if (!((betax-impx>-fmaxnpixels)&&(betax-impx<fmaxnpixels)&&(betay-impy>-fmaxnpixels)&&(betay-impy<fmaxnpixels))){
-                    faidaImplantMapFull_it++;
+                    faidaImplantMap_it++;
                     continue;
                 }
                 check_time=corrts;
-
-                IonBetaMult* imparr=(IonBetaMult*)flocalimparray->ConstructedAt(nionbetacorr);
-
-
-                imp->CopyWithBigRIPSOnly(*imparr);
-
-
-                /*
-                //! only for ahn san experiment
-                imparr->GetBeamHit()->f11x=-9999;
-                imparr->GetBeamHit()->f11y=-9999;
-                for (unsigned short i=0;i<imp->GetNAncHit();i++){
-                    BELENHit* hit=imp->GetAncHit(i);
-                    if (hit->GetMyPrecious()==3&&hit->GetID()==1) imparr->GetBeamHit()->f11x=hit->GetEnergy();
-                    if (hit->GetMyPrecious()==3&&hit->GetID()==2) imparr->GetBeamHit()->f11y=hit->GetEnergy();
+                //! fill bigrips data here
+                if (corrvectorimp->correntrybrips>=0) {
+                    ftrBigrips->GetEvent(corrvectorimp->correntrybrips);
+                    flocalimp->AddBeam(*fbigrips);
                 }
-                */
 
+                //! fill anc data here
+                if (corrvectorimp->correntryf11r>=0){
+                    ftrAnc->GetEvent(corrvectorimp->correntryf11r);
+                    BELENHit* hit=new BELENHit;
+                    fanc->Copy(*hit);
+                    flocalimp->AddAnc(hit);
+                }
+                if (corrvectorimp->correntrydEtop>=0){
+                    ftrAnc->GetEvent(corrvectorimp->correntrydEtop);
+                    BELENHit* hit=new BELENHit;
+                    fanc->Copy(*hit);
+                    flocalimp->AddAnc(hit);
+                }
+                if (corrvectorimp->correntrydEbot>=0){
+                    ftrAnc->GetEvent(corrvectorimp->correntrydEbot);
+                    BELENHit* hit=new BELENHit;
+                    fanc->Copy(*hit);
+                    flocalimp->AddAnc(hit);
+                }
+                if (corrvectorimp->correntryvetodown>=0){
+                    ftrAnc->GetEvent(corrvectorimp->correntryvetodown);
+                    BELENHit* hit=new BELENHit;
+                    fanc->Copy(*hit);
+                    flocalimp->AddAnc(hit);
+                }
+
+
+                //! fill beta data here
+
+                flocalbetaS->CopyFromAIDA(beta);
+                flocalimp->CopyFromAIDA(imp);
+                ftree->Fill();
 
                 //fh1->Fill((Long64_t)ts-(Long64_t)corrts);
 
                 nionbetacorr++;
             }
-            faidaImplantMapFull_it++;
+            faidaImplantMap_it++;
         }
-
-        //! fill beta data here
-        flocalbetaS->CopyFromAIDA(beta);
-        ftree->Fill();
-
         if (nionbetacorr>0) ncorrwbeta++;
         k++;
     }
 
-    TSpectrum *s = new TSpectrum();
-    Long64_t totaltimeL=ftsendf11r-ftsbeginf11r;
-    Double_t totaltime=(Double_t)totaltimeL/1e9;
-    Double_t expectedcounts=totaltime*10;
-    //! new calculation of dead time
-    for (Int_t i=0;i<140;i++){
-        s->Search(fhpulser[i]);
-        Double_t *xpeaks = s->GetPositionX();
-        Double_t xp = xpeaks[0];
-        Double_t totalcounts=fhpulser[i]->Integral(fhpulser[i]->GetXaxis()->FindBin(xp-100),fhpulser[i]->GetXaxis()->FindBin(xp+100));
-        fh2deadtime->Fill(i,100-totalcounts/expectedcounts*100);
-        fh1deadtime->Fill(100-totalcounts/expectedcounts*100);
+}
+
+
+void Merger::DoMergeTest()
+{
+    Int_t k=0;
+    Int_t ktotal=faidaBetaMap.size();
+    Int_t ncorrwbigrips=0;
+    Int_t ncorrwbeta=0;
+    for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
+        flocalimp->Clear();
+        flocalbeta->Clear("C");
+        //flocalbeta->Clear();
+        if (k%1000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w bigrips "<<ncorrwbigrips<<endl;
+        //if (k>500) break;
+        unsigned long long ts=faidaBetaMap_it->first;
+        AIDASimpleStruct* ion=(AIDASimpleStruct*) faidaBetaMap_it->second;
+        double impx=ion->GetHitPositionX();
+        double impy=ion->GetHitPositionY();
+        short impz=ion->GetHitPositionZ()+ion->GetDZ();//! correct dZ
+
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fIonPidTWup;
+        Long64_t corrts = 0;
+        Int_t ncorr=0;
+        unsigned int correntry = 0;
+        Long64_t check_time = 0;
+
+        //! Correlate with beta
+        ts1 = (Long64_t)ts - fIonBetaTWlow;
+        ts2 = (Long64_t)ts + fIonBetaTWup;
+        corrts = 0;
+        correntry = 0;
+        check_time = 0;
+        nionbetacorr=0;
+        faidaIonMap_it = faidaIonMap.lower_bound(ts1);
+        while(faidaIonMap_it!=faidaIonMap.end()&&faidaIonMap_it->first<ts2){
+            corrts = (Long64_t) faidaIonMap_it->first;
+            AIDASimpleStruct* beta = faidaIonMap_it->second;
+            double betax= beta->GetHitPositionX();
+            double betay= beta->GetHitPositionY();
+            short betaz= beta->GetHitPositionZ();
+            if (corrts!=check_time&&betaz==impz){
+                if (!((betax-impx>-fmaxnpixels)&&(betax-impx<fmaxnpixels)&&(betay-impy>-fmaxnpixels)&&(betay-impy<fmaxnpixels))){
+                    faidaIonMap_it++;
+                    continue;
+                }
+                check_time=corrts;
+                //! fill beta here
+                //fh1->Fill((Long64_t)ts-(Long64_t)corrts);
+                nionbetacorr++;
+            }
+            faidaIonMap_it++;
+        }
+        if (nionbetacorr>0) ncorrwbeta++;
+        k++;
     }
-    delete s;
+}
+
+
+void Merger::DoMergeYOnly()
+{
+    Int_t k=0;
+    Int_t ktotal=faidaIonMap.size();
+    Int_t ncorrwbigrips=0;
+    Int_t ncorrwbeta=0;
+    for (faidaIonMap_it=faidaIonMap.begin();faidaIonMap_it!=faidaIonMap.end();faidaIonMap_it++){
+        flocalimp->Clear();
+        flocalbeta->Clear("C");
+        //flocalbeta->Clear();
+        if (k%1000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w bigrips "<<ncorrwbigrips<<endl;
+        //if (k>500) break;
+        unsigned long long ts=faidaIonMap_it->first;
+        AIDASimpleStruct* ion=(AIDASimpleStruct*) faidaIonMap_it->second;
+        double impx=ion->GetHitPositionX();
+        double impy=ion->GetHitPositionY();
+        short impz=ion->GetHitPositionZ()+ion->GetDZ();//! correct dZ
+
+        //! fill imp data here
+        //AIDASimpleStruct* iontofill = flocalimp->GetIonBetaCluster();
+        //ion->Copy(*iontofill);
+        flocalimp->CopyFromAIDA(ion);
+        //! Correlate imp with bigrips
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fIonPidTWup;
+        Long64_t corrts = 0;
+        Int_t ncorr=0;
+        unsigned int correntry = 0;
+        Long64_t check_time = 0;
+        fbigripsMap_it = fbigripsMap.lower_bound(ts1);
+        while(fbigripsMap_it!=fbigripsMap.end()&&fbigripsMap_it->first<ts2){
+            corrts = (Long64_t) fbigripsMap_it->first;
+            correntry = fbigripsMap_it->second;
+            if (corrts!=check_time){
+                check_time=corrts;
+                //! fill data here
+                ftrBigrips->GetEvent(correntry);
+                flocalimp->AddBeam(*fbigrips);
+                ncorr++;
+                break;
+            }
+            fbigripsMap_it++;
+        }
+        if (ncorr>0) ncorrwbigrips++;
+
+        //! Correlate with beta
+        ts1 = (Long64_t)ts - fIonBetaTWlow;
+        ts2 = (Long64_t)ts + fIonBetaTWup;
+        corrts = 0;
+        correntry = 0;
+        check_time = 0;
+        nionbetacorr=0;
+        faidaBetaMap_it = faidaBetaMap.lower_bound(ts1);
+        while(faidaBetaMap_it!=faidaBetaMap.end()&&faidaBetaMap_it->first<ts2){
+            corrts = (Long64_t) faidaBetaMap_it->first;
+            AIDASimpleStruct* beta = faidaBetaMap_it->second;
+            double betax= beta->GetHitPositionX();
+            double betay= beta->GetHitPositionY();
+            short betaz= beta->GetHitPositionZ();
+            if (corrts!=check_time&&betaz==impz){
+                if (!((betay-impy>-fmaxnpixels)&&(betay-impy<fmaxnpixels))){
+                    faidaBetaMap_it++;
+                    continue;
+                }
+                //! fill beta here
+                fh1->Fill((Long64_t)corrts-(Long64_t)ts);
+
+                //flocalbeta->Clear();
+                //flocalbeta->CopyFromAIDA(beta);
+                //ftree->Fill();
+
+                IonBeta* simplestructbeta=(IonBeta*)flocalbeta->ConstructedAt(nionbetacorr);
+                simplestructbeta->CopyFromAIDA(beta);
+
+                nionbetacorr++;
+            }
+            faidaBetaMap_it++;
+        }
+        if (nionbetacorr>0) ncorrwbeta++;
+        ftree->Fill();
+        k++;
+    }
 }
 
 void Merger::DoSeparatePID()
 {
-    for (Long64_t jentry=0;jentry<fnentriesMerged;jentry++){
+    for (Long64_t jentry=0;jentry<fnentriesMerged;jentry++){        
         ftrMerged->GetEntry(jentry);
         double zet=flocalimp->GetBeamHit()->zet;
         double aoq=flocalimp->GetBeamHit()->aoq;
@@ -1210,11 +1340,14 @@ void Merger::DoSeparatePIDFinalTree()
         for (Int_t j=0;j<flocalbetaS->GetAncMultipliticy();j++){
             if (flocalbetaS->GetAncHit(j)->GetMyPrecious()==4) ndownstreamveto++;
         }
+        Double_t deltax=flocalbetaS->GetHitPositionX()-flocalimp->GetHitPositionX();
+        Double_t deltay=flocalbetaS->GetHitPositionX()-flocalimp->GetHitPositionX();
         //! beta cut
-        if (flocalbetaS->GetDtIon()<=dtioncut||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
+        if (deltax*deltax>deltaxcut*deltaxcut||deltay*deltay>deltaycut*deltaycut||flocalbetaS->GetDtIon()<=dtioncut||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
 
 
         ResetSimpleData();
+        decay.t=((Double_t)((Long64_t)flocalbetaS->GetTimestamp()-(Long64_t)flocalimp->GetTimestamp()))/1e9;
         decay.evt=flocalbetaS->GetEventNumber();
         decay.ts=flocalbetaS->GetTimestamp();
         decay.x=flocalbetaS->GetHitPositionX();
@@ -1222,15 +1355,23 @@ void Merger::DoSeparatePIDFinalTree()
         decay.z=flocalbetaS->GetHitPositionZ();
         decay.ex=flocalbetaS->GetXEnergy();
         decay.ey=flocalbetaS->GetYEnergy();
+        decay.ion_x=flocalimp->GetHitPositionX();
+        decay.ion_y=flocalimp->GetHitPositionY();
+        decay.ion_z=flocalimp->GetHitPositionZ();
+        decay.zet=flocalimp->GetBeamHit()->zet;
+        decay.aoq=flocalimp->GetBeamHit()->aoq;
+        decay.deltaxy=sqrt(decay.x*decay.ion_x+decay.y*decay.ion_y);
         decay.multx=flocalbetaS->GetXMultiplicity();
         decay.multy=flocalbetaS->GetYMultiplicity();
         decay.multz=flocalbetaS->GetZMultiplicity();
+        decay.ndecay=nionbetacorr;
+        decay.nbeta=nionbetacorr;
+
 
         //! ****** NEUTRON ***************
         //! neutron multipliciy counters and cut
         Int_t nneufreal=0;
         Int_t nneubreal=0;
-
 
         for (Int_t j=0;j<flocalbetaS->GetNeutronForwardMultipliticy();j++){
             //if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetFinalVetoTime()<0){
@@ -1271,49 +1412,21 @@ void Merger::DoSeparatePIDFinalTree()
         }
         decay.gc_hit=flocalbetaS->GetCloverMultipliticy();
 
-        //!************ Implantation vector *************
-        Int_t nimpevt=flocalimparray->GetEntriesFast();
-        for (Int_t j=0;j<nimpevt;j++){
-            IonBetaMult* imp=(IonBetaMult*)flocalimparray->At(j);
-
-
-            Double_t deltax=flocalbetaS->GetHitPositionX()-imp->GetHitPositionX();
-            Double_t deltay=flocalbetaS->GetHitPositionX()-imp->GetHitPositionX();
-            if(deltax*deltax>deltaxcut*deltaxcut||deltay*deltay>deltaycut*deltaycut) continue;
-
-            decay.t=((Double_t)((Long64_t)flocalbetaS->GetTimestamp()-(Long64_t)imp->GetTimestamp()))/1e9;
-            decay.ion_x=imp->GetHitPositionX();
-            decay.ion_y=imp->GetHitPositionY();
-            decay.ion_z=imp->GetHitPositionZ();
-            decay.zet=imp->GetBeamHit()->zet;
-
-            //! only for ahn experiment
-            /*
-            decay.zet=-9999;
-            if (imp->GetBeamHit()->f11x>0) decay.zet=imp->GetBeamHit()->f11x;
-            if (imp->GetBeamHit()->f11y>0) decay.zet=imp->GetBeamHit()->f11y;
-            */
-
-            decay.aoq=imp->GetBeamHit()->aoq;
-            decay.deltaxy=sqrt(decay.x*decay.ion_x+decay.y*decay.ion_y);
-            decay.ndecay=nionbetacorr;
-            decay.nbeta=nionbetacorr;
-            double zet=imp->GetBeamHit()->zet;
-            double aoq=imp->GetBeamHit()->aoq;
-            for (Int_t j=0;j<nri;j++){
-                if (!enablepid2[j]) continue;
-                if (cutg[j]->IsInside(aoq,zet)){
-                    ftreeRI[j]->Fill();
-                }
+        double zet=flocalimp->GetBeamHit()->zet;
+        double aoq=flocalimp->GetBeamHit()->aoq;
+        for (Int_t j=0;j<nri;j++){
+            if (!enablepid2[j]) continue;
+            if (cutg[j]->IsInside(aoq,zet)){
+                ftreeRI[j]->Fill();
             }
-            ftree->Fill();
         }
+        ftree->Fill();
     }
     cout<<"Making implant tree ..."<<endl;
     for (Long64_t jentry=0;jentry<fnentriesImp;jentry++){
         ftreeImplant->GetEvent(jentry);
-        double zet=flocalimp->GetBeamHit()->zet;
-        double aoq=flocalimp->GetBeamHit()->aoq;
+        double zet=flocalimp2->GetBeamHit()->zet;
+        double aoq=flocalimp2->GetBeamHit()->aoq;
         for (Int_t j=0;j<nri;j++){
             if (!enablepid2[j]) continue;
             if (cutg[j]->IsInside(aoq,zet)){

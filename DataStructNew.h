@@ -435,7 +435,6 @@ public:
         fsumexyrank=0;
     }
 
-    //! copy cluster
     virtual void Copy(IonBetaMult& obj){
         obj.SetID(fid);
         obj.SetEventNumber(fevt);
@@ -458,6 +457,87 @@ public:
         obj.SetMinimumDistanceX(fmindx);
         obj.SetMinimumDistanceY(fmindy);
         obj.SetSumEXYRank(fsumexyrank);
+
+        TreeData beamhitin;
+        beamhitin.ts=beam->ts;
+        beamhitin.ts=beam->sts;
+        beamhitin.tof=beam->tof;
+        beamhitin.zet=beam->zet;
+        beamhitin.aoq=beam->aoq;
+        beamhitin.f5x=beam->f5x;
+        beamhitin.f11x=beam->f11x;
+        beamhitin.f11y=beam->f11y;
+        beamhitin.f11dt=beam->f11dt;
+        beamhitin.beta=beam->beta;
+        obj.AddBeam(beamhitin);
+
+        for (unsigned short i=0;i<nneuf;i++){
+            BELENHit* hit=neub.at(i);
+            BELENHit* hitc=new BELENHit;
+            hit->Copy(*hitc);
+            obj.AddNeutronForward(hitc);
+        }
+
+
+        for (unsigned short i=0;i<nneub;i++){
+            BELENHit* hit=neub.at(i);
+            BELENHit* hitc=new BELENHit;
+            hit->Copy(*hitc);
+            obj.AddNeutronBackward(hitc);
+        }
+
+        for (unsigned short i=0;i<nclover;i++){
+            CloverHit* hit=clover.at(i);
+            CloverHit* hitc=new CloverHit;
+            hit->Copy(*hitc);
+            obj.AddClover(hitc);
+        }
+
+        for (unsigned short i=0;i<nanc;i++){
+            BELENHit* hit=GetAncHit(i);
+            BELENHit* hitc=new BELENHit;
+            hit->Copy(*hitc);
+            obj.AddAnc(hitc);
+        }
+
+    }
+
+    //! copy cluster
+    virtual void CopyWithBigRIPSOnly(IonBetaMult& obj){
+        obj.SetID(fid);
+        obj.SetEventNumber(fevt);
+        obj.SetTimestamp(fts);
+        obj.SetMult(fmult);
+        obj.SetHitPosition(fx,fy,fz);
+        obj.SetXEnergy(fex);
+        obj.SetYEnergy(fey);
+        obj.SetXClusterMult(fncx);
+        obj.SetYClusterMult(fncy);
+        obj.SetXMult(fnx);
+        obj.SetYMult(fny);
+        obj.SetZMult(fnz);
+        obj.SetStripMultFlag(fniz);
+        obj.SetRankingFlag(frflag);
+        obj.SetEDiffRankingFlag(fdrflag);
+        obj.SetTimeWidth(ftw);
+        obj.SetDtIon(fdtion);
+        obj.SetDZ(fdz);
+        obj.SetMinimumDistanceX(fmindx);
+        obj.SetMinimumDistanceY(fmindy);
+        obj.SetSumEXYRank(fsumexyrank);
+
+        TreeData beamhitin;
+        beamhitin.ts=beam->ts;
+        beamhitin.ts=beam->sts;
+        beamhitin.tof=beam->tof;
+        beamhitin.zet=beam->zet;
+        beamhitin.aoq=beam->aoq;
+        beamhitin.f5x=beam->f5x;
+        beamhitin.f11x=beam->f11x;
+        beamhitin.f11y=beam->f11y;
+        beamhitin.f11dt=beam->f11dt;
+        beamhitin.beta=beam->beta;
+        obj.AddBeam(beamhitin);
     }
     void CopyFromAIDA(AIDASimpleStruct* obj){
         fid=obj->GetID();
@@ -520,6 +600,12 @@ public:
     CloverHit* GetCloverHit(unsigned short n){return clover.at(n);}
     BELENHit* GetAncHit(unsigned short n){return anc.at(n);}
     TreeData* GetBeamHit(){return beam;}
+
+
+    unsigned short GetNNeutronForwardHit(){return nneuf;}
+    unsigned short GetNNeutronBackwardHit(){return nneub;}
+    unsigned short GetNCloverHit(){return nclover;}
+    unsigned short GetNAncHit(){return nanc;}
 
 
     //! Set XY

@@ -175,7 +175,7 @@ bool BelenReader::GetNextEvent(){
         flocalNeutron->SetRndPos(fposX,fposY,fposZ);
         if (fflag_filldata) fmtrNeutron->Fill();
         fBLNeuEntry++;
-    }else if (ftype==2){
+    }else if (ftype==2){        
         flocalGamma->SetEnergy(fE);
         flocalGamma->SetTimestamp(fT);
         flocalGamma->SetDaqID(fId);
@@ -199,38 +199,63 @@ bool BelenReader::GetNextEvent(){
         hit->SetID(fIndex2);
         hit->SetRing(0);
         hit->SetPos(0,0,0);
-        */
+        */        
         flocalAnc->SetEnergy(fE);
         flocalAnc->SetTimestamp(fT);
         flocalAnc->SetDaqID(fId);
         flocalAnc->SetID(fIndex2);
+
+        Bool_t fflaganc=false;
         if (fIndex1==Index1UPlastic){
             flocalAnc->SetPos(0,0,1);
             flocalAnc->SetRing(2);
             flocalAnc->SetType(ScintillatorType);
+            fflaganc=true;
             //hit->SetType(ScintillatorType);
             //flocalAncUpstreamPL.push_back(hit);
         }else if(fIndex1==Index1F11){
             flocalAnc->SetRing(1);
             flocalAnc->SetType(ScintillatorType);
             flocalAnc->SetPos(0,0,1);
+            fflaganc=true;
             //hit->SetType(ScintillatorType);
             //flocalAncF11PL.push_back(hit);
         }else if (fIndex1==Index1AIDAPL){
             flocalAnc->SetRing(4);
             flocalAnc->SetType(ScintillatorType);
             flocalAnc->SetPos(0,0,4);
+            fflaganc=true;
             //hit->SetType(ScintillatorType);
             //flocalAncAIDAPL.push_back(hit);
         }else if (fIndex1==Index1dE){
             flocalAnc->SetRing(3);
             flocalAnc->SetType(SilliconType);
             flocalAnc->SetPos(0,0,3);
+            fflaganc=true;
             //hit->SetType(SilliconType);
             //flocalAncdE.push_back(hit);
+        }else if (fIndex1==Index1F11LG){
+            flocalAnc->SetID(fIndex2+2);//start after f11 high gain
+            flocalAnc->SetRing(1);
+            flocalAnc->SetType(ScintillatorType);
+            flocalAnc->SetPos(0,0,1);
+            fflaganc=true;
         }
-        if (fflag_filldata) fmtrAnc->Fill();
-        fBLAncEntry++;
+        if (fId==IdDTPulser){
+            flocalAnc->SetRing(5);
+            flocalAnc->SetType(PulserType);
+            flocalAnc->SetPos(0,0,5);
+            fflaganc=true;
+        }else if (fId==IdSyncPulser){
+            flocalAnc->SetRing(6);
+            flocalAnc->SetType(PulserType);
+            flocalAnc->SetPos(0,0,6);
+            fflaganc=true;
+        }
+        if (fflag_filldata&&fflaganc) {
+            fmtrAnc->Fill();
+            fBLAncEntry++;
+        }
     }
     if (fcurentry>fnentries) return false;
     return true;

@@ -45,8 +45,6 @@ typedef struct {
     Double_t neu_x[kMaxNeutron];
     Double_t neu_y[kMaxNeutron];
     Int_t neub_hit;
-
-
 } datatype;
 
 typedef struct{
@@ -338,10 +336,11 @@ protected:
 
      TH1F* fhpulser[140];
 
-     Long64_t ftsbeginf11r;
-     Long64_t ftsendf11r;
+     Long64_t ftsbeginveto;
+     Long64_t ftsendveto;
      TH2F* fh2deadtime;
      TH1F* fh1deadtime;
+     TH1F* fhdtpulser;
 
 
      //! temp

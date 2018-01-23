@@ -322,13 +322,14 @@ void Merger::Init()
 
     //! stuffs for deadtime estimation using pulser
     for (Int_t i=0;i<140;i++){
-        ftsbeginf11r=0;
-        ftsendf11r=0;
+        ftsbeginveto=0;
+        ftsendveto=0;
         fhpulser[i]=new TH1F(Form("hpulser%d",i+1),Form("hpulser%d",i+1),2000,1500,3500);
+
     }
     fh2deadtime=new TH2F("h2deadtime","h2deadtime",140,0,140,2000,0,20);
     fh1deadtime=new TH1F("h1deadtime","h1deadtime",2000,0,20);
-
+    fhdtpulser=new TH1F("hdtpulser","hdtpulser",2000,0,2000);
     fh1=new TH1F("h1","h1",5000,-1000,1000);
 }
 
@@ -501,8 +502,6 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
         ftrAnc->GetEvent(jentry);
         //fancMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==1&&fanc->GetID()==1) {
-            if (ftsbeginf11r==0) ftsbeginf11r=fanc->GetTimestamp();
-            ftsendf11r=fanc->GetTimestamp();
             fF11RMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         }
         if (fanc->GetMyPrecious()==1&&fanc->GetID()==2) fF11LMap.insert(make_pair(fanc->GetTimestamp(),jentry));
@@ -513,6 +512,8 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
         if (fanc->GetMyPrecious()==3&&fanc->GetID()==2) fdEBotMap.insert(make_pair(fanc->GetTimestamp(),jentry));
 
         if (fanc->GetMyPrecious()==4) fVetoDownMap.insert(make_pair(fanc->GetTimestamp(),jentry));
+
+        if (fanc->GetMyPrecious()==5) fhdtpulser->Fill(fanc->GetEnergy());//for dead time calculation
     }
     //cout<<"Finished reading anc  ts table with "<<fancMap.size()<<" rows"<<endl;
     cout<<"Finished reading F11R  ts table with "<<fF11RMap.size()<<" rows"<<endl;
@@ -632,6 +633,9 @@ void Merger::DoMergeSingle()
                 if (currtdiff<999998.) neuhit->SetDownstreamVetoTime(tdiff);
                 else if (tdiff<currtdiff) neuhit->SetDownstreamVetoTime(tdiff);
                 ncorr++;
+
+                //if (neuhit->GetEnergy()>1500) fh2deadtime->Fill(tdiff,fanc->GetEnergy());
+
                 fh1->Fill(tdiff);
             }
             fhe3Map_it++;
@@ -650,8 +654,12 @@ void Merger::DoMergeSingle()
     fvetototaltime=0;
     lastts=0;
     //! Neutron correlation with downstream veto
-    for (fvetoMap_it=fvetoMap.begin();fvetoMap_it!=fvetoMap.end();fvetoMap_it++){
+    for (fvetoMap_it=fvetoMap.begin();fvetoMap_it!=fvetoMap.end();fvetoMap_it++){        
         unsigned long long ts=fvetoMap_it->first;
+        //! veto start stop time (for deadtime calculation
+        if (ftsbeginveto==0) ftsbeginveto=ts;
+        ftsendveto=ts;
+
         //unsigned int entry=fvetoMap_it->second;
         if (fvetototaltime==0) fvetototaltime=(Long64_t)ts;
         lastts=ts;
@@ -787,7 +795,7 @@ void Merger::DoMergeSingle()
     for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
         BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
         Int_t id=neuhit->GetID()-1;
-        if (neuhit->GetF11Time()<0&&neuhit->GetTimestamp()>ftsbeginf11r&&neuhit->GetTimestamp()<ftsendf11r) fhpulser[id]->Fill(neuhit->GetEnergy());
+        if (neuhit->GetFinalVetoTime()<0&&neuhit->GetTimestamp()>ftsbeginveto&&neuhit->GetTimestamp()<ftsendveto) fhpulser[id]->Fill(neuhit->GetEnergy());
         if (neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]) {
             if (neuhit->GetFinalVetoTime()>=0) nvetoneu++;
             ntotalneu++;
@@ -994,7 +1002,7 @@ void Merger::DoMergeSingle()
         flocalimparray->Clear("C");
 
         if (k%10000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w neutron "<<ncorrwneutron<<endl;
-        //if (k>107204) break;
+        if (k>1) break;
         unsigned long long ts=faidaBetaMap_it->first;
         AIDASimpleStruct* beta=(AIDASimpleStruct*) faidaBetaMap_it->second;
         double betax=beta->GetHitPositionX();
@@ -1169,7 +1177,7 @@ void Merger::DoMergeSingle()
     }
 
     TSpectrum *s = new TSpectrum();
-    Long64_t totaltimeL=ftsendf11r-ftsbeginf11r;
+    Long64_t totaltimeL=ftsendveto-ftsbeginveto;
     Double_t totaltime=(Double_t)totaltimeL/1e9;
     Double_t expectedcounts=totaltime*10;
     //! new calculation of dead time

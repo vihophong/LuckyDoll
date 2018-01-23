@@ -161,7 +161,7 @@ int main(int argc, char* argv[]){
         //for (Int_t tubeid=0;tubeid<140;tubeid++)
         //merge->GetPulserHist(tubeid)->Write();
         merge->GetHist1()->Write();
-        //merge->GetH2DeadtimeHist()->Write();
+        merge->GetH2DeadtimeHist()->Write();
         //merge->GetH1DeadtimeHist()->Write();
         deadtimecontainer.Write("deadtime");
         ofile->Close();

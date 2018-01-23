@@ -96,6 +96,8 @@ public:
     void DoSeparatePIDFinalTree();
 
     TH1F* GetHist1(){return fh1;}
+    TH1F* GetHist2(){return fh2;}
+
 
     Long64_t GetF11VetoDeadtime(){return ff11vetodeadtime;}
     Long64_t GetDownstreamVetoDeadtime(){return fdownstreamvetodeadtime;}
@@ -106,9 +108,17 @@ public:
     Long64_t GetFinalVetoTotaltime(){return fvetototaltime;}
 
 
-    TH2F* GetH2DeadtimeHist(){return fh2deadtime;}
-    TH1F* GetH1DeadtimeHist(){return fh1deadtime;}
-    TH1F* GetPulserHist(Int_t id){return fhpulser[id];}
+    TH2F* GetH2Deadtime(){return fh2deadtime;}
+    TH1F* GetH1Deadtime(){return fh1deadtime;}
+
+    TH2F* GetH2Deadtime2(){return fh2deadtime2;}
+    TH1F* GetH1Deadtime2(){return fh1deadtime2;}
+
+    TH1F* GetPulserHists(Int_t id){return fhpulser[id];}
+
+    TH1F* GetH1DeadtimePulserChannel(){return fh1dtpulser;}
+
+    Double_t GetTotalTimePulser(){return ftotaltimepulser;}
 
     void ResetSimpleData();
 
@@ -340,11 +350,23 @@ protected:
      Long64_t ftsendveto;
      TH2F* fh2deadtime;
      TH1F* fh1deadtime;
-     TH1F* fhdtpulser;
+
+     Long64_t ftsbeginpulser;
+     Long64_t ftsendpulser;
+     Double_t ftotaltimepulser;
+     TH2F* fh2deadtime2;
+     TH1F* fh1deadtime2;
+
+     TH1F* fh1dtpulser;
 
 
      //! temp
      TH1F* fh1;
+     TH1F* fh2;
+     std::multimap < unsigned long long, unsigned int> ftempmap;
+     std::multimap < unsigned long long, unsigned int>::iterator ftempmap_it;
+
+
 
 };
 

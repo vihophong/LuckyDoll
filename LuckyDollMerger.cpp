@@ -113,8 +113,8 @@ int main(int argc, char* argv[]){
     cout<<"output file: "<<OutFile<< endl;
     TFile* ofile = new TFile(OutFile,"recreate");
     ofile->cd();
-    TVectorD deadtimecontainer(6);
-    for (Int_t i=0;i<6;i++) deadtimecontainer[i]=0;
+    TVectorD deadtimecontainer(7);
+    for (Int_t i=0;i<7;i++) deadtimecontainer[i]=0;
 
     if (!(InputAIDA==NULL)){
         cout<<"Merging"<<endl;
@@ -153,16 +153,23 @@ int main(int argc, char* argv[]){
         deadtimecontainer[3]=merge->GetF11VetoTotaltime();
         deadtimecontainer[4]=merge->GetDownstreamVetoDeadtime();
         deadtimecontainer[5]=merge->GetDownstreamVetoTotaltime();
+        deadtimecontainer[6]=merge->GetTotalTimePulser();
         ofile->cd();
         tree->Write();
         treeneutron->Write();
         treeimplant->Write();
 
-        //for (Int_t tubeid=0;tubeid<140;tubeid++)
-        //merge->GetPulserHist(tubeid)->Write();
+        for (Int_t tubeid=0;tubeid<140;tubeid++){
+            merge->GetPulserHists(tubeid)->Write();
+        }
         merge->GetHist1()->Write();
-        merge->GetH2DeadtimeHist()->Write();
-        //merge->GetH1DeadtimeHist()->Write();
+        merge->GetHist2()->Write();
+        merge->GetH2Deadtime()->Write();
+        merge->GetH1Deadtime()->Write();
+        merge->GetH2Deadtime2()->Write();
+        merge->GetH1Deadtime2()->Write();
+        merge->GetH1DeadtimePulserChannel()->Write();
+
         deadtimecontainer.Write("deadtime");
         ofile->Close();
         delete merge;
@@ -207,13 +214,6 @@ int main(int argc, char* argv[]){
             merge->InitPIDSep();
             merge->SetSumERankCut(SumEXYRankcut);
             cout<<"Ranking cut = "<<merge->GetSumERankCut()<<endl;
-
-            deadtimecontainer[0]=merge->GetFinalVetoDeadtime();
-            deadtimecontainer[1]=merge->GetFinalVetoTotaltime();
-            deadtimecontainer[2]=merge->GetF11VetoDeadtime();
-            deadtimecontainer[3]=merge->GetF11VetoTotaltime();
-            deadtimecontainer[4]=merge->GetDownstreamVetoDeadtime();
-            deadtimecontainer[5]=merge->GetDownstreamVetoTotaltime();
             ofile->cd();
             merge->BookPIDSepSimpleTree();
             merge->DoSeparatePIDFinalTree();
@@ -227,7 +227,6 @@ int main(int argc, char* argv[]){
             }
             merge->GetTreeRI(-1)->Write();
             merge->GetTreeImpRI(-1)->Write();
-            deadtimecontainer.Write("deadtime");
             ofile->Close();
             delete merge;
         }

@@ -3,8 +3,8 @@ Merger::Merger():fbigrips(),decay()
 {
     fmaxmult=400;
     fmaxnpixels=4.;
-    fIonBetaTWlow=10000000000;
-    //fIonBetaTWlow=50000000000;
+    //fIonBetaTWlow=10000000000;
+    fIonBetaTWlow=30000000000;
     fIonBetaTWup=10000000000;
     fIonPidTWup = 0;
     fIonPidTWlow = 50000;
@@ -107,6 +107,7 @@ Merger::Merger():fbigrips(),decay()
 Merger::~Merger()
 {
     delete fh1;
+    delete fh2;
 }
 
 
@@ -321,16 +322,22 @@ void Merger::Init()
 
 
     //! stuffs for deadtime estimation using pulser
-    for (Int_t i=0;i<140;i++){
-        ftsbeginveto=0;
-        ftsendveto=0;
-        fhpulser[i]=new TH1F(Form("hpulser%d",i+1),Form("hpulser%d",i+1),2000,1500,3500);
-
+    ftsbeginveto=0;
+    ftsendveto=0;
+    ftsbeginpulser=0;
+    ftsendpulser=0;
+    for (Int_t i=0;i<140;i++){        
+        fhpulser[i]=new TH1F(Form("hpulser%d",i+1),Form("hpulser%d",i+1),2000,1500,3500);        
     }
-    fh2deadtime=new TH2F("h2deadtime","h2deadtime",140,0,140,2000,0,20);
-    fh1deadtime=new TH1F("h1deadtime","h1deadtime",2000,0,20);
-    fhdtpulser=new TH1F("hdtpulser","hdtpulser",2000,0,2000);
+    fh2deadtime=new TH2F("h2deadtime","h2deadtime using calculated start-stop time",140,0,140,2000,0,20);
+    fh1deadtime=new TH1F("h1deadtime","h1deadtime using calculated start-stop time",2000,0,20);
+
+    fh2deadtime2=new TH2F("h2deadtime2","h2deadtime using dtpulser",140,0,140,2000,0,20);
+    fh1deadtime2=new TH1F("h1deadtime2","h1deadtime using dtpulser",2000,0,20);
+
+    fh1dtpulser=new TH1F("h1dtpulser","h1dtpulser",2000,0,2000);
     fh1=new TH1F("h1","h1",5000,-1000,1000);
+    fh2=new TH1F("h2","h2",5000,-1000,1000);
 }
 
 
@@ -513,7 +520,11 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
 
         if (fanc->GetMyPrecious()==4) fVetoDownMap.insert(make_pair(fanc->GetTimestamp(),jentry));
 
-        if (fanc->GetMyPrecious()==5) fhdtpulser->Fill(fanc->GetEnergy());//for dead time calculation
+        if (fanc->GetMyPrecious()==5) {
+            if (ftsbeginpulser==0) ftsbeginpulser=fanc->GetTimestamp();
+            ftsendpulser=fanc->GetTimestamp();
+            fh1dtpulser->Fill(fanc->GetEnergy());//for dead time calculation
+        }
     }
     //cout<<"Finished reading anc  ts table with "<<fancMap.size()<<" rows"<<endl;
     cout<<"Finished reading F11R  ts table with "<<fF11RMap.size()<<" rows"<<endl;
@@ -571,18 +582,16 @@ void Merger::DoMergeSingle()
         while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
             corrts = (Long64_t) fhe3Map_it->first;
             BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
-            if (corrts!=check_time){
+            //if (corrts!=check_time){
                 check_time=corrts;
                 //! fill neutron here
                 double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
                 double currtdiff=neuhit->GetF11Time();
-                if (currtdiff<999998.) neuhit->SetF11Time(tdiff);
-                else if (tdiff<currtdiff) neuhit->SetF11Time(tdiff);
+                if (currtdiff<999998.||tdiff<currtdiff) neuhit->SetF11Time(tdiff);
                 ncorr++;
-            }
+            //}
             fhe3Map_it++;
         }
-
         //! add all veto map
         fvetoMap.insert(make_pair(ts,entry));
     }
@@ -603,7 +612,7 @@ void Merger::DoMergeSingle()
         if (fdownstreamvetototaltime==0) fdownstreamvetototaltime=(Long64_t)ts;
         lastts=ts;
         ftrAnc->GetEntry(entry);
-        if (fanc->GetEnergy()<fmineneuvetodown) continue;
+        //if (fanc->GetEnergy()<fmineneuvetodown) continue;
 
         if (deadtime_reset<ts){
             if(deadtime_start>0) {
@@ -615,7 +624,7 @@ void Merger::DoMergeSingle()
         }else{
             deadtime_reset=ts+fNeuAncTWup;
         }
-        //! Correlate f11 with neutron
+        //! Correlate  with neutron
         Long64_t ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
         Long64_t ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
         Long64_t corrts = 0;
@@ -625,19 +634,15 @@ void Merger::DoMergeSingle()
         while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
             corrts = (Long64_t) fhe3Map_it->first;
             BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
-            if (corrts!=check_time){
+            //if (corrts!=check_time){
                 check_time=corrts;
                 //! fill neutron here
                 double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
                 double currtdiff=neuhit->GetDownstreamVetoTime();
-                if (currtdiff<999998.) neuhit->SetDownstreamVetoTime(tdiff);
-                else if (tdiff<currtdiff) neuhit->SetDownstreamVetoTime(tdiff);
+                if (currtdiff<999998.||tdiff<currtdiff) neuhit->SetDownstreamVetoTime(tdiff);
                 ncorr++;
-
                 //if (neuhit->GetEnergy()>1500) fh2deadtime->Fill(tdiff,fanc->GetEnergy());
-
-                fh1->Fill(tdiff);
-            }
+            //}
             fhe3Map_it++;
         }
         //! add all veto map
@@ -685,16 +690,14 @@ void Merger::DoMergeSingle()
         while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
             corrts = (Long64_t) fhe3Map_it->first;
             BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
-            if (corrts!=check_time){
+            //if (corrts!=check_time){//reject duplicate time stamp, disable for pulser events
                 check_time=corrts;
                 //! fill neutron here
                 double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
                 double currtdiff=neuhit->GetFinalVetoTime();
-                if (currtdiff<999998.) neuhit->SetFinalVetoTime(tdiff);
-                else if (tdiff<currtdiff) neuhit->SetFinalVetoTime(tdiff);
+                if (currtdiff<999998.||tdiff<currtdiff) neuhit->SetFinalVetoTime(tdiff);
                 ncorr++;
-                fh1->Fill(tdiff);
-            }
+            //}
             fhe3Map_it++;
         }
     }
@@ -702,22 +705,9 @@ void Merger::DoMergeSingle()
     fvetodeadtime+=fNeuAncTWup;
     cout<<"Final veto: deadtime="<<fvetodeadtime<<"\t---total time---\t"<<fvetototaltime<<endl;
 
-    //! Counter for neutron veto
-    Int_t nvetoneu=0;
-    Int_t ntotalneu=0;
-    for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
-        BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
-        if (neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]) {
-            if (neuhit->GetFinalVetoTime()>0) nvetoneu++;
-            ntotalneu++;
-        }
-    }
-    cout<<"Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu<<endl;
 
-
-
-
-    //! secondary veto scheme
+    /*
+    //! secondary veto scheme (just for comparison
     Int_t nvetoneu2=0;
     for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
         BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
@@ -777,7 +767,6 @@ void Merger::DoMergeSingle()
             if (corrts!=check_time){
                 check_time=corrts;
                 double tdiff=(Double_t)((Long64_t)ts-corrts)/1000.;//in us
-
                 if (ncorr==0&&neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]) nvetoneu2++;
                 neuhit->SetFinalVetoTime(tdiff);
                 ncorr++;
@@ -786,17 +775,18 @@ void Merger::DoMergeSingle()
             fvetoMap_it++;
         }
     }
-    cout<<"******Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu2<<endl;
+    cout<<"******Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu2<<endl;    
+    */
 
 
     //! Counter for neutron veto
-    nvetoneu=0;
-    ntotalneu=0;
+    Int_t nvetoneu=0;
+    Int_t ntotalneu=0;
     for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
         BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
         Int_t id=neuhit->GetID()-1;
-        if (neuhit->GetFinalVetoTime()<0&&neuhit->GetTimestamp()>ftsbeginveto&&neuhit->GetTimestamp()<ftsendveto) fhpulser[id]->Fill(neuhit->GetEnergy());
-        if (neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]) {
+        if (neuhit->GetFinalVetoTime()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
+        if (neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]){
             if (neuhit->GetFinalVetoTime()>=0) nvetoneu++;
             ntotalneu++;
         }
@@ -992,7 +982,6 @@ void Merger::DoMergeSingle()
     }
 
 
-
     //! Build Decay
     //!**************
     ktotal=faidaBetaMap.size();
@@ -1002,7 +991,7 @@ void Merger::DoMergeSingle()
         flocalimparray->Clear("C");
 
         if (k%10000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w neutron "<<ncorrwneutron<<endl;
-        if (k>1) break;
+        //if (k>1) break;
         unsigned long long ts=faidaBetaMap_it->first;
         AIDASimpleStruct* beta=(AIDASimpleStruct*) faidaBetaMap_it->second;
         double betax=beta->GetHitPositionX();
@@ -1035,7 +1024,6 @@ void Merger::DoMergeSingle()
                 neuhit->Copy(*neuhitclone);
                 if ((corrts-(Long64_t)ts)>=fNeuBetaoffset) flocalbetaS->AddNeutronForward(neuhitclone);
                 else flocalbetaS->AddNeutronBackward(neuhitclone);
-                //fh1->Fill(neutronts-(Long64_t)ts);
                 ndelayedneutron++;
             }
             fhe3Map_it++;
@@ -1149,24 +1137,21 @@ void Merger::DoMergeSingle()
                 imp->CopyWithBigRIPSOnly(*imparr);
 
 
-                /*
                 //! only for ahn san experiment
-                imparr->GetBeamHit()->f11x=-9999;
-                imparr->GetBeamHit()->f11y=-9999;
-                for (unsigned short i=0;i<imp->GetNAncHit();i++){
-                    BELENHit* hit=imp->GetAncHit(i);
-                    if (hit->GetMyPrecious()==3&&hit->GetID()==1) imparr->GetBeamHit()->f11x=hit->GetEnergy();
-                    if (hit->GetMyPrecious()==3&&hit->GetID()==2) imparr->GetBeamHit()->f11y=hit->GetEnergy();
-                }
-                */
+                //imparr->GetBeamHit()->f11x=-9999;
+                //imparr->GetBeamHit()->f11y=-9999;
+                //for (unsigned short i=0;i<imp->GetNAncHit();i++){
+                //    BELENHit* hit=imp->GetAncHit(i);
+                //    if (hit->GetMyPrecious()==3&&hit->GetID()==1) imparr->GetBeamHit()->f11x=hit->GetEnergy();
+                //    if (hit->GetMyPrecious()==3&&hit->GetID()==2) imparr->GetBeamHit()->f11y=hit->GetEnergy();
+                //}
 
-
-                //fh1->Fill((Long64_t)ts-(Long64_t)corrts);
 
                 nionbetacorr++;
             }
             faidaImplantMapFull_it++;
         }
+
 
         //! fill beta data here
         flocalbetaS->CopyFromAIDA(beta);
@@ -1176,10 +1161,16 @@ void Merger::DoMergeSingle()
         k++;
     }
 
+
     TSpectrum *s = new TSpectrum();
-    Long64_t totaltimeL=ftsendveto-ftsbeginveto;
-    Double_t totaltime=(Double_t)totaltimeL/1e9;
+    ftotaltimepulser=(Double_t)(ftsendpulser-ftsbeginpulser)/1e9;
+
+    //Double_t totaltime=(Double_t)(ftsendveto-ftsbeginveto)/1e9;
+    Double_t totaltime=ftotaltimepulser;
     Double_t expectedcounts=totaltime*10;
+    Double_t ncountsDtPuser=fh1dtpulser->GetEntries();
+    cout<<expectedcounts<<"/-/"<<ncountsDtPuser<<endl;
+
     //! new calculation of dead time
     for (Int_t i=0;i<140;i++){
         s->Search(fhpulser[i]);
@@ -1188,6 +1179,8 @@ void Merger::DoMergeSingle()
         Double_t totalcounts=fhpulser[i]->Integral(fhpulser[i]->GetXaxis()->FindBin(xp-100),fhpulser[i]->GetXaxis()->FindBin(xp+100));
         fh2deadtime->Fill(i,100-totalcounts/expectedcounts*100);
         fh1deadtime->Fill(100-totalcounts/expectedcounts*100);
+        fh2deadtime2->Fill(i,100-totalcounts/ncountsDtPuser*100);
+        fh1deadtime2->Fill(100-totalcounts/ncountsDtPuser*100);
     }
     delete s;
 }

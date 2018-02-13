@@ -219,6 +219,15 @@ private:
     unsigned long long flastADIonts;
     unsigned long long flastADBetats;
 
+    //! stuff for asics timestamp correction
+    bool fflagasicstscorr;
+    unsigned short fprev_ASICS_cnt[200];
+    unsigned long long ffirst_ASICS_ts[200];
+    unsigned long long ffirst_ASICS_extts[200];
+    unsigned long long fprev_ASICS_ts[200];
+    unsigned long long fprev_ASICS_extts[200];
+
+
     //! AIDA calibration table
     Double_t dssd_cal[NumDSSD][NumStrXY][2];
 

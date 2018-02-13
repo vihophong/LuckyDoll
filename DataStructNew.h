@@ -60,6 +60,14 @@ public:
         fmindx=9999;
         fsumexyrank=0;
         fmaxelastdssd=-9999;
+        fxts=0;
+        fyts=0;
+        fminx = -11;
+        fmaxx = -11;
+        fminy = -11;
+        fmaxy = -11;
+        ftdiffmin= -99999;
+        ftdiffmax= -99999;
     }
     //! copy cluster
     virtual void Copy(IonBeta& obj){
@@ -85,6 +93,14 @@ public:
         obj.SetMinimumDistanceY(fmindy);
         obj.SetSumEXYRank(fsumexyrank);
         obj.SetMaxELastDSSD(fmaxelastdssd);
+        obj.SetXTimestamp(fxts);
+        obj.SetYTimestamp(fyts);
+        obj.SetXMinPos(fminx);
+        obj.SetXMaxPos(fmaxx);
+        obj.SetYMinPos(fminy);
+        obj.SetYMaxPos(fmaxy);
+        obj.SetTimeDifferenceMax(ftdiffmax);
+        obj.SetTimeDifferenceMin(ftdiffmin);
     }
     void CopyFromAIDA(AIDASimpleStruct* obj){
         fid=obj->GetID();
@@ -111,6 +127,14 @@ public:
         fmindy=obj->GetMinimumDistanceY();
         fsumexyrank=obj->GetSumEXYRank();
         fmaxelastdssd=obj->GetMaxELastDSSD();
+        fxts=obj->GetXMinTimestamp();
+        fyts=obj->GetYMinTimestamp();
+        fminx=obj->GetMinHitPositionX();
+        fmaxx=obj->GetMaxHitPositionX();
+        fminy=obj->GetMinHitPositionY();
+        fmaxy=obj->GetMaxHitPositionY();
+        ftdiffmax=obj->GetTimeDifferenceMax();
+        ftdiffmin=obj->GetTimeDifferenceMin();
     }
 
     void AddNeutronForward(BELENHit* neuhitin){
@@ -143,6 +167,12 @@ public:
         fz=z;
     }
 
+    //! xy area of cluster
+    void SetXMinPos(short minx) {fminx=minx;}
+    void SetXMaxPos(short maxx) {fmaxx=maxx;}
+    void SetYMinPos(short miny) {fminy=miny;}
+    void SetYMaxPos(short maxy) {fmaxy=maxy;}
+
     //! Set ID of evnt
     void SetID(unsigned char id){fid = id;}
 
@@ -152,6 +182,15 @@ public:
     void SetXEnergy(double xenergy){fex = xenergy;}
     //! Set the Y strips sum energy
     void SetYEnergy(double yenergy){fey = yenergy;}
+
+    //! Set the X strips ealiest timestamp
+    void SetXTimestamp(unsigned long long xts){fxts = xts;}
+    //! Set the Y strips ealiest timestamp
+    void SetYTimestamp(unsigned long long yts){fyts = yts;}
+
+    //! Set time diffrernce between X-Y
+    void SetTimeDifferenceMin(int tdiffmin){ftdiffmin = tdiffmin;}
+    void SetTimeDifferenceMax(int tdiffmax){ftdiffmax = tdiffmax;}
 
     //! Set the event multiplicity
     void SetMult(unsigned short mult){fmult = mult;}
@@ -209,11 +248,28 @@ public:
     double GetHitPositionY(){return fy;}
     short GetHitPositionZ(){return fz;}
 
+
+    //! Get xy area of cluster
+    short GetMinHitPositionX(){return fminx;}
+    short GetMaxHitPositionX(){return fmaxx;}
+    short GetMinHitPositionY(){return fminy;}
+    short GetMaxHitPositionY(){return fmaxy;}
+
     //! Get the X strips sum energy
     double GetXEnergy(){return fex;}
     //! Get the Y strips sum energy
     double GetYEnergy(){return fey;}
 
+
+    //! Get the X strips ealiest timesttamp
+    unsigned long long GetXTimestamp(){return fxts;}
+    //! Get the Y strips ealiest timesttamp
+    unsigned long long GetYTimestamp(){return fyts;}
+
+    //! Get the time diffrerence of Y and X strips (min)
+    int GetTimeDifferenceMin(){return ftdiffmin;}
+    //! Get the time diffrerence of Y and X strips (max)
+    int GetTimeDifferenceMax(){return ftdiffmax;}
 
     //! Get forward Neutron multiplicity
     unsigned short GetNeutronForwardMultipliticy(){return nneuf;}
@@ -319,12 +375,29 @@ protected:
     double fx;
     double fy;
     short fz;
+
+    //! area of cluster
+    short fminx;
+    short fmaxx;
+    short fminy;
+    short fmaxy;
+
     //! store the hit number
     //vector<short*> fhitsno;
 
     //! the energy lab system
     double fex;
     double fey;
+
+    //! the energy lab system
+    unsigned long long fxts;
+    unsigned long long fyts;
+
+    //! time diffrence between y and x cluster
+    int ftdiffmin;
+    int ftdiffmax;
+
+
     //! xy hit multiplicity
     unsigned short fnx;
     unsigned short fny;
@@ -433,6 +506,17 @@ public:
         fmindy=9999;
         fmindx=9999;
         fsumexyrank=0;
+
+        fxts=0;
+        fyts=0;
+        fminx = -11;
+        fmaxx = -11;
+        fminy = -11;
+        fmaxy = -11;
+        ftdiffmin= -99999;
+        ftdiffmax= -99999;
+        fdeltax = -99999.;
+        fdeltay = -99999.;
     }
 
     virtual void Copy(IonBetaMult& obj){
@@ -457,6 +541,16 @@ public:
         obj.SetMinimumDistanceX(fmindx);
         obj.SetMinimumDistanceY(fmindy);
         obj.SetSumEXYRank(fsumexyrank);
+        obj.SetXTimestamp(fxts);
+        obj.SetYTimestamp(fyts);
+        obj.SetXMinPos(fminx);
+        obj.SetXMaxPos(fmaxx);
+        obj.SetYMinPos(fminy);
+        obj.SetYMaxPos(fmaxy);
+        obj.SetTimeDifferenceMax(ftdiffmax);
+        obj.SetTimeDifferenceMin(ftdiffmin);
+        obj.SetDeltaX(fdeltax);
+        obj.SetDeltaY(fdeltay);
 
         TreeData beamhitin;
         beamhitin.ts=beam->ts;
@@ -525,6 +619,14 @@ public:
         obj.SetMinimumDistanceX(fmindx);
         obj.SetMinimumDistanceY(fmindy);
         obj.SetSumEXYRank(fsumexyrank);
+        obj.SetXTimestamp(fxts);
+        obj.SetYTimestamp(fyts);
+        obj.SetXMinPos(fminx);
+        obj.SetXMaxPos(fmaxx);
+        obj.SetYMinPos(fminy);
+        obj.SetYMaxPos(fmaxy);
+        obj.SetTimeDifferenceMax(ftdiffmax);
+        obj.SetTimeDifferenceMin(ftdiffmin);
 
         TreeData beamhitin;
         beamhitin.ts=beam->ts;
@@ -537,7 +639,7 @@ public:
         beamhitin.f11y=beam->f11y;
         beamhitin.f11dt=beam->f11dt;
         beamhitin.beta=beam->beta;
-        obj.AddBeam(beamhitin);
+        obj.AddBeam(beamhitin);        
     }
     void CopyFromAIDA(AIDASimpleStruct* obj){
         fid=obj->GetID();
@@ -563,6 +665,14 @@ public:
         fmindx=obj->GetMinimumDistanceX();
         fmindy=obj->GetMinimumDistanceY();
         fsumexyrank=obj->GetSumEXYRank();
+        fxts=obj->GetXMinTimestamp();
+        fyts=obj->GetYMinTimestamp();
+        fminx=obj->GetMinHitPositionX();
+        fmaxx=obj->GetMaxHitPositionX();
+        fminy=obj->GetMinHitPositionY();
+        fmaxy=obj->GetMaxHitPositionY();
+        ftdiffmax=obj->GetTimeDifferenceMax();
+        ftdiffmin=obj->GetTimeDifferenceMin();
     }
 
     void AddNeutronForward(BELENHit* neuhitin){
@@ -615,6 +725,12 @@ public:
         fz=z;
     }
 
+    //! xy area of cluster
+    void SetXMinPos(short minx) {fminx=minx;}
+    void SetXMaxPos(short maxx) {fmaxx=maxx;}
+    void SetYMinPos(short miny) {fminy=miny;}
+    void SetYMaxPos(short maxy) {fmaxy=maxy;}
+
     //! Set ID of evnt
     void SetID(unsigned char id){fid = id;}
 
@@ -624,6 +740,15 @@ public:
     void SetXEnergy(double xenergy){fex = xenergy;}
     //! Set the Y strips sum energy
     void SetYEnergy(double yenergy){fey = yenergy;}
+
+    //! Set the X strips ealiest timestamp
+    void SetXTimestamp(unsigned long long xts){fxts = xts;}
+    //! Set the Y strips ealiest timestamp
+    void SetYTimestamp(unsigned long long yts){fyts = yts;}
+
+    //! Set time diffrernce between X-Y
+    void SetTimeDifferenceMin(int tdiffmin){ftdiffmin = tdiffmin;}
+    void SetTimeDifferenceMax(int tdiffmax){ftdiffmax = tdiffmax;}
 
     //! Set the event multiplicity
     void SetMult(unsigned short mult){fmult = mult;}
@@ -672,6 +797,11 @@ public:
     //! Set Z correction
     void SetDZ(unsigned short dz){fdz=dz;}
 
+    //! Set distance between clusters
+    void SetDeltaX(double deltax){fdeltax=deltax;}
+    void SetDeltaY(double deltay){fdeltay=deltay;}
+
+
     //! Get ID of evnt
     unsigned char GetID(){return fid;}
 
@@ -681,10 +811,26 @@ public:
     double GetHitPositionY(){return fy;}
     short GetHitPositionZ(){return fz;}
 
+    //! Get xy area of cluster
+    short GetMinHitPositionX(){return fminx;}
+    short GetMaxHitPositionX(){return fmaxx;}
+    short GetMinHitPositionY(){return fminy;}
+    short GetMaxHitPositionY(){return fmaxy;}
+
     //! Get the X strips sum energy
     double GetXEnergy(){return fex;}
     //! Get the Y strips sum energy
     double GetYEnergy(){return fey;}
+
+    //! Get the X strips ealiest timesttamp
+    unsigned long long GetXTimestamp(){return fxts;}
+    //! Get the Y strips ealiest timesttamp
+    unsigned long long GetYTimestamp(){return fyts;}
+
+    //! Get the time diffrerence of Y and X strips (min)
+    int GetTimeDifferenceMin(){return ftdiffmin;}
+    //! Get the time diffrerence of Y and X strips (max)
+    int GetTimeDifferenceMax(){return ftdiffmax;}
 
     //! Get the event multiplicity
     unsigned short GetMultiplicity(){return fmult;}
@@ -730,6 +876,10 @@ public:
     //! Get Multiple hit in strip flag
     unsigned short GetDZ(){return fdz;}
 
+    //! Get distance between clusters
+    double GetDeltaX(){return fdeltax;}
+    double GetDeltaY(){return fdeltay;}
+
 
     //! Printing information
     void Print(Option_t *option = "") const {
@@ -773,12 +923,28 @@ protected:
     double fx;
     double fy;
     short fz;
+
+    //! area of cluster
+    short fminx;
+    short fmaxx;
+    short fminy;
+    short fmaxy;
+
     //! store the hit number
     //vector<short*> fhitsno;
 
     //! the energy lab system
     double fex;
     double fey;
+
+    //! ealiest timestamp in 1 cluster
+    unsigned long long fxts;
+    unsigned long long fyts;
+
+    //! time diffrence between y and x cluster
+    int ftdiffmin;
+    int ftdiffmax;
+
     //! xy hit multiplicity
     unsigned short fnx;
     unsigned short fny;\
@@ -811,6 +977,16 @@ protected:
 
     //! z correction (if applicable)
     unsigned short fdz;
+
+
+
+    //! global description of delta xy
+    //! negative value: beta and ion area is overlap the value is the overlaping range
+    //! positive value: beta and ion area is not overlap, the value is the minimum distance
+    //! defined as ratio between cluster center and sum of the width of implant-decay cluster
+    double fdeltax;
+    double fdeltay;
+
 
     /// \cond CLASSIMP
     ClassDef(IonBetaMult,1);

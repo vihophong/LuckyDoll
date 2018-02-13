@@ -53,7 +53,10 @@ int main(int argc, char* argv[]){
     int BAend = 0;
 
     int BetaNeutronOffset=-22000;
-    int SumEXYRankcut=0;
+    int SumEXYRankcut=10000;
+
+    int XyTDiffCut=5000;
+
 
     char* InputMerged = NULL;
     char* InputPID = NULL;
@@ -87,6 +90,8 @@ int main(int argc, char* argv[]){
     interface->Add("-bnofs", "Beta Neutron offset time (default=-22000)", &BetaNeutronOffset);
 
     interface->Add("-rcut", "Sum Energy ranking cut (0- largest energy, a large number(100000)- disabled)", &SumEXYRankcut);
+
+    interface->Add("-tcut", "Time diffrence between X and Y cut (5000 ns by default)", &XyTDiffCut);
 
     interface->CheckFlags(argc, argv);
     //Complain about missing mandatory arguments
@@ -127,24 +132,18 @@ int main(int argc, char* argv[]){
         merge->SetBrikenFile(InputBELEN);
         merge->SetBigripsFile(InputBIGRIPS);
         merge->Init();
+        merge->BookTreeSingle(tree);
+        merge->BookTreeNeutron(treeneutron);
+        merge->BookTreeImplant(treeimplant);
+
         merge->SetNeutronOffsetTime((long long)BetaNeutronOffset);
         cout<<"Set Neutron Beta offset time = "<<merge->GetNeutronOffsetTime()<<endl;
         merge->ReadAIDA();        
         if (InputBIGRIPS!=NULL) merge->ReadBigrips();
         if (InputBELEN!=NULL) merge->ReadBRIKEN();
 
-        merge->BookTreeSingle(tree);
-        merge->BookTreeNeutron(treeneutron);
-        merge->BookTreeImplant(treeimplant);
         merge->DoMergeSingle();
-
-        /*
-        merge->ReadAIDA(AIbeg,AIend);
-        merge->ReadBRIKEN(BNbeg,BNend,BGbeg,BGend,BAbeg,BAend);
-        merge->ReadBigrips();
-        merge->BookTree(treeImplant,treeBeta);
-        ofile->cd();
-        */
+        //merge->DoMergeSingleXYArea();        
 
         //! get deadtime,total time
         deadtimecontainer[0]=merge->GetFinalVetoDeadtime();
@@ -159,8 +158,9 @@ int main(int argc, char* argv[]){
         treeneutron->Write();
         treeimplant->Write();
 
-        for (Int_t tubeid=0;tubeid<140;tubeid++){
+        for (Int_t tubeid=0;tubeid<141;tubeid++){
             merge->GetPulserHists(tubeid)->Write();
+            merge->GetPulserHistsAll(tubeid)->Write();
         }
         merge->GetHist1()->Write();
         merge->GetHist2()->Write();
@@ -168,7 +168,16 @@ int main(int argc, char* argv[]){
         merge->GetH1Deadtime()->Write();
         merge->GetH2Deadtime2()->Write();
         merge->GetH1Deadtime2()->Write();
+
+        merge->GetH2Deadtime3()->Write();
+        merge->GetH1Deadtime3()->Write();
+
+        merge->GetH2Deadtime4()->Write();
+        merge->GetH1Deadtime4()->Write();
+
         merge->GetH1DeadtimePulserChannel()->Write();
+        merge->GetH2D1()->Write();
+        merge->GetH2D2()->Write();
 
         deadtimecontainer.Write("deadtime");
         ofile->Close();
@@ -213,10 +222,14 @@ int main(int argc, char* argv[]){
             merge->SetMergedFile(InputMerged);
             merge->InitPIDSep();
             merge->SetSumERankCut(SumEXYRankcut);
-            cout<<"Ranking cut = "<<merge->GetSumERankCut()<<endl;
+            merge->SetXYTDiffCut(XyTDiffCut);
             ofile->cd();
             merge->BookPIDSepSimpleTree();
+            cout<<"Ranking cut = "<<merge->GetSumERankCut()<<endl;
+            cout<<"TDiff cut = "<<merge->GetXYTDiffCut()<<endl;
+
             merge->DoSeparatePIDFinalTree();
+            //merge->DoMergeClosePixel();
 
             for (Int_t i=0;i<merge->GetNri();i++){
                 merge->GetCUTRI(i)->Write();
@@ -227,6 +240,9 @@ int main(int argc, char* argv[]){
             }
             merge->GetTreeRI(-1)->Write();
             merge->GetTreeImpRI(-1)->Write();
+
+            merge->GetHist1()->Write();
+            merge->GetHist2()->Write();
             ofile->Close();
             delete merge;
         }
@@ -250,8 +266,5 @@ double get_time(){
     gettimeofday(&t, NULL);
     double d = t.tv_sec + (double) t.tv_usec/1000000;
     return d;
-
     cout << "AIDA event builder" << endl;
-
-
 }

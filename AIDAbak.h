@@ -47,22 +47,11 @@ public:
       fmindx=9999;
       fsumexyrank=0;
       fmaxelastdssd=-9999;
-      fxts=0;
-      fyts=0;
-      fxtsmax=0;
-      fytsmax=0;
-      fminx = -11;
-      fmaxx = -11;
-      fminy = -11;
-      fmaxy = -11;
-      ftdiffmin= -99999;
-      ftdiffmax= -99999;
   }
 
   //! copy cluster
   virtual void Copy(AIDASimpleStruct& obj){
       obj.SetID(fid);
-      obj.SetEventNumber(fevt);
       obj.SetTimestamp(fts);
       obj.SetMult(fmult);
       obj.SetHitPosition(fx,fy,fz);
@@ -83,16 +72,6 @@ public:
       obj.SetMinimumDistanceY(fmindy);
       obj.SetSumEXYRank(fsumexyrank);
       obj.SetMaxELastDSSD(fmaxelastdssd);
-      obj.SetXTimestamp(fxts);
-      obj.SetYTimestamp(fyts);
-      obj.SetXMaxTimestamp(fxtsmax);
-      obj.SetYMaxTimestamp(fytsmax);
-      obj.SetXMinPos(fminx);
-      obj.SetXMaxPos(fmaxx);
-      obj.SetYMinPos(fminy);
-      obj.SetYMaxPos(fmaxy);
-      obj.SetTimeDifferenceMax(ftdiffmax);
-      obj.SetTimeDifferenceMin(ftdiffmin);
   }
 
   //! Set XY
@@ -101,12 +80,6 @@ public:
       fy=y;
       fz=z;
   }
-
-  //! xy area of cluster
-  void SetXMinPos(short minx) {fminx=minx;}
-  void SetXMaxPos(short maxx) {fmaxx=maxx;}
-  void SetYMinPos(short miny) {fminy=miny;}
-  void SetYMaxPos(short maxy) {fmaxy=maxy;}
 
   //! Set ID of evnt
   void SetID(unsigned char id){fid = id;}
@@ -118,23 +91,6 @@ public:
   void SetXEnergy(double xenergy){fex = xenergy;}
   //! Set the Y strips sum energy
   void SetYEnergy(double yenergy){fey = yenergy;}
-
-  //! Set the X strips ealiest timestamp
-  void SetXTimestamp(unsigned long long xts){fxts = xts;}
-  //! Set the Y strips ealiest timestamp
-  void SetYTimestamp(unsigned long long yts){fyts = yts;}
-
-  //! Set the X strips latest time
-  void SetXMaxTimestamp(double xts){fxtsmax = xts;}
-
-
-  //! Set time diffrernce between X-Y
-  void SetTimeDifferenceMin(int tdiffmin){ftdiffmin = tdiffmin;}
-  void SetTimeDifferenceMax(int tdiffmax){ftdiffmax = tdiffmax;}
-
-
-  //! Set the Y strips latest time
-  void SetYMaxTimestamp(double yts){fytsmax = yts;}
 
   //! Set the event multiplicity
   void SetMult(unsigned short mult){fmult = mult;}
@@ -194,32 +150,10 @@ public:
   double GetHitPositionY(){return fy;}
   short GetHitPositionZ(){return fz;}
 
-  //! Get xy area of cluster
-  short GetMinHitPositionX(){return fminx;}
-  short GetMaxHitPositionX(){return fmaxx;}
-  short GetMinHitPositionY(){return fminy;}
-  short GetMaxHitPositionY(){return fmaxy;}
-
   //! Get the X strips sum energy
   double GetXEnergy(){return fex;}
   //! Get the Y strips sum energy
   double GetYEnergy(){return fey;}
-
-  //! Get the X strips ealiest timestamp
-  unsigned long long GetXMinTimestamp(){return fxts;}
-  //! Get the Y strips ealiest timestamp
-  unsigned long long GetYMinTimestamp(){return fyts;}
-
-  //! Get the X strips latest timestamp
-  unsigned long long GetXMaxTimestamp(){return fxtsmax;}
-  //! Get the Y strips latest timestamp
-  unsigned long long GetYMaxTimestamp(){return fytsmax;}
-
-  //! Get the time diffrerence of Y and X strips (min)
-  int GetTimeDifferenceMin(){return ftdiffmin;}
-  //! Get the time diffrerence of Y and X strips (max)
-  int GetTimeDifferenceMax(){return ftdiffmax;}
-
 
   //! Get the event multiplicity
   unsigned short GetMultiplicity(){return fmult;}
@@ -301,13 +235,6 @@ protected:
   double fx;
   double fy;
   short fz;
-
-  //! area of cluster
-  short fminx;
-  short fmaxx;
-  short fminy;
-  short fmaxy;
-
   //! store the hit number
   //vector<short*> fhitsno;
 
@@ -328,19 +255,6 @@ protected:
   unsigned char frflag;
   //! ranking flag EY-EX
   unsigned char fdrflag;
-
-  //!ealiest time stamp in x
-  unsigned long long fxts;
-  //!ealiest time stamp in y
-  unsigned long long fyts;
-  //!lastest time stamp in x
-  unsigned long long fxtsmax;
-  //!lastest time stamp in y
-  unsigned long long fytsmax;
-
-  //! time diffrence between y and x cluster
-  int ftdiffmin;
-  int ftdiffmax;
 
   //! ex+ey rank
   unsigned short fsumexyrank=0;
@@ -544,7 +458,6 @@ public:
   //! Clear the music information
   virtual void Clear(){
       fpos.SetXYZ(-1,-1,-1);
-      fposMAXE.SetXYZ(-1,-1,-1);
       fsumenx=-9999.;
       fsumeny=-9999.;
       fcts=0;
@@ -555,23 +468,12 @@ public:
       frankingflag = 0;
       fediffrankingflag=0;
       fsumexyrank=0;
-      fxts = 0;
-      fyts = 0;
-      fxtsmax = 0;
-      fytsmax = 0;
-      fminx = -11;
-      fmaxx = -11;
-      fminy = -11;
-      fmaxy = -11;
-      ftdiffmin= -99999;
-      ftdiffmax= -99999;
   }
 
   //! copy cluster
   virtual void Copy(AIDACluster& obj){
       obj.SetTimestamp(fcts);
       obj.SetHitPosition(fpos.X(),fpos.Y(),fpos.Z());
-      obj.SetHitPositionMaxE(fposMAXE.X(),fposMAXE.Y(),fposMAXE.Z());
       obj.SetXEnergy(fsumenx);
       obj.SetYEnergy(fsumeny);
       obj.SetXMult(fnx);
@@ -581,69 +483,15 @@ public:
       obj.SetRankingFlag(frankingflag);
       obj.SetEDiffRankingFlag(fediffrankingflag);
       obj.SetSumEXYRank(fsumexyrank);
-      obj.SetXTimestamp(fxts);
-      obj.SetYTimestamp(fyts);
-      obj.SetXMaxTimestamp(fxtsmax);
-      obj.SetYMaxTimestamp(fytsmax);
-      obj.SetXMinPos(fminx);
-      obj.SetXMaxPos(fmaxx);
-      obj.SetYMinPos(fminy);
-      obj.SetYMaxPos(fmaxy);
-      obj.SetTimeDifferenceMax(ftdiffmax);
-      obj.SetTimeDifferenceMin(ftdiffmin);
   }
 
   //! Set XY
   void SetHitPosition(double x,double y,double z){fpos.SetXYZ(x,y,z);}
-  void SetHitPositionMaxE(double x,double y,double z){fposMAXE.SetXYZ(x,y,z);}
-
-  //! xy area of cluster
-  void SetXMinPos(short minx) {fminx=minx;}
-  void SetXMaxPos(short maxx) {fmaxx=maxx;}
-  void SetYMinPos(short miny) {fminy=miny;}
-  void SetYMaxPos(short maxy) {fmaxy=maxy;}
 
   //! Set the X strips sum energy
   void SetXEnergy(double xenergy){fsumenx = xenergy;}
   //! Set the Y strips sum energy
   void SetYEnergy(double yenergy){fsumeny = yenergy;}
-
-  //! Set the X strips earliest time
-  void SetXTimestamp(double xts){fxts = xts;}
-
-  //! Set the Y strips earliest time
-  void SetYTimestamp(double yts){fyts = yts;}   
-
-  //! Set the X strips latest time
-  void SetXMaxTimestamp(double xts){fxtsmax = xts;}
-
-  //! Set the Y strips latest time
-  void SetYMaxTimestamp(double yts){fytsmax = yts;}
-
-  //! Set time diffrernce between X-Y
-  void SetTimeDifferenceMin(int tdiffmin){ftdiffmin = tdiffmin;}
-  void SetTimeDifferenceMax(int tdiffmax){ftdiffmax = tdiffmax;}
-
-  void CalculateTimeDifference(){
-      //! tdiff x min
-      int tdiffyminxmin = abs((long long)fyts-(long long)fxts);
-      int tdiffymaxxmin = abs((long long)fytsmax-(long long)fxts);
-      if (tdiffyminxmin > tdiffymaxxmin){
-          ftdiffmin = tdiffymaxxmin;
-      }else{
-          ftdiffmin = tdiffyminxmin;
-      }
-      //! tdiff x max
-      int tdiffyminxmax = abs((long long)fyts-(long long)fxtsmax);
-      int tdiffymaxxmax = abs((long long)fytsmax-(long long)fxtsmax);
-      if (tdiffyminxmax > tdiffymaxxmax){
-          ftdiffmax = tdiffymaxxmax;
-      }else{
-          ftdiffmax = tdiffyminxmax;
-      }
-  }
-
-
   //! Set the X strips multiplicity
   void SetXMult(unsigned short xmult){fnx = xmult;}
   //! Set the Y strips multiplicity
@@ -669,48 +517,15 @@ public:
   void SetSumEXYRank(unsigned short sumexyrank){fsumexyrank = sumexyrank;}
 
 
-  //! Get Hit position
   TVector3 GetHitPosition(){return fpos;}
   Double_t GetHitPositionX(){return fpos.X();}
   Double_t GetHitPositionY(){return fpos.Y();}
   Double_t GetHitPositionZ(){return fpos.Z();}
 
-
-  //! Get Hit max energy
-  TVector3 GetHitPositionMaxE(){return fposMAXE;}
-  Double_t GetHitPositionMaxEX(){return fposMAXE.X();}
-  Double_t GetHitPositionMaxEY(){return fposMAXE.Y();}
-  Double_t GetHitPositionMaxEZ(){return fposMAXE.Z();}
-
-
-  //! Get xy area of cluster
-  short GetMinHitPositionX(){return fminx;}
-  short GetMaxHitPositionX(){return fmaxx;}
-  short GetMinHitPositionY(){return fminy;}
-  short GetMaxHitPositionY(){return fmaxy;}
-
-
   //! Get the X strips sum energy
   double GetXEnergy(){return fsumenx;}
   //! Get the Y strips sum energy
   double GetYEnergy(){return fsumeny;}
-
-  //! Get the X strips ealiest timestamp
-  unsigned long long GetXTimestamp(){return fxts;}
-  //! Get the Y strips ealiest timestamp
-  unsigned long long GetYTimestamp(){return fyts;}
-
-  //! Get the X strips latest timestamp
-  unsigned long long GetXMaxTimestamp(){return fxtsmax;}
-  //! Get the Y strips latest timestamp
-  unsigned long long GetYMaxTimestamp(){return fytsmax;}
-
-  //! Get the time diffrerence of Y and X strips (min)
-  int GetTimeDifferenceMin(){return ftdiffmin;}
-  //! Get the time diffrerence of Y and X strips (max)
-  int GetTimeDifferenceMax(){return ftdiffmax;}
-
-
 
   //! Get the X strips multiplicity
   unsigned short GetXMultiplicity(){return fnx;}
@@ -754,8 +569,6 @@ protected:
   //! translate into the DSSDs coordinator
   TVector3 fpos;
 
-  TVector3 fposMAXE;
-
   //! store the hit number
   //vector<short*> fhitsno;
 
@@ -766,22 +579,6 @@ protected:
   //! number of hit in one cluster
   unsigned short fnx;
   unsigned short fny;
-
-  //! x - y time stamp
-  unsigned long long fxts;
-  unsigned long long fyts;
-  unsigned long long fxtsmax;
-  unsigned long long fytsmax;
-
-  //! time diffrence between y and x cluster
-  int ftdiffmin;
-  int ftdiffmax;
-
-  //! area of cluster
-  short fminx;
-  short fmaxx;
-  short fminy;
-  short fmaxy;
 
   //! the ealiest timestamp
   unsigned long long fcts;
@@ -1244,18 +1041,11 @@ public:
     bool BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Get all Beta position new
     bool BetaGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
-
-    //! dev
-    bool BetaGetPosAllNew2(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
-
     //! Get all Beta position with position assignment using max. energy
     bool BetaGetPosAllNewMax(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     //! Ion position with clustering algorithm
     bool IonGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
     bool IonGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
-
-    bool IonGetPosAllNew2(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
-
     //! Get all ion position with position assignment using max. energy
     bool IonGetPosAllNewMax(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut[]);
 

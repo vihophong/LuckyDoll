@@ -16,6 +16,7 @@
 #include "BuildAIDAEventsNew.h"
 #include "AIDA.h"
 #include "TVectorD.h"
+#include "TH2F.h"
 
 typedef struct {
     unsigned long long T; 	 // Calibrated time
@@ -142,6 +143,10 @@ int main(int argc, char* argv[]){
       hisx[i]=new TH1F(Form("hisX%d",i),Form("hisX%d",i),128,0,128);
       hisy[i]=new TH1F(Form("hisY%d",i),Form("hisY%d",i),128,0,128);
   }
+  TH2F* h2tdiff=new TH2F("h2tdiff","h2tdiff",20,0,20,5000,-5000,5000);
+  TH1F* h1asicsdiff=new TH1F("h1asicsdiff","h1asicsdiff",40,-20,20);
+  TH2F* h2asicsdiff=new TH2F("h2asicsdiff","h2asicsdiff",10,0,10,10,0,10);
+
 
   AIDASimpleStruct *aida=new AIDASimpleStruct;
   //! Book tree and histograms
@@ -231,8 +236,12 @@ int main(int argc, char* argv[]){
       long long tend;
       int start=0;
 
-      double local_time_start = get_time();
+      int ncnt1=0;
+      int ncnt2=0;
+      int ncnt3=0;
 
+
+      double local_time_start = get_time();
 
       int nbeta=0;
       int nion=0;
@@ -262,6 +271,8 @@ int main(int argc, char* argv[]){
                   tsvector.insert(std::make_pair(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
               }
 
+
+
               //! for vetoing purpose
               Double_t maxeveto=-9999.;
               if (evts->GetAIDABeta()->GetMultY(NumDSSD-1)>0){
@@ -272,6 +283,7 @@ int main(int argc, char* argv[]){
                   }
               }
               Int_t zmult=0; for (int i=0;i<NumDSSD;i++) if (evts->GetAIDABeta()->GetMultY(i)>0) zmult++;
+
               if (Mode==0){
                   //!fill tree according to the time stamp
                   for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){
@@ -283,6 +295,20 @@ int main(int argc, char* argv[]){
                       aida->SetEventNumber(nbeta);
                       aida->SetXEnergy(ex);
                       aida->SetYEnergy(ey);
+
+                      aida->SetXTimestamp(evts->GetAIDABeta()->GetCluster(i)->GetXTimestamp()*ClockResolution);
+                      aida->SetYTimestamp(evts->GetAIDABeta()->GetCluster(i)->GetYTimestamp()*ClockResolution);
+                      aida->SetXMaxTimestamp(evts->GetAIDABeta()->GetCluster(i)->GetXMaxTimestamp()*ClockResolution);
+                      aida->SetYMaxTimestamp(evts->GetAIDABeta()->GetCluster(i)->GetYMaxTimestamp()*ClockResolution);
+
+                      aida->SetXMinPos(evts->GetAIDABeta()->GetCluster(i)->GetMinHitPositionX());
+                      aida->SetXMaxPos(evts->GetAIDABeta()->GetCluster(i)->GetMaxHitPositionX());
+                      aida->SetYMinPos(evts->GetAIDABeta()->GetCluster(i)->GetMinHitPositionY());
+                      aida->SetYMaxPos(evts->GetAIDABeta()->GetCluster(i)->GetMaxHitPositionY());
+
+                      aida->SetTimeDifferenceMin(evts->GetAIDABeta()->GetCluster(i)->GetTimeDifferenceMin()*ClockResolution);
+                      aida->SetTimeDifferenceMax(evts->GetAIDABeta()->GetCluster(i)->GetTimeDifferenceMax()*ClockResolution);
+
                       aida->SetTimestamp(tsvector_it->first);
                       //!If you need time ordered then we need to modify this
                       aida->SetHitPosition(evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX(),evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY(),evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ());
@@ -304,11 +330,15 @@ int main(int argc, char* argv[]){
                       aida->SetMinimumDistanceY(evts->GetAIDABeta()->GetMinDistanceY((unsigned short)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetSumEXYRank(evts->GetAIDABeta()->GetCluster(i)->GetSumEXYRank());
                       aida->SetMaxELastDSSD(maxeveto);
-                      //! for vetoing purpose
+                      //if (abs((long long)aida->GetXMinTimestamp()-(long long)aida->GetYMinTimestamp())<2500)
+                      //if (abs(aida->GetXEnergy()-aida->GetYEnergy())<300)
+                      if (aida->GetMultiplicity()<400) //reject pulser events
                       if (FillFlag) treeaida->Fill();
                   }
                   if (tsvector.size()>0) nbeta++;
               }
+
+
               if (Mode==1) evts->GetAIDABeta()->ClearAllHits();
               if (Mode==1&&evts->GetAIDABeta()->GetNClusters()>0) evts->GetBetaTree()->Fill();
               if (Mode==2&&evts->GetAIDABeta()->GetNClusters()>0) evts->GetBetaTree()->Fill();
@@ -330,6 +360,12 @@ int main(int argc, char* argv[]){
                       Double_t ypos=evts->GetAIDAIon()->GetCluster(i)->GetHitPositionY();
                       fxmap.insert(std::make_pair(xpos,-1.));
                       fymap.insert(std::make_pair(ypos,-1.));
+                  }
+              }
+              if (evts->GetAIDAIon()->GetMaxZ()<5) {
+                  ncnt2++;
+                  if (evts->GetAIDAIon()->GetMultX((short)evts->GetAIDAIon()->GetMaxZ()+1)>0||evts->GetAIDAIon()->GetMultY((short)evts->GetAIDAIon()->GetMaxZ()+1)>0){
+                      ncnt3++;
                   }
               }
               double mindx=9999;
@@ -358,8 +394,25 @@ int main(int argc, char* argv[]){
                       aida->SetXEnergy(ex);
                       aida->SetYEnergy(ey);
                       aida->SetTimestamp(tsvector_it->first);
+
+
+                      aida->SetXTimestamp(evts->GetAIDAIon()->GetCluster(i)->GetXTimestamp()*ClockResolution);
+                      aida->SetYTimestamp(evts->GetAIDAIon()->GetCluster(i)->GetYTimestamp()*ClockResolution);
+                      aida->SetXMaxTimestamp(evts->GetAIDAIon()->GetCluster(i)->GetXMaxTimestamp()*ClockResolution);
+                      aida->SetYMaxTimestamp(evts->GetAIDAIon()->GetCluster(i)->GetYMaxTimestamp()*ClockResolution);
+
+                      aida->SetXMinPos(evts->GetAIDAIon()->GetCluster(i)->GetMinHitPositionX());
+                      aida->SetXMaxPos(evts->GetAIDAIon()->GetCluster(i)->GetMaxHitPositionX());
+                      aida->SetYMinPos(evts->GetAIDAIon()->GetCluster(i)->GetMinHitPositionY());
+                      aida->SetYMaxPos(evts->GetAIDAIon()->GetCluster(i)->GetMaxHitPositionY());
+
+                      aida->SetTimeDifferenceMin(evts->GetAIDAIon()->GetCluster(i)->GetTimeDifferenceMin()*ClockResolution);
+                      aida->SetTimeDifferenceMax(evts->GetAIDAIon()->GetCluster(i)->GetTimeDifferenceMax()*ClockResolution);
+
+
                       //!If you need time ordered then we need to modify this
                       aida->SetHitPosition(evts->GetAIDAIon()->GetCluster(i)->GetHitPositionX(),evts->GetAIDAIon()->GetCluster(i)->GetHitPositionY(),evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ());
+
                       aida->SetMult(evts->GetAIDAIon()->GetMult());
                       aida->SetXClusterMult(evts->GetAIDAIon()->GetNXClustersZi((int)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetYClusterMult(evts->GetAIDAIon()->GetNYClustersZi((int)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
@@ -378,9 +431,12 @@ int main(int argc, char* argv[]){
                       aida->SetMinimumDistanceX(evts->GetAIDABeta()->GetMinDistanceX((unsigned short)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetMinimumDistanceY(evts->GetAIDABeta()->GetMinDistanceY((unsigned short)evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetSumEXYRank(evts->GetAIDAIon()->GetCluster(i)->GetSumEXYRank());
+                      //if (abs((long long)aida->GetXMinTimestamp()-(long long)aida->GetYMinTimestamp())<5000)
+                      //if (abs(aida->GetXEnergy()-aida->GetYEnergy())<300)
                       if (FillFlag) treeaida->Fill();
                   }
                   if (tsvector.size()>0) nion++;
+
               }
               if (Mode==1) evts->GetAIDAIon()->ClearAllHits();
               if (Mode==1&&evts->GetAIDAIon()->GetNClusters()>0) evts->GetIonTree()->Fill();
@@ -406,6 +462,7 @@ int main(int argc, char* argv[]){
           if(signal_received){
             break;
           }
+
       }
       //! Get last corr ts, added for briken experiment
       currentTSoffset=evts->GetAIDAUnpacker()->GetCurrentCorrTSoffset();
@@ -418,12 +475,19 @@ int main(int argc, char* argv[]){
       cout<<ttotal<<" all events (beta+ion)"<<endl;
       cout<<evts->GetCurrentPulserEvent()<<" pulser events"<<endl;
       delete evts;
+      cout<<ncnt1<<endl;
+      cout<<ncnt2<<endl;
+      cout<<ncnt3<<endl;
   }
  l1:
   if (ts_prev_beta_last-ts_prev_ion_hit>100000) tdeadtimesum+=1;
   runtime[0]=tdeadtimesum;
+
   if (FillFlag){
       //tshist->Write();
+      h2tdiff->Write();
+      h1asicsdiff->Write();
+      h2asicsdiff->Write();
       treeion->Write();
       treebeta->Write();
       treepulser->Write();

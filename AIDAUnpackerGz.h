@@ -111,8 +111,8 @@ public:
     void SetCurrentCorrTSoffset(long long tsoff) {my_time_offset=tsoff;}
 
     //! reverse mapping (accesible)
-    int DSSDtoFee[NumFee][NumChFee];
-    int DSSDtoCh[NumFee][NumChFee];
+    int DSSDtoFee[NumDSSD][NumStrXY];
+    int DSSDtoCh[NumDSSD][NumStrXY];
 
 private:
     //! file path

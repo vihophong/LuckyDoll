@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.1.0, 2018-01-19T18:51:17. -->
+<!-- Written by QtCreator 4.1.0, 2018-02-09T17:46:28. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -789,7 +789,7 @@
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguation.Title">belen</value>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.Arguments"></value>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.UserWorkingDirectory"></value>
-    <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.UserWorkingDirectory.default">/data01/usersdata/phong/projects/briken/build-temp</value>
+    <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.UserWorkingDirectory.default">/data01/usersdata/phong/projects/briken/temp/temp1</value>
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">belen (disabled)</value>

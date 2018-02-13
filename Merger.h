@@ -17,6 +17,7 @@
 #include "TCutG.h"
 #include "TLatex.h"
 #include "TSpectrum.h"
+#include "TF1.h"
 
 #include "fstream"
 
@@ -69,16 +70,18 @@ public:
     void ReadBigrips();
     void ReadAIDA(unsigned int start = 0, unsigned int stop = 0);
     void ReadBRIKEN(unsigned int startN=0, unsigned int stopN=0,unsigned int startG=0, unsigned int stopG=0,unsigned int startA=0, unsigned int stopA=0);
-    void DoMergeSingle();
+    void DoMergeSingle();    
+
     void BookTreeSingle(TTree* tree);
     void BookTreeNeutron(TTree* tree);
     void BookTreeImplant(TTree* tree);
 
     void SetNeutronOffsetTime(long long offset){fNeuBetaoffset=offset;}
     long long GetNeutronOffsetTime(){return fNeuBetaoffset;}
-    void SetSumERankCut(Int_t rankcut){sumexyrankcut = rankcut;}
+    void SetSumERankCut(Int_t rankcut){sumexyrankcut = rankcut;}   
     Int_t GetSumERankCut(){return sumexyrankcut;}
-
+    void SetXYTDiffCut(Int_t tcut){xytdiffcut = tcut;}
+    Int_t GetXYTDiffCut(){return xytdiffcut;}
 
     //! for pid separation
     void ReadPID(char* pidfile,Int_t ncutpts=20);
@@ -93,6 +96,8 @@ public:
     TCutG* GetCUTRI(Int_t i){return cutg[i];}
     void DoSeparatePID();
 
+
+    void DoMergeClosePixel();
     void DoSeparatePIDFinalTree();
 
     TH1F* GetHist1(){return fh1;}
@@ -114,7 +119,20 @@ public:
     TH2F* GetH2Deadtime2(){return fh2deadtime2;}
     TH1F* GetH1Deadtime2(){return fh1deadtime2;}
 
+    TH2F* GetH2Deadtime3(){return fh2deadtime3;}
+    TH1F* GetH1Deadtime3(){return fh1deadtime3;}
+
+    TH2F* GetH2Deadtime4(){return fh2deadtime4;}
+    TH1F* GetH1Deadtime4(){return fh1deadtime4;}
+
+
+    TH2F* GetH2D1(){return fh2d1;}
+    TH2F* GetH2D2(){return fh2d2;}
+
+
     TH1F* GetPulserHists(Int_t id){return fhpulser[id];}
+    TH1F* GetPulserHistsAll(Int_t id){return fhpulserall[id];}
+
 
     TH1F* GetH1DeadtimePulserChannel(){return fh1dtpulser;}
 
@@ -178,6 +196,7 @@ protected:
     std::multimap < unsigned long long, BELENHit*> fhe3Map;
     std::multimap < unsigned long long, unsigned int> fcloverMap;
     std::multimap < unsigned long long, unsigned int> fancMap;
+    std::multimap < unsigned long long, BELENHit*> fdtpulserMap;
     std::multimap < unsigned long long, unsigned int>::iterator fbigripsMap_it;
     std::multimap < unsigned long long, AIDASimpleStruct* >::iterator faidaBetaMap_it;
     std::multimap < unsigned long long, AIDASimpleStruct* >::iterator faidaIonMap_it;
@@ -186,7 +205,10 @@ protected:
     std::multimap < unsigned long long, BELENHit*>::iterator fhe3Map_it;
     std::multimap < unsigned long long, unsigned int>::iterator fcloverMap_it;
     std::multimap < unsigned long long, unsigned int>::iterator fancMap_it;
+    std::multimap < unsigned long long, BELENHit*>::iterator fdtpulserMap_it;
 
+    std::multimap < unsigned long long, pair<unsigned int, AIDASimpleStruct*> > fcorrbetaMap;
+    std::multimap < unsigned long long, unsigned int> fcorrimpMap;
 
 
 
@@ -196,11 +218,14 @@ protected:
 
     std::multimap < unsigned long long, unsigned int> fF11LMap;
     std::multimap < unsigned long long, unsigned int> fF11RMap;
+    std::multimap < unsigned long long, unsigned int> fF11LRMap;
     std::multimap < unsigned long long, unsigned int> fVetoTopMap;
     std::multimap < unsigned long long, unsigned int> fVetoBotMap;
     std::multimap < unsigned long long, unsigned int> fVetoDownMap;
     std::multimap < unsigned long long, unsigned int>::iterator fF11MapL_it;
     std::multimap < unsigned long long, unsigned int>::iterator fF11MapR_it;
+
+    std::multimap < unsigned long long, unsigned int>::iterator fF11MapLR_it;
     std::multimap < unsigned long long, unsigned int>::iterator fVetoTopMap_it;
     std::multimap < unsigned long long, unsigned int>::iterator fVetoBotMap_it;
     std::multimap < unsigned long long, unsigned int>::iterator fVetoDownMap_it;
@@ -209,6 +234,9 @@ protected:
     std::multimap < unsigned long long, unsigned int> fdEBotMap;
     std::multimap < unsigned long long, unsigned int>::iterator fdETopMap_it;
     std::multimap < unsigned long long, unsigned int>::iterator fdEBotMap_it;
+
+    std::multimap < unsigned long long, pair<unsigned int, AIDASimpleStruct*> >::iterator fcorrbetaMap_it;
+    std::multimap < unsigned long long, unsigned int>::iterator fcorrimpMap_it;
 
 
     //! all veto map
@@ -325,6 +353,7 @@ protected:
 
      Double_t dtioncut;
      Int_t sumexyrankcut;
+     Int_t xytdiffcut;
      Int_t lightp_nzcut;
      Double_t neutronecut[2];
      Double_t deltaxcut;
@@ -344,12 +373,15 @@ protected:
      Double_t fcoffsetold[8];
 
 
-     TH1F* fhpulser[140];
+     TH1F* fhpulser[141];
+     TH1F* fhpulserall[141];
+
 
      Long64_t ftsbeginveto;
      Long64_t ftsendveto;
      TH2F* fh2deadtime;
      TH1F* fh1deadtime;
+
 
      Long64_t ftsbeginpulser;
      Long64_t ftsendpulser;
@@ -357,17 +389,18 @@ protected:
      TH2F* fh2deadtime2;
      TH1F* fh1deadtime2;
 
-     TH1F* fh1dtpulser;
+     TH2F* fh2deadtime3;
+     TH1F* fh1deadtime3;
+     TH2F* fh2deadtime4;
+     TH1F* fh1deadtime4;
 
+     TH1F* fh1dtpulser;
 
      //! temp
      TH1F* fh1;
      TH1F* fh2;
-     std::multimap < unsigned long long, unsigned int> ftempmap;
-     std::multimap < unsigned long long, unsigned int>::iterator ftempmap_it;
-
-
-
+     TH2F* fh2d1;
+     TH2F* fh2d2;
 };
 
 #endif // MERGER_H

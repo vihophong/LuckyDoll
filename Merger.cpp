@@ -4,7 +4,7 @@ Merger::Merger():fbigrips(),decay()
     fmaxmult=400;
     fmaxnpixels=4.;
     //fIonBetaTWlow=10000000000;
-    fIonBetaTWlow=30000000000;
+    fIonBetaTWlow=20000000000;
     fIonBetaTWup=10000000000;
     fIonPidTWup = 0;
     fIonPidTWlow = 50000;
@@ -21,14 +21,14 @@ Merger::Merger():fbigrips(),decay()
     fNeuGammaTWup = 100000;
     fNeuGammaTWlow = 800000;
 
-    fNeuAncTWup = 200000; //200 us
+    fNeuAncTWup = 200000; //600 us
     fNeuAncTWlow = 0;
 
     //fNeuAncTWup = 1000000;
     //fNeuAncTWlow = 1000000;
 
-    fNeuBetaTWup = 200000; //200 us
-    fNeuBetaTWlow = 200000; //200 us
+    fNeuBetaTWup = 200000; //600 us
+    fNeuBetaTWlow = 200000; //600 us
     fNeuBetaoffset = -22000;
     //fNeuBetaoffset = 0;//for simulation
     fNeuBetaTWup= fNeuBetaTWup-fNeuBetaoffset;
@@ -67,6 +67,7 @@ Merger::Merger():fbigrips(),decay()
     //! final cut
     dtioncut=600;
     sumexyrankcut=0;
+    xytdiffcut=5000;
     lightp_nzcut=6;
     neutronecut[0]=160;
     neutronecut[1]=860;
@@ -108,6 +109,8 @@ Merger::~Merger()
 {
     delete fh1;
     delete fh2;
+    delete fh2d1;
+    delete fh2d2;
 }
 
 
@@ -223,6 +226,8 @@ void Merger::InitPIDSep()
     cout<<"F11R veto: deadtime="<<ff11vetodeadtime<<"\t---total time---\t"<<ff11vetototaltime<<endl;
     cout<<"Downstream veto:deadtime="<<fdownstreamvetodeadtime<<"\t---total time---\t"<<fdownstreamvetototaltime<<endl;
     cout<<"Final veto: deadtime="<<fvetodeadtime<<"\t---total time---\t"<<fvetototaltime<<endl;
+    fh1=new TH1F("h1","h1",2000,-10e9,10e9);
+    fh2=new TH1F("h2","h2",2000,-10e9,10e9);
 }
 
 void Merger::Init()
@@ -326,18 +331,28 @@ void Merger::Init()
     ftsendveto=0;
     ftsbeginpulser=0;
     ftsendpulser=0;
-    for (Int_t i=0;i<140;i++){        
-        fhpulser[i]=new TH1F(Form("hpulser%d",i+1),Form("hpulser%d",i+1),2000,1500,3500);        
+    for (Int_t i=0;i<141;i++){
+        fhpulser[i]=new TH1F(Form("hpulser%d",i+1),Form("hpulser%d",i+1),4000,1500,3500);
+        fhpulserall[i]=new TH1F(Form("fhpulserall%d",i+1),Form("fhpulserall%d",i+1),4000,1500,3500);
     }
-    fh2deadtime=new TH2F("h2deadtime","h2deadtime using calculated start-stop time",140,0,140,2000,0,20);
-    fh1deadtime=new TH1F("h1deadtime","h1deadtime using calculated start-stop time",2000,0,20);
+    fh2deadtime=new TH2F("h2deadtime","h2deadtime with veto using calculated start-stop time",141,0,141,2000,0,20);
+    fh1deadtime=new TH1F("h1deadtime","h1deadtime with veto using calculated start-stop time",2000,0,20);
 
-    fh2deadtime2=new TH2F("h2deadtime2","h2deadtime using dtpulser",140,0,140,2000,0,20);
-    fh1deadtime2=new TH1F("h1deadtime2","h1deadtime using dtpulser",2000,0,20);
+    fh2deadtime2=new TH2F("h2deadtime2","h2deadtime without veto using calculated start-stop time",141,0,141,2000,0,20);
+    fh1deadtime2=new TH1F("h1deadtime2","h1deadtime without veto using calculated start-stop time",2000,0,20);
+
+    fh2deadtime3=new TH2F("h2deadtime3","h2deadtime with veto using dtpulser",141,0,141,2000,0,20);
+    fh1deadtime3=new TH1F("h1deadtime3","h1deadtime with veto using dtpulser",2000,0,20);
+
+    fh2deadtime4=new TH2F("h2deadtime4","h2deadtime without veto using dtpulser",141,0,141,2000,0,20);
+    fh1deadtime4=new TH1F("h1deadtime4","h1deadtime without veto using dtpulser",2000,0,20);
+
 
     fh1dtpulser=new TH1F("h1dtpulser","h1dtpulser",2000,0,2000);
-    fh1=new TH1F("h1","h1",5000,-1000,1000);
-    fh2=new TH1F("h2","h2",5000,-1000,1000);
+    fh1=new TH1F("h1","h1",2000,0,1e9);
+    fh2=new TH1F("h2","h2",1000,0,600);
+    fh2d1=new TH2F("h2d1","h2d1",1000,0,100,1000,0,100);
+    fh2d2=new TH2F("h2d2","h2d2",1000,0,400,1000,0,100);
 }
 
 
@@ -481,13 +496,20 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
     if (startN==0) sstartN = 0; else sstartN = startN;
     if (stopN==0) sstopN = (unsigned int) fnentriesNeutron; else sstopN = stopN;
 
+    //! stuff for calculating cycle of time stamp reset
+    unsigned long long prevts=0;
+    unsigned short currcycle=0;
     for (unsigned int jentry = sstartN;jentry < sstopN;jentry++){
         ftrNeutron->GetEvent(jentry);
-        BELENHit* hit=new BELENHit;
+        if (fneutron->GetTimestamp()<prevts) currcycle++;// if time jump detected -> increase cycle by 1
+        prevts=fneutron->GetTimestamp();
+        BELENHit* hit=new BELENHit;        
         fneutron->Copy(*hit);
+        hit->SetHitsAdded(currcycle);
         fhe3Map.insert(make_pair(fneutron->GetTimestamp(),hit));
         //if (fneutron->GetEnergy()<fmaxneue&&fneutron->GetEnergy()>fminneue) fhe3Map.insert(make_pair(fneutron->GetTimestamp(),hit));
     }
+
     cout<<"Finished reading neutron  ts table with "<<fhe3Map.size()<<" rows"<<endl;
     //! read gamma
     unsigned int sstartG,sstopG;
@@ -505,11 +527,18 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
     if (startA==0) sstartA = 0; else sstartA = startA;
     if (stopA==0) sstopA = (unsigned int) fnentriesAnc; else sstopA = stopA;
 
+    prevts=0;
+    currcycle=0;    
+    Long64_t prevtsdtpulser=0;
+    Int_t ncountsDTpulser = 0;
     for (unsigned int jentry = sstartA;jentry < sstopA;jentry++){
         ftrAnc->GetEvent(jentry);
+
+        if (fanc->GetTimestamp()<prevts) currcycle++;// if time jump detected -> increase cycle by 1
+        prevts=fanc->GetTimestamp();
         //fancMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==1&&fanc->GetID()==1) {
-            fF11RMap.insert(make_pair(fanc->GetTimestamp(),jentry));
+            fF11RMap.insert(make_pair(fanc->GetTimestamp(),jentry));            
         }
         if (fanc->GetMyPrecious()==1&&fanc->GetID()==2) fF11LMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==1) fVetoTopMap.insert(make_pair(fanc->GetTimestamp(),jentry));
@@ -521,9 +550,21 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
         if (fanc->GetMyPrecious()==4) fVetoDownMap.insert(make_pair(fanc->GetTimestamp(),jentry));
 
         if (fanc->GetMyPrecious()==5) {
-            if (ftsbeginpulser==0) ftsbeginpulser=fanc->GetTimestamp();
+            if (ftsbeginpulser==0&&ncountsDTpulser==20) ftsbeginpulser=fanc->GetTimestamp();
             ftsendpulser=fanc->GetTimestamp();
-            fh1dtpulser->Fill(fanc->GetEnergy());//for dead time calculation
+
+            BELENHit* hit=new BELENHit;
+            fanc->Copy(*hit);
+            hit->SetID(141);
+            hit->SetHitsAdded(currcycle);
+            fdtpulserMap.insert(make_pair(fanc->GetTimestamp(),hit));
+
+            if (ftsbeginpulser>0 && prevtsdtpulser!=0) {
+                fh1dtpulser->Fill(fanc->GetEnergy());//for dead time calculation
+                fh1->Fill(ftsendpulser-prevtsdtpulser);
+            }
+            prevtsdtpulser=ftsendpulser;
+            ncountsDTpulser++;
         }
     }
     //cout<<"Finished reading anc  ts table with "<<fancMap.size()<<" rows"<<endl;
@@ -556,8 +597,9 @@ void Merger::DoMergeSingle()
         unsigned long long entry=fF11MapR_it->second;
         if (ff11vetototaltime==0) ff11vetototaltime=(Long64_t)ts;
         lastts=ts;
-        //ftrAnc->GetEntry(entry);
         //cout<<"ts="<<ts<<"\te="<<fanc->GetEnergy()<<endl;
+        //fh1->Fill(fanc->GetEnergy());
+
         //! estimate dead time using paralyzable model(note: fNeuAncTWlow must be 0!)
         if (deadtime_reset<ts){
             if(deadtime_start>0) {
@@ -569,15 +611,41 @@ void Merger::DoMergeSingle()
         }else{
             deadtime_reset=ts+fNeuAncTWup;
         }
-        //unsigned int entry=fF11MapR_it->second;
-        //ftrAnc->GetEntry(entry);
-        //if (fanc->GetEnergy()<fmineneuvetodown) continue;
-        //! Correlate f11 with neutron
-        Long64_t ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
-        Long64_t ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
+
+        ftrAnc->GetEntry(entry);
+        Double_t fenf11r=fanc->GetEnergy();
+        Double_t fenf11l=-1;
+        //! Correlate f11l to F11R
+        Bool_t isLRcoinc=false;
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fF11LRTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fF11LRTWup;
         Long64_t corrts = 0;
         Int_t ncorr=0;
         Long64_t check_time = 0;
+        fF11MapL_it = fF11LMap.lower_bound(ts1);
+        while(fF11MapL_it!=fF11LMap.end()&&fF11MapL_it->first<ts2){
+            corrts = (Long64_t) fF11MapL_it->first;
+            unsigned long long correntry=fF11MapL_it->second;
+            check_time=corrts;
+            ftrAnc->GetEntry(correntry);
+            fenf11l=fanc->GetEnergy();
+            isLRcoinc=true;
+            ncorr++;
+            break;
+        }
+        fh2d1->Fill(fenf11r,fenf11l);
+        ftrAnc->GetEntry(entry);
+
+        if (!isLRcoinc) continue;
+
+        fF11LRMap.insert(make_pair(ts,entry));
+
+        //! Correlate f11 with neutron
+        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
+        corrts = 0;
+        ncorr=0;
+        check_time = 0;
         fhe3Map_it = fhe3Map.lower_bound(ts1);
         while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
             corrts = (Long64_t) fhe3Map_it->first;
@@ -588,17 +656,43 @@ void Merger::DoMergeSingle()
                 double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
                 double currtdiff=neuhit->GetF11Time();
                 if (currtdiff<999998.||tdiff<currtdiff) neuhit->SetF11Time(tdiff);
+                //if (ncorr==0) fh2->Fill(fanc->GetEnergy());
+                fh2->Fill(tdiff);
+                if (ncorr==0) fh2d2->Fill(tdiff,fanc->GetEnergy());
                 ncorr++;
             //}
             fhe3Map_it++;
         }
+        //fh1->Fill(ncorr);
+
+        //! correlation of with deadtime pulser map
+        corrts = 0;
+        ncorr=0;
+        check_time = 0;
+        fdtpulserMap_it = fdtpulserMap.lower_bound(ts1);
+        while(fdtpulserMap_it!=fdtpulserMap.end()&&fdtpulserMap_it->first<ts2){
+            corrts = (Long64_t) fdtpulserMap_it->first;
+            BELENHit* neuhit = (BELENHit*) fdtpulserMap_it->second;
+            //if (corrts!=check_time){//reject duplicate time stamp, disable for pulser events
+                check_time=corrts;
+                double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
+                double currtdiff=neuhit->GetFinalVetoTime();
+                if (currtdiff<999998.||tdiff<currtdiff) neuhit->SetF11Time(tdiff);
+                ncorr++;
+            //}
+            fdtpulserMap_it++;
+        }
+
         //! add all veto map
         fvetoMap.insert(make_pair(ts,entry));
-    }
+
+
+    }    
     ff11vetototaltime=(Long64_t)lastts+fNeuAncTWup-ff11vetototaltime;
     ff11vetodeadtime+=fNeuAncTWup;
 
     cout<<"F11R veto: deadtime="<<ff11vetodeadtime<<"\t---total time---\t"<<ff11vetototaltime<<endl;
+    cout<<"Found "<<fF11LRMap.size()<<"L-R coincidence of F11 over "<<fF11RMap.size()<<" events"<<endl;
 
     deadtime_start=-9999;
     deadtime_reset=-9999;
@@ -640,11 +734,31 @@ void Merger::DoMergeSingle()
                 double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
                 double currtdiff=neuhit->GetDownstreamVetoTime();
                 if (currtdiff<999998.||tdiff<currtdiff) neuhit->SetDownstreamVetoTime(tdiff);
+                //if (ncorr==0) fh2d2->Fill(tdiff,fanc->GetEnergy());
                 ncorr++;
                 //if (neuhit->GetEnergy()>1500) fh2deadtime->Fill(tdiff,fanc->GetEnergy());
             //}
             fhe3Map_it++;
         }
+
+        //! correlation of with deadtime pulser map
+        corrts = 0;
+        ncorr=0;
+        check_time = 0;
+        fdtpulserMap_it = fdtpulserMap.lower_bound(ts1);
+        while(fdtpulserMap_it!=fdtpulserMap.end()&&fdtpulserMap_it->first<ts2){
+            corrts = (Long64_t) fdtpulserMap_it->first;
+            BELENHit* neuhit = (BELENHit*) fdtpulserMap_it->second;
+            //if (corrts!=check_time){//reject duplicate time stamp, disable for pulser events
+                check_time=corrts;
+                double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
+                double currtdiff=neuhit->GetFinalVetoTime();
+                if (currtdiff<999998.||tdiff<currtdiff) neuhit->SetDownstreamVetoTime(tdiff);
+                ncorr++;
+            //}
+            fdtpulserMap_it++;
+        }
+
         //! add all veto map
         fvetoMap.insert(make_pair(ts,entry));
     }
@@ -700,11 +814,30 @@ void Merger::DoMergeSingle()
             //}
             fhe3Map_it++;
         }
+
+
+        //! correlation of with deadtime pulser map
+        corrts = 0;
+        ncorr=0;
+        check_time = 0;
+        fdtpulserMap_it = fdtpulserMap.lower_bound(ts1);
+        while(fdtpulserMap_it!=fdtpulserMap.end()&&fdtpulserMap_it->first<ts2){
+            corrts = (Long64_t) fdtpulserMap_it->first;
+            BELENHit* neuhit = (BELENHit*) fdtpulserMap_it->second;
+            //if (corrts!=check_time){//reject duplicate time stamp, disable for pulser events
+                check_time=corrts;
+                double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
+                double currtdiff=neuhit->GetFinalVetoTime();
+                if (currtdiff<999998.||tdiff<currtdiff) neuhit->SetFinalVetoTime(tdiff);
+                ncorr++;
+            //}
+            fdtpulserMap_it++;
+        }
+
     }
     fvetototaltime=(Long64_t)lastts+fNeuAncTWup-fvetototaltime;
     fvetodeadtime+=fNeuAncTWup;
     cout<<"Final veto: deadtime="<<fvetodeadtime<<"\t---total time---\t"<<fvetototaltime<<endl;
-
 
     /*
     //! secondary veto scheme (just for comparison
@@ -779,18 +912,30 @@ void Merger::DoMergeSingle()
     */
 
 
-    //! Counter for neutron veto
+    //! Counter for neutron veto and fill pulser histogram
     Int_t nvetoneu=0;
     Int_t ntotalneu=0;
     for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
         BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
         Int_t id=neuhit->GetID()-1;
-        if (neuhit->GetFinalVetoTime()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
+        if (neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulserall[id]->Fill(neuhit->GetEnergy());
+        if (neuhit->GetF11Time()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
         if (neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]){
             if (neuhit->GetFinalVetoTime()>=0) nvetoneu++;
             ntotalneu++;
         }
     }
+    //! Counter for neutron veto and fill pulser histogram (on dead time pulser)
+
+
+    for (fdtpulserMap_it=fdtpulserMap.begin();fdtpulserMap_it!=fdtpulserMap.end();fdtpulserMap_it++){
+        BELENHit* neuhit = (BELENHit*) fdtpulserMap_it->second;   
+        Int_t id=neuhit->GetID()-1;
+        if (id!=140) cout<<"error! "<<id<<endl;
+        if (neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulserall[id]->Fill(neuhit->GetEnergy());
+        if (neuhit->GetF11Time()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
+    }
+
     cout<<"************Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu<<endl;
 
     //! Write out neutron tree
@@ -799,6 +944,13 @@ void Merger::DoMergeSingle()
         for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
             flocalneutron->Clear();
             BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
+            neuhit->Copy(*flocalneutron);
+            ftreeNeutron->Fill();
+        }        
+        cout<<"add pulser data at the end"<<endl;
+        for (fdtpulserMap_it=fdtpulserMap.begin();fdtpulserMap_it!=fdtpulserMap.end();fdtpulserMap_it++){
+            flocalneutron->Clear();
+            BELENHit* neuhit = (BELENHit*) fdtpulserMap_it->second;
             neuhit->Copy(*flocalneutron);
             ftreeNeutron->Fill();
         }
@@ -840,22 +992,22 @@ void Merger::DoMergeSingle()
             fbigripsMap_it++;
         }
 
-        //! Correlate imp with f11r
+        //! Correlate imp with f11lr
         ts1 = (Long64_t)ts - (Long64_t)fIonAncTWlow;
         ts2 = (Long64_t)ts + (Long64_t)fIonAncTWup;
         corrts = 0;
         ncorr=0;
         check_time = 0;
-        fF11MapR_it = fF11RMap.lower_bound(ts1);
-        while(fF11MapR_it!=fF11RMap.end()&&fF11MapR_it->first<ts2){
-            corrts = (Long64_t) fF11MapR_it->first;
+        fF11MapLR_it = fF11LRMap.lower_bound(ts1);
+        while(fF11MapLR_it!=fF11LRMap.end()&&fF11MapLR_it->first<ts2){
+            corrts = (Long64_t) fF11MapLR_it->first;
             if (corrts!=check_time){
                 check_time=corrts;
-                corrvector->correntryf11r = (int) fF11MapR_it->second;
+                corrvector->correntryf11r = (int) fF11MapLR_it->second;
                 ncorr++;
                 break;
             }
-            fF11MapR_it++;
+            fF11MapLR_it++;
         }
 
         //! Correlate imp with topde
@@ -926,7 +1078,6 @@ void Merger::DoMergeSingle()
             AIDASimpleStruct* imp = faidaImplantMap_it->second.second;
             ImplantCorrelationVector* corrvectorimp= (ImplantCorrelationVector*)faidaImplantMap_it->second.first;
 
-
             //! make a copy of implant object and dum into vector
             IonBetaMult* impcpy=new IonBetaMult;
 
@@ -982,14 +1133,18 @@ void Merger::DoMergeSingle()
     }
 
 
+    //! Build Decay set ion correlate with
+
+
+
     //! Build Decay
     //!**************
     ktotal=faidaBetaMap.size();
     k=0;
     for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
+        //! vector for ion-beta correlation
         flocalbetaS->Clear();
         flocalimparray->Clear("C");
-
         if (k%10000==0) cout<<k<<"/"<<ktotal<<"\tncorr="<<ncorrwbeta<<"\t ncorr w neutron "<<ncorrwneutron<<endl;
         //if (k>1) break;
         unsigned long long ts=faidaBetaMap_it->first;
@@ -1031,7 +1186,9 @@ void Merger::DoMergeSingle()
         if (ndelayedneutron>0) ncorrwneutron++;
 
         //!******************************ANCINARY detector****************
-        //! Correlate imp with f11r
+
+        /*
+        //! Correlate imp with f11 right side only
         ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
         ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
         corrts = 0;
@@ -1052,6 +1209,30 @@ void Merger::DoMergeSingle()
                 break;
             }
             fF11MapR_it++;
+        }
+        */
+
+        //! Correlate imp with f11 left and right
+        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
+        corrts = 0;
+        ncorr=0;
+        correntry = 0;
+        check_time = 0;
+        fF11MapLR_it = fF11LRMap.lower_bound(ts1);
+        while(fF11MapLR_it!=fF11LRMap.end()&&fF11MapLR_it->first<ts2){
+            corrts = (Long64_t) fF11MapLR_it->first;
+            correntry = fF11MapLR_it->second;
+            if (corrts!=check_time){
+                check_time=corrts;
+                ftrAnc->GetEvent(correntry);
+                BELENHit* hit=new BELENHit;
+                fanc->Copy(*hit);
+                flocalbetaS->AddAnc(hit);
+                ncorr++;
+                break;
+            }
+            fF11MapLR_it++;
         }
 
         //! Correlate with vetodown
@@ -1100,59 +1281,6 @@ void Merger::DoMergeSingle()
             fcloverMap_it++;
         }
 
-
-        //!******************************Implantation****************
-        //! Time correlation with implantation (Build Decay Curve)
-        ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fIonPidTWup;
-        corrts = 0;
-        ncorr=0;
-        correntry = 0;
-        check_time = 0;
-
-        //! Correlate with beta
-        ts1 = (Long64_t)ts - fIonBetaTWlow;
-        ts2 = (Long64_t)ts + fIonBetaTWup;
-        corrts = 0;
-        correntry = 0;
-        check_time = 0;
-        nionbetacorr=0;
-        faidaImplantMapFull_it = faidaImplantMapFull.lower_bound(ts1);
-        while(faidaImplantMapFull_it!=faidaImplantMapFull.end()&&faidaImplantMapFull_it->first<ts2){
-            corrts = (Long64_t) faidaImplantMapFull_it->first;
-            IonBetaMult* imp = faidaImplantMapFull_it->second;
-            double impx= imp->GetHitPositionX();
-            double impy= imp->GetHitPositionY();
-            short impz= imp->GetHitPositionZ();
-            if (corrts!=check_time&&betaz==impz){
-                if (!((betax-impx>-fmaxnpixels)&&(betax-impx<fmaxnpixels)&&(betay-impy>-fmaxnpixels)&&(betay-impy<fmaxnpixels))){
-                    faidaImplantMapFull_it++;
-                    continue;
-                }
-                check_time=corrts;
-
-                IonBetaMult* imparr=(IonBetaMult*)flocalimparray->ConstructedAt(nionbetacorr);
-
-
-                imp->CopyWithBigRIPSOnly(*imparr);
-
-
-                //! only for ahn san experiment
-                //imparr->GetBeamHit()->f11x=-9999;
-                //imparr->GetBeamHit()->f11y=-9999;
-                //for (unsigned short i=0;i<imp->GetNAncHit();i++){
-                //    BELENHit* hit=imp->GetAncHit(i);
-                //    if (hit->GetMyPrecious()==3&&hit->GetID()==1) imparr->GetBeamHit()->f11x=hit->GetEnergy();
-                //    if (hit->GetMyPrecious()==3&&hit->GetID()==2) imparr->GetBeamHit()->f11y=hit->GetEnergy();
-                //}
-
-
-                nionbetacorr++;
-            }
-            faidaImplantMapFull_it++;
-        }
-
-
         //! fill beta data here
         flocalbetaS->CopyFromAIDA(beta);
         ftree->Fill();
@@ -1162,25 +1290,37 @@ void Merger::DoMergeSingle()
     }
 
 
+
     TSpectrum *s = new TSpectrum();
     ftotaltimepulser=(Double_t)(ftsendpulser-ftsbeginpulser)/1e9;
 
     //Double_t totaltime=(Double_t)(ftsendveto-ftsbeginveto)/1e9;
     Double_t totaltime=ftotaltimepulser;
     Double_t expectedcounts=totaltime*10;
-    Double_t ncountsDtPuser=fh1dtpulser->GetEntries();
-    cout<<expectedcounts<<"/-/"<<ncountsDtPuser<<endl;
+    Double_t ncountsDtPuser=fhpulserall[140]->GetEntries();
+    cout<<expectedcounts<<"/-/"<<ncountsDtPuser<<"/-/"<<fh1dtpulser->GetEntries()<<endl;
 
     //! new calculation of dead time
-    for (Int_t i=0;i<140;i++){
+    for (Int_t i=0;i<141;i++){
         s->Search(fhpulser[i]);
         Double_t *xpeaks = s->GetPositionX();
         Double_t xp = xpeaks[0];
-        Double_t totalcounts=fhpulser[i]->Integral(fhpulser[i]->GetXaxis()->FindBin(xp-100),fhpulser[i]->GetXaxis()->FindBin(xp+100));
+        fhpulser[i]->Fit("gaus","RQ","",xp-100,xp+100);
+        Double_t sigma=fhpulser[i]->GetFunction("gaus")->GetParameter(2);
+        Double_t totalcounts=fhpulser[i]->Integral(fhpulser[i]->GetXaxis()->FindBin(xp-sigma*10),fhpulser[i]->GetXaxis()->FindBin(xp+sigma*10));
+        Double_t totalcountsall=fhpulserall[i]->Integral(fhpulserall[i]->GetXaxis()->FindBin(xp-sigma*10),fhpulserall[i]->GetXaxis()->FindBin(xp+sigma*10));
+        //cout<<i<<"-"<<totalcounts<<"-"<<totalcountsall<<endl;
         fh2deadtime->Fill(i,100-totalcounts/expectedcounts*100);
         fh1deadtime->Fill(100-totalcounts/expectedcounts*100);
-        fh2deadtime2->Fill(i,100-totalcounts/ncountsDtPuser*100);
-        fh1deadtime2->Fill(100-totalcounts/ncountsDtPuser*100);
+
+        fh2deadtime2->Fill(i,100-totalcountsall/expectedcounts*100);
+        fh1deadtime2->Fill(100-totalcountsall/expectedcounts*100);
+
+        fh2deadtime3->Fill(i,100-totalcounts/ncountsDtPuser*100);
+        fh1deadtime3->Fill(100-totalcounts/ncountsDtPuser*100);
+
+        fh2deadtime4->Fill(i,100-totalcountsall/ncountsDtPuser*100);
+        fh1deadtime4->Fill(100-totalcountsall/ncountsDtPuser*100);
     }
     delete s;
 }
@@ -1201,6 +1341,261 @@ void Merger::DoSeparatePID()
     }
 }
 
+void Merger::DoMergeClosePixel()
+{
+
+    for (Long64_t jentry=0;jentry<fnentriesMerged;jentry++){
+        ftrMerged->GetEntry(jentry);
+        //! ****** BETA VETO ***************
+        //! downstream veto cut
+        Int_t ndownstreamveto=0;
+        for (Int_t j=0;j<flocalbetaS->GetAncMultipliticy();j++){
+            if (flocalbetaS->GetAncHit(j)->GetMyPrecious()==4) ndownstreamveto++;
+        }
+        //! f11 cut
+        Int_t nf11rveto=0;
+        for (Int_t j=0;j<flocalbetaS->GetAncMultipliticy();j++){
+            if (flocalbetaS->GetAncHit(j)->GetMyPrecious()==1||flocalbetaS->GetAncHit(j)->GetID()==1) nf11rveto++;
+        }
+
+        //! beta cut
+        if (flocalbetaS->GetDtIon()<=dtioncut||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
+        if (!abs((int)((long long)flocalbetaS->GetXTimestamp()-(long long)flocalbetaS->GetYTimestamp())<xytdiffcut)) continue;// time cut
+        //! select on multiplicity 1 events
+        //if (!(flocalbetaS->GetXClusterMultiplicity()==1&&flocalbetaS->GetYClusterMultiplicity()==1)) continue;
+
+        AIDASimpleStruct* hit=new AIDASimpleStruct;
+        hit->SetEventNumber(flocalbetaS->GetEventNumber());
+        hit->SetHitPosition(flocalbetaS->GetHitPositionX(),flocalbetaS->GetHitPositionY(),flocalbetaS->GetHitPositionZ());
+        fcorrbetaMap.insert(make_pair(flocalbetaS->GetTimestamp(),make_pair(jentry,hit)));
+    }
+    cout<<"start correlation"<<endl;
+
+    for (Long64_t jentry=0;jentry<fnentriesImp;jentry++){
+        ftreeImplant->GetEvent(jentry);
+        unsigned long long ts=flocalimp->GetTimestamp();
+        double impx= flocalimp->GetHitPositionX();
+        double impy= flocalimp->GetHitPositionY();
+        short impz= flocalimp->GetHitPositionZ()+flocalimp->GetDZ();//! corrected dZ
+
+        //! with beta
+        Long64_t ts1 = ts - fIonBetaTWup;
+        Long64_t ts2 = ts + fIonBetaTWlow;
+        Long64_t corrts = 0;
+        Int_t ncorr=0;
+        unsigned int correntry = 0;
+        Long64_t check_time = 0;
+        fcorrbetaMap_it = fcorrbetaMap.lower_bound(ts1);
+
+        unsigned int ievt = 0;
+        unsigned int ievt_prev = 0;
+        unsigned int betaclosepixelentry=0;
+        unsigned long long betaclosepixelts=0;
+        Double_t betaclosepixeldistance = fmaxnpixels*2;
+        Double_t distance = 0;
+
+        while(fcorrbetaMap_it!=fcorrbetaMap.end()&&fcorrbetaMap_it->first<ts2){
+            corrts = fcorrbetaMap_it->first;
+            correntry = fcorrbetaMap_it->second.first;
+            AIDASimpleStruct* hit = fcorrbetaMap_it->second.second;
+            double betax=hit->GetHitPositionX();
+            double betay=hit->GetHitPositionY();
+            short betaz=hit->GetHitPositionZ();
+
+            if (corrts!=check_time&&betaz==impz){
+                if (!((betax-impx>-deltaxcut)&&(betax-impx<deltaxcut)&&(betay-impy>-deltaycut)&&(betay-impy<deltaycut))){
+                    fcorrbetaMap_it++;
+                    continue;
+                }
+                ievt = hit->GetEventNumber();
+                distance = sqrt((betax-impx)*(betax-impx)+(betay-impy)*(betay-impy));
+                if (ievt==ievt_prev&&ievt_prev!=0){
+                    if (distance<betaclosepixeldistance){
+                        betaclosepixeldistance = distance;
+                        betaclosepixelentry = correntry;
+                        betaclosepixelts = corrts;
+                    }
+                }else{//! next evt
+                    if (ievt!=ievt_prev){
+                        ftrMerged->GetEntry(betaclosepixelentry);
+                        //! fill events
+                        ResetSimpleData();
+                        decay.evt=flocalbetaS->GetEventNumber();
+                        decay.ts=flocalbetaS->GetTimestamp();
+                        decay.x=flocalbetaS->GetHitPositionX();
+                        decay.y=flocalbetaS->GetHitPositionY();
+                        decay.z=flocalbetaS->GetHitPositionZ();
+                        decay.ex=flocalbetaS->GetXEnergy();
+                        decay.ey=flocalbetaS->GetYEnergy();
+                        decay.multx=flocalbetaS->GetXMultiplicity();
+                        decay.multy=flocalbetaS->GetYMultiplicity();
+                        decay.multz=flocalbetaS->GetZMultiplicity();
+
+                        //! ****** NEUTRON ***************
+                        //! neutron multipliciy counters and cut
+                        Int_t nneufreal=0;
+                        Int_t nneubreal=0;
+                        for (Int_t j=0;j<flocalbetaS->GetNeutronForwardMultipliticy();j++){
+                            //if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetFinalVetoTime()<0){
+                            if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetF11Time()<0){
+                                decay.neu_ch[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetID();
+                                decay.neu_E[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetEnergy();
+                                decay.neu_T[nneufreal]=((Double_t)((Long64_t)flocalbetaS->GetNeutronForwardHit(j)->GetTimestamp()-(Long64_t)flocalbetaS->GetTimestamp()))/1e3;
+                                decay.neu_x[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetRndPosition().X();
+                                decay.neu_y[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetRndPosition().Y();
+                                nneufreal++;
+                            }
+                        }
+
+                        for (Int_t j=0;j<flocalbetaS->GetNeutronBackwardMultipliticy();j++){
+                            //if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetFinalVetoTime()<0){
+                            if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetF11Time()<0){
+                                nneubreal++;
+                            }
+                        }
+                        decay.neu_hit=nneufreal;
+                        decay.neub_hit=nneubreal;
+
+                        //!************ GAMMA *************
+                        for (Int_t j=0;j<flocalbetaS->GetCloverMultipliticy();j++){
+                            decay.gc_ch[j]=flocalbetaS->GetCloverHit(j)->GetCloverLeaf()+(flocalbetaS->GetCloverHit(j)->GetClover()-1)*4;
+                            decay.gc_E[j]=flocalbetaS->GetCloverHit(j)->GetEnergy();
+                            decay.gc_T[j]=((Double_t)((Long64_t)flocalbetaS->GetCloverHit(j)->GetTimestamp()-(Long64_t)flocalbetaS->GetTimestamp()))/1e3;
+
+                            //! gamma calibration goes here
+                            //convert back to adc
+                            decay.gc_E[j]=(decay.gc_E[j]-fcoffsetold[decay.gc_ch[j]-1])/fcgainold[decay.gc_ch[j]-1];
+                            //apply new calibration
+                            if (decay.gc_E[j]<fsep[decay.gc_ch[j]-1]){//low energy calibration
+                                decay.gc_E[j]=flow_offset[decay.gc_ch[j]-1]+flow_gain[decay.gc_ch[j]-1]*decay.gc_E[j]+flow_se[decay.gc_ch[j]-1]*decay.gc_E[j]*decay.gc_E[j];
+                            }else{//high energy calibration
+                                decay.gc_E[j]=fhigh_offset[decay.gc_ch[j]-1]+fhigh_gain[decay.gc_ch[j]-1]*decay.gc_E[j]+fhigh_se[decay.gc_ch[j]-1]*decay.gc_E[j]*decay.gc_E[j];
+                            }
+                        }
+                        decay.gc_hit=flocalbetaS->GetCloverMultipliticy();
+
+                        //! implanation hit
+                        decay.t=((Double_t)((Long64_t)flocalbetaS->GetTimestamp()-(Long64_t)flocalimp->GetTimestamp()))/1e9;
+                        decay.ion_x=flocalimp->GetHitPositionX();
+                        decay.ion_y=flocalimp->GetHitPositionY();
+                        decay.ion_z=flocalimp->GetHitPositionZ();
+                        decay.zet=flocalimp->GetBeamHit()->zet;
+
+                        decay.aoq=flocalimp->GetBeamHit()->aoq;
+                        decay.deltaxy=sqrt(decay.x*decay.ion_x+decay.y*decay.ion_y);
+                        decay.ndecay=nionbetacorr;
+                        decay.nbeta=nionbetacorr;
+                        double zet=flocalimp->GetBeamHit()->zet;
+                        double aoq=flocalimp->GetBeamHit()->aoq;
+                        for (Int_t j=0;j<nri;j++){
+                            if (!enablepid2[j]) continue;
+                            if (cutg[j]->IsInside(aoq,zet)){
+                                ftreeRI[j]->Fill();
+                            }
+                        }
+                        ftree->Fill();
+                        fh2->Fill((Long64_t)betaclosepixelts-(Long64_t)ts);
+                    }
+
+                    betaclosepixeldistance = distance;
+                    betaclosepixelentry = correntry;
+                    betaclosepixelts = corrts;
+                }
+                ievt_prev = ievt;
+                fh1->Fill((Long64_t)corrts-(Long64_t)ts);
+                //ftrMerged->GetEntry(correntry);
+                ncorr++;
+            }
+            fcorrbetaMap_it++;
+        }
+        if (ncorr>0) {
+            ftrMerged->GetEntry(betaclosepixelentry);
+            //! fill events
+            ResetSimpleData();
+            decay.evt=flocalbetaS->GetEventNumber();
+            decay.ts=flocalbetaS->GetTimestamp();
+            decay.x=flocalbetaS->GetHitPositionX();
+            decay.y=flocalbetaS->GetHitPositionY();
+            decay.z=flocalbetaS->GetHitPositionZ();
+            decay.ex=flocalbetaS->GetXEnergy();
+            decay.ey=flocalbetaS->GetYEnergy();
+            decay.multx=flocalbetaS->GetXMultiplicity();
+            decay.multy=flocalbetaS->GetYMultiplicity();
+            decay.multz=flocalbetaS->GetZMultiplicity();
+
+            //! ****** NEUTRON ***************
+            //! neutron multipliciy counters and cut
+            Int_t nneufreal=0;
+            Int_t nneubreal=0;
+
+
+            for (Int_t j=0;j<flocalbetaS->GetNeutronForwardMultipliticy();j++){
+                //if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetFinalVetoTime()<0){
+                if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetF11Time()<0){
+                    decay.neu_ch[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetID();
+                    decay.neu_E[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetEnergy();
+                    decay.neu_T[nneufreal]=((Double_t)((Long64_t)flocalbetaS->GetNeutronForwardHit(j)->GetTimestamp()-(Long64_t)flocalbetaS->GetTimestamp()))/1e3;
+                    decay.neu_x[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetRndPosition().X();
+                    decay.neu_y[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetRndPosition().Y();
+                    nneufreal++;
+                }
+            }
+
+            for (Int_t j=0;j<flocalbetaS->GetNeutronBackwardMultipliticy();j++){
+                //if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetFinalVetoTime()<0){
+                if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetF11Time()<0){
+                    nneubreal++;
+                }
+            }
+            decay.neu_hit=nneufreal;
+            decay.neub_hit=nneubreal;
+
+            //!************ GAMMA *************
+            for (Int_t j=0;j<flocalbetaS->GetCloverMultipliticy();j++){
+                decay.gc_ch[j]=flocalbetaS->GetCloverHit(j)->GetCloverLeaf()+(flocalbetaS->GetCloverHit(j)->GetClover()-1)*4;
+                decay.gc_E[j]=flocalbetaS->GetCloverHit(j)->GetEnergy();
+                decay.gc_T[j]=((Double_t)((Long64_t)flocalbetaS->GetCloverHit(j)->GetTimestamp()-(Long64_t)flocalbetaS->GetTimestamp()))/1e3;
+
+                //! gamma calibration goes here
+                //convert back to adc
+                decay.gc_E[j]=(decay.gc_E[j]-fcoffsetold[decay.gc_ch[j]-1])/fcgainold[decay.gc_ch[j]-1];
+                //apply new calibration
+                if (decay.gc_E[j]<fsep[decay.gc_ch[j]-1]){//low energy calibration
+                    decay.gc_E[j]=flow_offset[decay.gc_ch[j]-1]+flow_gain[decay.gc_ch[j]-1]*decay.gc_E[j]+flow_se[decay.gc_ch[j]-1]*decay.gc_E[j]*decay.gc_E[j];
+                }else{//high energy calibration
+                    decay.gc_E[j]=fhigh_offset[decay.gc_ch[j]-1]+fhigh_gain[decay.gc_ch[j]-1]*decay.gc_E[j]+fhigh_se[decay.gc_ch[j]-1]*decay.gc_E[j]*decay.gc_E[j];
+                }
+            }
+            decay.gc_hit=flocalbetaS->GetCloverMultipliticy();
+
+            //! implanation hit
+            decay.t=((Double_t)((Long64_t)flocalbetaS->GetTimestamp()-(Long64_t)flocalimp->GetTimestamp()))/1e9;
+            decay.ion_x=flocalimp->GetHitPositionX();
+            decay.ion_y=flocalimp->GetHitPositionY();
+            decay.ion_z=flocalimp->GetHitPositionZ();
+            decay.zet=flocalimp->GetBeamHit()->zet;
+
+
+            decay.aoq=flocalimp->GetBeamHit()->aoq;
+            decay.deltaxy=sqrt(decay.x*decay.ion_x+decay.y*decay.ion_y);
+            decay.ndecay=nionbetacorr;
+            decay.nbeta=nionbetacorr;
+            double zet=flocalimp->GetBeamHit()->zet;
+            double aoq=flocalimp->GetBeamHit()->aoq;
+            for (Int_t j=0;j<nri;j++){
+                if (!enablepid2[j]) continue;
+                if (cutg[j]->IsInside(aoq,zet)){
+                    ftreeRI[j]->Fill();
+                }
+            }
+            ftree->Fill();
+            fh2->Fill((Long64_t)betaclosepixelts-(Long64_t)ts);
+        }
+
+    }
+
+}
+
 void Merger::DoSeparatePIDFinalTree()
 {
     for (Long64_t jentry=0;jentry<fnentriesMerged;jentry++){
@@ -1211,9 +1606,18 @@ void Merger::DoSeparatePIDFinalTree()
         for (Int_t j=0;j<flocalbetaS->GetAncMultipliticy();j++){
             if (flocalbetaS->GetAncHit(j)->GetMyPrecious()==4) ndownstreamveto++;
         }
-        //! beta cut
-        if (flocalbetaS->GetDtIon()<=dtioncut||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
+        //! f11 cut
+        Int_t nf11rveto=0;
+        for (Int_t j=0;j<flocalbetaS->GetAncMultipliticy();j++){
+            if (flocalbetaS->GetAncHit(j)->GetMyPrecious()==1||flocalbetaS->GetAncHit(j)->GetID()==1) nf11rveto++;
+        }
 
+
+        //! beta cut        
+        if (flocalbetaS->GetDtIon()<=dtioncut||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
+        if (!abs((int)((long long)flocalbetaS->GetXTimestamp()-(long long)flocalbetaS->GetYTimestamp())<xytdiffcut)) continue;// time cut
+        //! select on multiplicity 1 events
+        //if (!(flocalbetaS->GetXClusterMultiplicity()==1&&flocalbetaS->GetYClusterMultiplicity()==1)) continue;
 
         ResetSimpleData();
         decay.evt=flocalbetaS->GetEventNumber();

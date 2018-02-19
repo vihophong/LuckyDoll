@@ -1358,6 +1358,7 @@ void Merger::DoMergeSingle()
     }
 
 
+    /*
     TSpectrum *s = new TSpectrum();
     ftotaltimepulser=(Double_t)(ftsendpulser-ftsbeginpulser)/1e9;
 
@@ -1389,6 +1390,7 @@ void Merger::DoMergeSingle()
         fh2deadtime4->Fill(i,100-totalcountsall/ncountsDtPuser*100);
         fh1deadtime4->Fill(100-totalcountsall/ncountsDtPuser*100);
     }
+    */
     //delete s;
 
 }

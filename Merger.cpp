@@ -103,6 +103,11 @@ Merger::Merger():fbigrips(),decay()
         fcgainold[i]=gain_old[i];
         fcoffsetold[i]=offset_old[i];
     }
+
+    //! stuff for rejecting noise events associated with implantation
+    fimpnoisefilter_dxy = 5;//3 pixel from implantation/punching through position
+    fimpnoisefilter_dz = 0;//1 dssd downstream of implantation position
+    fimpnoisefilter_dt = 50000000; //unit ns: reject 50 usecond
 }
 
 Merger::~Merger()
@@ -1281,6 +1286,69 @@ void Merger::DoMergeSingle()
             fcloverMap_it++;
         }
 
+
+
+        //!******************************Implantation****************
+        //! Time correlation with implantation (Build Decay Curve)
+
+        ts1 = (Long64_t)ts - (Long64_t)fIonPidTWlow;
+        ts2 = (Long64_t)ts + (Long64_t)fIonPidTWup;
+        corrts = 0;
+        ncorr=0;
+        correntry = 0;
+        check_time = 0;
+
+        //! Correlate with beta
+        ts1 = (Long64_t)ts - fIonBetaTWlow;
+        ts2 = (Long64_t)ts + fIonBetaTWup;
+        corrts = 0;
+        correntry = 0;
+        check_time = 0;
+        nionbetacorr=0;
+        faidaImplantMapFull_it = faidaImplantMapFull.lower_bound(ts1);
+
+        while(faidaImplantMapFull_it!=faidaImplantMapFull.end()&&faidaImplantMapFull_it->first<ts2){
+            corrts = (Long64_t) faidaImplantMapFull_it->first;
+            IonBetaMult* imp = faidaImplantMapFull_it->second;
+            double impx= imp->GetHitPositionX();
+            double impy= imp->GetHitPositionY();
+            short impz= imp->GetHitPositionZ()+imp->GetDZ(); // corrected dZ
+
+            //! stuffs for rejecting noise events associated with implant
+            if (corrts!=check_time){// avoid multiple filling corrts!=check_time
+                if (((Long64_t)ts-corrts)<fimpnoisefilter_dt&&((Long64_t)ts-corrts)>0){
+                    if (((betax-impx>-fimpnoisefilter_dxy)&&(betax-impx<fimpnoisefilter_dxy)&&(betay-impy>-fimpnoisefilter_dxy)&&(betay-impy<fimpnoisefilter_dxy))&&betaz<=impz+fimpnoisefilter_dz){
+                        flocalbetaS->SetDtIonAll((Double_t)((Long64_t)ts-corrts)/1e3);//unit us
+                    }
+                }
+            }
+
+            if (corrts!=check_time&&betaz==impz){// avoid multiple filling corrts!=check_time
+                if (!((betax-impx>-fmaxnpixels)&&(betax-impx<fmaxnpixels)&&(betay-impy>-fmaxnpixels)&&(betay-impy<fmaxnpixels))){
+                    faidaImplantMapFull_it++;
+                    continue;
+                }
+                check_time=corrts;
+
+                IonBetaMult* imparr=(IonBetaMult*)flocalimparray->ConstructedAt(nionbetacorr);
+
+                imp->CopyWithBigRIPSOnly(*imparr);
+
+                //! only for ahn san experiment
+                //imparr->GetBeamHit()->f11x=-9999;
+                //imparr->GetBeamHit()->f11y=-9999;
+                //for (unsigned short i=0;i<imp->GetNAncHit();i++){
+                //    BELENHit* hit=imp->GetAncHit(i);
+                //    if (hit->GetMyPrecious()==3&&hit->GetID()==1) imparr->GetBeamHit()->f11x=hit->GetEnergy();
+                //    if (hit->GetMyPrecious()==3&&hit->GetID()==2) imparr->GetBeamHit()->f11y=hit->GetEnergy();
+                //}
+
+                nionbetacorr++;
+            }
+            faidaImplantMapFull_it++;
+        }
+
+
         //! fill beta data here
         flocalbetaS->CopyFromAIDA(beta);
         ftree->Fill();
@@ -1288,7 +1356,6 @@ void Merger::DoMergeSingle()
         if (nionbetacorr>0) ncorrwbeta++;
         k++;
     }
-
 
 
     TSpectrum *s = new TSpectrum();
@@ -1322,7 +1389,8 @@ void Merger::DoMergeSingle()
         fh2deadtime4->Fill(i,100-totalcountsall/ncountsDtPuser*100);
         fh1deadtime4->Fill(100-totalcountsall/ncountsDtPuser*100);
     }
-    delete s;
+    //delete s;
+
 }
 
 void Merger::DoSeparatePID()
@@ -1359,7 +1427,9 @@ void Merger::DoMergeClosePixel()
         }
 
         //! beta cut
-        if (flocalbetaS->GetDtIon()<=dtioncut||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
+        //if (flocalbetaS->GetDtIon()<=dtioncut||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
+        if (flocalbetaS->GetDtIonAll()>=0||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
+
         if (!abs((int)((long long)flocalbetaS->GetXTimestamp()-(long long)flocalbetaS->GetYTimestamp())<xytdiffcut)) continue;// time cut
         //! select on multiplicity 1 events
         //if (!(flocalbetaS->GetXClusterMultiplicity()==1&&flocalbetaS->GetYClusterMultiplicity()==1)) continue;
@@ -1496,7 +1566,6 @@ void Merger::DoMergeClosePixel()
                         ftree->Fill();
                         fh2->Fill((Long64_t)betaclosepixelts-(Long64_t)ts);
                     }
-
                     betaclosepixeldistance = distance;
                     betaclosepixelentry = correntry;
                     betaclosepixelts = corrts;
@@ -1527,7 +1596,6 @@ void Merger::DoMergeClosePixel()
             //! neutron multipliciy counters and cut
             Int_t nneufreal=0;
             Int_t nneubreal=0;
-
 
             for (Int_t j=0;j<flocalbetaS->GetNeutronForwardMultipliticy();j++){
                 //if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetFinalVetoTime()<0){
@@ -1598,6 +1666,7 @@ void Merger::DoMergeClosePixel()
 
 void Merger::DoSeparatePIDFinalTree()
 {
+
     for (Long64_t jentry=0;jentry<fnentriesMerged;jentry++){
         ftrMerged->GetEntry(jentry);
         //! ****** BETA VETO ***************
@@ -1615,6 +1684,7 @@ void Merger::DoSeparatePIDFinalTree()
 
         //! beta cut        
         if (flocalbetaS->GetDtIon()<=dtioncut||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
+        //if (flocalbetaS->GetDtIonAll()>=0||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
         if (!abs((int)((long long)flocalbetaS->GetXTimestamp()-(long long)flocalbetaS->GetYTimestamp())<xytdiffcut)) continue;// time cut
         //! select on multiplicity 1 events
         //if (!(flocalbetaS->GetXClusterMultiplicity()==1&&flocalbetaS->GetYClusterMultiplicity()==1)) continue;
@@ -1715,18 +1785,38 @@ void Merger::DoSeparatePIDFinalTree()
         }
     }
     cout<<"Making implant tree ..."<<endl;
+
+    Int_t nimplant[nri];
+    for (Int_t i=0;i<nri;i++) nimplant[i]=0;
+
+    Long64_t tsstart=0;
+    Long64_t tsstop=0;
+
+    //! making separated implant tree
     for (Long64_t jentry=0;jentry<fnentriesImp;jentry++){
         ftreeImplant->GetEvent(jentry);
         double zet=flocalimp->GetBeamHit()->zet;
         double aoq=flocalimp->GetBeamHit()->aoq;
+        if (zet>0&&aoq>0){
+            if (tsstart==0) tsstart=flocalimp->GetTimestamp();
+            tsstop=flocalimp->GetTimestamp();
+        }
         for (Int_t j=0;j<nri;j++){
             if (!enablepid2[j]) continue;
-            if (cutg[j]->IsInside(aoq,zet)){
+            if (cutg[j]->IsInside(aoq,zet)){                
                 ftreeimplantRI[j]->Fill();
+                if (flocalimp->GetHitPositionZ()<5) nimplant[j]++;
             }
         }
         ftreeimplantAll->Fill();
     }
-    //! making separated implant tree
+
+    std::ofstream ofs("out.txt",ios::app);
+    ofs<<finputMerged<<"\t";
+    for (Int_t i=0;i<nri;i++){
+        if (!enablepid2[i]) continue;
+        ofs<<nimplant[i]<<"\t";
+    }
+    ofs<<tsstop-tsstart<<endl;
 
 }

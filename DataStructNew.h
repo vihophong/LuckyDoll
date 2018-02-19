@@ -68,6 +68,7 @@ public:
         fmaxy = -11;
         ftdiffmin= -99999;
         ftdiffmax= -99999;
+        fdtionall= -9999.;
     }
     //! copy cluster
     virtual void Copy(IonBeta& obj){
@@ -240,6 +241,9 @@ public:
     //! Set Max Energy of last layer
     void SetMaxELastDSSD(double maxelastdssd){fmaxelastdssd = maxelastdssd;}
 
+    //! Get the latest time since last ion-punching + trhough event and area
+    void SetDtIonAll(double dtionall){fdtionall=dtionall;}
+
     //! Get ID of evnt
     unsigned char GetID(){return fid;}
     unsigned int GetEventNumber(){return fevt;}
@@ -331,9 +335,11 @@ public:
     //! Get ex+ey rank
     unsigned short GetSumEXYRank(){return fsumexyrank;}
 
-    //! Set Max Energy of last layer
+    //! Get Max Energy of last layer
     double GetMaxELastDSSD(){return fmaxelastdssd;}
 
+    //! Get the latest time since last ion-punching + trhough event and area
+    double GetDtIonAll(){return fdtionall;}
 
     //! Printing information
     void Print(Option_t *option = "") const {
@@ -427,6 +433,9 @@ protected:
     double ftw;
     //! time distance with prev ion in us
     double fdtion;
+
+    //! time distance with prev ion and puchching trhough events within a given area
+    double fdtionall;
 
     //! z correction (if applicable)
     unsigned short fdz;

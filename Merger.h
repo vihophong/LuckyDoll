@@ -396,7 +396,13 @@ protected:
 
      TH1F* fh1dtpulser;
 
-     //! temp
+     //! stuff for rejecting noise events associated with implantation
+     Double_t fimpnoisefilter_dxy;
+     Short_t fimpnoisefilter_dz;
+     Long64_t fimpnoisefilter_dt; //unit ns
+
+
+     //! temp hist
      TH1F* fh1;
      TH1F* fh2;
      TH2F* fh2d1;

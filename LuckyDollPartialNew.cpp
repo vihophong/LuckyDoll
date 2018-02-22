@@ -381,7 +381,7 @@ int main(int argc, char* argv[]){
                   yprev=fymap_it->first;
               }
 
-              Int_t zmult=0; for (int i=0;i<NumDSSD;i++) if (evts->GetAIDABeta()->GetMultY(i)>0) zmult++;
+              Int_t zmult=0; for (int i=0;i<NumDSSD;i++) if (evts->GetAIDAIon()->GetMultY(i)>0) zmult++;
               if (Mode==0){
                   //!fill tree according to the time stamp
                   for(tsvector_it = tsvector.begin(); tsvector_it != tsvector.end(); tsvector_it++){

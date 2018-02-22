@@ -375,7 +375,7 @@ bool AIDA::BetaGetPosNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeycut
             x_prev = x;
         }//x
         fnxclustersz[z]=nClusterX[z];
-        fnyclustersz[z]=nClusterY[z];
+        if (nClusterX[z]>0) fnyclustersz[z]=nClusterY[z]/nClusterX[z];//nY cluster for each X clusters
     }//z
 
     Int_t maxZ=-1;
@@ -793,7 +793,7 @@ bool AIDA::BetaGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumey
             x_prev = x;
         }//x
         fnxclustersz[z]=nClusterX[z];
-        fnyclustersz[z]=nClusterY[z];
+        if (nClusterX[z]>0) fnyclustersz[z]=nClusterY[z]/nClusterX[z];//nY cluster for each X clusters
     }//z
 
     Int_t maxZ=-1;
@@ -1288,8 +1288,7 @@ bool AIDA::BetaGetPosAllNewMax(Double_t corr_cut,Double_t sumexcut[],Double_t su
                                 //! Take the ealiest time stamp
                                 if (hitAtX->GetTimestamp() > hitAtY->GetTimestamp()){
                                     cluster->SetTimestamp(hitAtY->GetTimestamp());
-                                    cluste        fnxclustersz[z]=nClusterX[z];
-        fnyclustersz[z]=nClusterY[z];r->SetFastTimestamp(hitAtY->GetFastTimestamp());
+                                    cluster->SetFastTimestamp(hitAtY->GetFastTimestamp());
                                 }else{
                                     cluster->SetTimestamp(hitAtX->GetTimestamp());
                                     cluster->SetFastTimestamp(hitAtX->GetFastTimestamp());
@@ -2092,8 +2091,8 @@ bool AIDA::IonGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeyc
                 E_X = 0;
                 E_X_ch = 0;
                 nStripInClusterX = 0;
-            }        fnxclustersz[z]=nClusterX[z];
-            fnyclustersz[z]=nClusterY[z];
+            }
+
             //!still in a same cluster
             if ( xen>0){
                 //if (thereis) cout<<"z"<<z<<"x"<<x<<"en"<<xen<<"xprev"<<x_prev<<endl;
@@ -2252,7 +2251,7 @@ bool AIDA::IonGetPosAllNew(Double_t corr_cut,Double_t sumexcut[],Double_t sumeyc
             x_prev = x;
         }//x
         fnxclustersz[z]=nClusterX[z];
-        fnyclustersz[z]=nClusterY[z];
+        if (nClusterX[z]>0) fnyclustersz[z]=nClusterY[z]/nClusterX[z];//nY cluster for each X clusters
     }//z
 
     Int_t maxZ=-1;
@@ -2682,7 +2681,7 @@ bool AIDA::IonGetPosAllNewMax(Double_t corr_cut,Double_t sumexcut[],Double_t sum
             x_prev = x;
         }//x
         fnxclustersz[z]=nClusterX[z];
-        fnyclustersz[z]=nClusterY[z];
+        if (nClusterX[z]>0) fnyclustersz[z]=nClusterY[z]/nClusterX[z];//nY cluster for each X clusters
     }//z
 
     Int_t maxZ=-1;
@@ -3220,7 +3219,7 @@ bool AIDA::BetaGetPosAllNew2(Double_t corr_cut,Double_t sumexcut[],Double_t sume
         }//x
 
         fnxclustersz[z]=nClusterX[z];
-        fnyclustersz[z]=nClusterY[z];
+        if (nClusterX[z]>0) fnyclustersz[z]=nClusterY[z]/nClusterX[z];//nY cluster for each X clusters
     }//z
 
     Int_t maxZ=-1;
@@ -3695,7 +3694,7 @@ bool AIDA::IonGetPosAllNew2(Double_t corr_cut,Double_t sumexcut[],Double_t sumey
         }//x
 
         fnxclustersz[z]=nClusterX[z];
-        fnyclustersz[z]=nClusterY[z];
+        if (nClusterX[z]>0) fnyclustersz[z]=nClusterY[z]/nClusterX[z];//nY cluster for each X clusters
     }//z
 
     Int_t maxZ=-1;

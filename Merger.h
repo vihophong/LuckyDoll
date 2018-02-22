@@ -377,8 +377,6 @@ protected:
      TH1F* fhpulserall[141];
 
 
-     Long64_t ftsbeginveto;
-     Long64_t ftsendveto;
      TH2F* fh2deadtime;
      TH1F* fh1deadtime;
 

@@ -21,14 +21,14 @@ Merger::Merger():fbigrips(),decay()
     fNeuGammaTWup = 100000;
     fNeuGammaTWlow = 800000;
 
-    fNeuAncTWup = 200000; //600 us
+    fNeuAncTWup = 200000; //200 us
     fNeuAncTWlow = 0;
 
     //fNeuAncTWup = 1000000;
     //fNeuAncTWlow = 1000000;
 
-    fNeuBetaTWup = 200000; //600 us
-    fNeuBetaTWlow = 200000; //600 us
+    fNeuBetaTWup = 200000; //200 us
+    fNeuBetaTWlow = 200000; //200 us
     fNeuBetaoffset = -22000;
     //fNeuBetaoffset = 0;//for simulation
     fNeuBetaTWup= fNeuBetaTWup-fNeuBetaoffset;
@@ -72,8 +72,6 @@ Merger::Merger():fbigrips(),decay()
     neutronecut[0]=160;
     neutronecut[1]=860;
 
-    //deltaxcut=4.;
-    //deltaycut=3.;
     deltaxcut=5.;
     deltaycut=5.;
 
@@ -332,8 +330,7 @@ void Merger::Init()
 
 
     //! stuffs for deadtime estimation using pulser
-    ftsbeginveto=0;
-    ftsendveto=0;
+
     ftsbeginpulser=0;
     ftsendpulser=0;
     for (Int_t i=0;i<141;i++){
@@ -546,6 +543,9 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
             fF11RMap.insert(make_pair(fanc->GetTimestamp(),jentry));            
         }
         if (fanc->GetMyPrecious()==1&&fanc->GetID()==2) fF11LMap.insert(make_pair(fanc->GetTimestamp(),jentry));
+
+        if (fanc->GetMyPrecious()==1) fF11LRMap.insert(make_pair(fanc->GetTimestamp(),jentry));
+
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==1) fVetoTopMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==2) fVetoBotMap.insert(make_pair(fanc->GetTimestamp(),jentry));
 
@@ -597,14 +597,12 @@ void Merger::DoMergeSingle()
     ff11vetodeadtime=0;
     ff11vetototaltime = 0;
     unsigned long long lastts = 0;
-    for (fF11MapR_it=fF11RMap.begin();fF11MapR_it!=fF11RMap.end();fF11MapR_it++){
-        unsigned long long ts=fF11MapR_it->first;
-        unsigned long long entry=fF11MapR_it->second;
+
+    for (fF11MapLR_it=fF11LRMap.begin();fF11MapLR_it!=fF11LRMap.end();fF11MapLR_it++){
+        unsigned long long ts=fF11MapLR_it->first;
+        unsigned long long entry=fF11MapLR_it->second;
         if (ff11vetototaltime==0) ff11vetototaltime=(Long64_t)ts;
         lastts=ts;
-        //cout<<"ts="<<ts<<"\te="<<fanc->GetEnergy()<<endl;
-        //fh1->Fill(fanc->GetEnergy());
-
         //! estimate dead time using paralyzable model(note: fNeuAncTWlow must be 0!)
         if (deadtime_reset<ts){
             if(deadtime_start>0) {
@@ -618,39 +616,13 @@ void Merger::DoMergeSingle()
         }
 
         ftrAnc->GetEntry(entry);
-        Double_t fenf11r=fanc->GetEnergy();
-        Double_t fenf11l=-1;
-        //! Correlate f11l to F11R
-        Bool_t isLRcoinc=false;
-        Long64_t ts1 = (Long64_t)ts - (Long64_t)fF11LRTWlow;
-        Long64_t ts2 = (Long64_t)ts + (Long64_t)fF11LRTWup;
+
+        //! Correlate f11 with neutron
+        Long64_t ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
+        Long64_t ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
         Long64_t corrts = 0;
         Int_t ncorr=0;
         Long64_t check_time = 0;
-        fF11MapL_it = fF11LMap.lower_bound(ts1);
-        while(fF11MapL_it!=fF11LMap.end()&&fF11MapL_it->first<ts2){
-            corrts = (Long64_t) fF11MapL_it->first;
-            unsigned long long correntry=fF11MapL_it->second;
-            check_time=corrts;
-            ftrAnc->GetEntry(correntry);
-            fenf11l=fanc->GetEnergy();
-            isLRcoinc=true;
-            ncorr++;
-            break;
-        }
-        fh2d1->Fill(fenf11r,fenf11l);
-        ftrAnc->GetEntry(entry);
-
-        if (!isLRcoinc) continue;
-
-        fF11LRMap.insert(make_pair(ts,entry));
-
-        //! Correlate f11 with neutron
-        ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWup;
-        corrts = 0;
-        ncorr=0;
-        check_time = 0;
         fhe3Map_it = fhe3Map.lower_bound(ts1);
         while(fhe3Map_it!=fhe3Map.end()&&fhe3Map_it->first<ts2){
             corrts = (Long64_t) fhe3Map_it->first;
@@ -663,8 +635,7 @@ void Merger::DoMergeSingle()
                 if (currtdiff<999998.||tdiff<currtdiff) neuhit->SetF11Time(tdiff);
                 //if (ncorr==0) fh2->Fill(fanc->GetEnergy());
                 fh2->Fill(tdiff);
-                if (ncorr==0) fh2d2->Fill(tdiff,fanc->GetEnergy());
-                ncorr++;
+
             //}
             fhe3Map_it++;
         }
@@ -687,17 +658,14 @@ void Merger::DoMergeSingle()
             //}
             fdtpulserMap_it++;
         }
-
         //! add all veto map
         fvetoMap.insert(make_pair(ts,entry));
-
-
-    }    
+    }
     ff11vetototaltime=(Long64_t)lastts+fNeuAncTWup-ff11vetototaltime;
     ff11vetodeadtime+=fNeuAncTWup;
 
     cout<<"F11R veto: deadtime="<<ff11vetodeadtime<<"\t---total time---\t"<<ff11vetototaltime<<endl;
-    cout<<"Found "<<fF11LRMap.size()<<"L-R coincidence of F11 over "<<fF11RMap.size()<<" events"<<endl;
+    cout<<"Found "<<fF11LRMap.size()<<"L-R or of F11 over "<<fF11RMap.size()<<" events"<<endl;
 
     deadtime_start=-9999;
     deadtime_reset=-9999;
@@ -711,12 +679,9 @@ void Merger::DoMergeSingle()
         if (fdownstreamvetototaltime==0) fdownstreamvetototaltime=(Long64_t)ts;
         lastts=ts;
         ftrAnc->GetEntry(entry);
-        //if (fanc->GetEnergy()<fmineneuvetodown) continue;
-
         if (deadtime_reset<ts){
             if(deadtime_start>0) {
                 fdownstreamvetodeadtime+=deadtime_reset-deadtime_start;//prev window
-                //cout<<"deadtime=\t"<<deadtime_reset-deadtime_start<<endl;
             }
             deadtime_start=ts;
             deadtime_reset=ts+fNeuAncTWup;
@@ -739,9 +704,10 @@ void Merger::DoMergeSingle()
                 double tdiff=(Double_t)(corrts-(Long64_t)ts)/1000.;//in us
                 double currtdiff=neuhit->GetDownstreamVetoTime();
                 if (currtdiff<999998.||tdiff<currtdiff) neuhit->SetDownstreamVetoTime(tdiff);
-                //if (ncorr==0) fh2d2->Fill(tdiff,fanc->GetEnergy());
+                if (ncorr==0&&neuhit->GetEnergy()>neutronecut[0]&&neuhit->GetEnergy()<neutronecut[1]) fh2d2->Fill(tdiff,fanc->GetEnergy());
+                if (neuhit->GetEnergy()>neutronecut[0]&&neuhit->GetEnergy()<neutronecut[1]) ncorr++;
                 ncorr++;
-                //if (neuhit->GetEnergy()>1500) fh2deadtime->Fill(tdiff,fanc->GetEnergy());
+
             //}
             fhe3Map_it++;
         }
@@ -777,12 +743,9 @@ void Merger::DoMergeSingle()
     fvetodeadtime=0;
     fvetototaltime=0;
     lastts=0;
-    //! Neutron correlation with downstream veto
+    //! Neutron correlation with all veto
     for (fvetoMap_it=fvetoMap.begin();fvetoMap_it!=fvetoMap.end();fvetoMap_it++){        
         unsigned long long ts=fvetoMap_it->first;
-        //! veto start stop time (for deadtime calculation
-        if (ftsbeginveto==0) ftsbeginveto=ts;
-        ftsendveto=ts;
 
         //unsigned int entry=fvetoMap_it->second;
         if (fvetototaltime==0) fvetototaltime=(Long64_t)ts;
@@ -844,78 +807,6 @@ void Merger::DoMergeSingle()
     fvetodeadtime+=fNeuAncTWup;
     cout<<"Final veto: deadtime="<<fvetodeadtime<<"\t---total time---\t"<<fvetototaltime<<endl;
 
-    /*
-    //! secondary veto scheme (just for comparison
-    Int_t nvetoneu2=0;
-    for (fhe3Map_it=fhe3Map.begin();fhe3Map_it!=fhe3Map.end();fhe3Map_it++){
-        BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
-
-        //! set default veto
-        neuhit->SetF11Time(-200);
-        neuhit->SetDownstreamVetoTime(-200);
-        neuhit->SetFinalVetoTime(-200);
-
-        unsigned long long ts=fhe3Map_it->first;
-        Long64_t ts1 = (Long64_t)ts - (Long64_t)fNeuAncTWup;
-        Long64_t ts2 = (Long64_t)ts + (Long64_t)fNeuAncTWlow;
-        Long64_t corrts = 0;
-        Long64_t check_time = 0;
-        Int_t ncorr=0;
-
-        //! f11 veto map
-        fF11MapR_it = fF11RMap.lower_bound(ts1);
-        while(fF11MapR_it!=fF11RMap.end()&&fF11MapR_it->first<ts2){
-            corrts = (Long64_t) fF11MapR_it->first;
-            if (corrts!=check_time){
-                check_time=corrts;
-                double tdiff=(Double_t)((Long64_t)ts-corrts)/1000.;//in us
-                neuhit->SetF11Time(tdiff);
-                ncorr++;
-                //break;
-            }
-            fF11MapR_it++;
-        }
-
-        //! downstream veto map
-        corrts = 0;
-        check_time = 0;
-        ncorr=0;
-        //! all veto map
-        fVetoDownMap_it = fVetoDownMap.lower_bound(ts1);
-        while(fVetoDownMap_it!=fVetoDownMap.end()&&fVetoDownMap_it->first<ts2){
-            corrts = (Long64_t) fvetoMap_it->first;
-            if (corrts!=check_time){
-                check_time=corrts;
-                double tdiff=(Double_t)((Long64_t)ts-corrts)/1000.;//in us
-                neuhit->SetDownstreamVetoTime(tdiff);
-                ncorr++;
-                //break;
-            }
-            fVetoDownMap_it++;
-        }
-
-
-        //! all veto map
-        corrts = 0;
-        check_time = 0;
-        ncorr=0;
-        fvetoMap_it = fvetoMap.lower_bound(ts1);
-        while(fvetoMap_it!=fvetoMap.end()&&fvetoMap_it->first<ts2){
-            corrts = (Long64_t) fvetoMap_it->first;
-            if (corrts!=check_time){
-                check_time=corrts;
-                double tdiff=(Double_t)((Long64_t)ts-corrts)/1000.;//in us
-                if (ncorr==0&&neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]) nvetoneu2++;
-                neuhit->SetFinalVetoTime(tdiff);
-                ncorr++;
-                //break;
-            }
-            fvetoMap_it++;
-        }
-    }
-    cout<<"******Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu2<<endl;    
-    */
-
 
     //! Counter for neutron veto and fill pulser histogram
     Int_t nvetoneu=0;
@@ -924,14 +815,14 @@ void Merger::DoMergeSingle()
         BELENHit* neuhit = (BELENHit*) fhe3Map_it->second;
         Int_t id=neuhit->GetID()-1;
         if (neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulserall[id]->Fill(neuhit->GetEnergy());
-        if (neuhit->GetF11Time()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
+        //if (neuhit->GetF11Time()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
+        if (neuhit->GetFinalVetoTime()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
         if (neuhit->GetEnergy()<neutronecut[1]&&neuhit->GetEnergy()>neutronecut[0]){
+            //if (neuhit->GetF11Time()>=0) nvetoneu++;
             if (neuhit->GetFinalVetoTime()>=0) nvetoneu++;
             ntotalneu++;
         }
     }
-    //! Counter for neutron veto and fill pulser histogram (on dead time pulser)
-
 
     for (fdtpulserMap_it=fdtpulserMap.begin();fdtpulserMap_it!=fdtpulserMap.end();fdtpulserMap_it++){
         BELENHit* neuhit = (BELENHit*) fdtpulserMap_it->second;   
@@ -1137,11 +1028,6 @@ void Merger::DoMergeSingle()
         }
     }
 
-
-    //! Build Decay set ion correlate with
-
-
-
     //! Build Decay
     //!**************
     ktotal=faidaBetaMap.size();
@@ -1334,15 +1220,6 @@ void Merger::DoMergeSingle()
 
                 imp->CopyWithBigRIPSOnly(*imparr);
 
-                //! only for ahn san experiment
-                //imparr->GetBeamHit()->f11x=-9999;
-                //imparr->GetBeamHit()->f11y=-9999;
-                //for (unsigned short i=0;i<imp->GetNAncHit();i++){
-                //    BELENHit* hit=imp->GetAncHit(i);
-                //    if (hit->GetMyPrecious()==3&&hit->GetID()==1) imparr->GetBeamHit()->f11x=hit->GetEnergy();
-                //    if (hit->GetMyPrecious()==3&&hit->GetID()==2) imparr->GetBeamHit()->f11y=hit->GetEnergy();
-                //}
-
                 nionbetacorr++;
             }
             faidaImplantMapFull_it++;
@@ -1358,7 +1235,7 @@ void Merger::DoMergeSingle()
     }
 
 
-    /*
+
     TSpectrum *s = new TSpectrum();
     ftotaltimepulser=(Double_t)(ftsendpulser-ftsbeginpulser)/1e9;
 
@@ -1372,26 +1249,28 @@ void Merger::DoMergeSingle()
     for (Int_t i=0;i<141;i++){
         s->Search(fhpulser[i]);
         Double_t *xpeaks = s->GetPositionX();
-        Double_t xp = xpeaks[0];
-        fhpulser[i]->Fit("gaus","RQ","",xp-100,xp+100);
-        Double_t sigma=fhpulser[i]->GetFunction("gaus")->GetParameter(2);
-        Double_t totalcounts=fhpulser[i]->Integral(fhpulser[i]->GetXaxis()->FindBin(xp-sigma*10),fhpulser[i]->GetXaxis()->FindBin(xp+sigma*10));
-        Double_t totalcountsall=fhpulserall[i]->Integral(fhpulserall[i]->GetXaxis()->FindBin(xp-sigma*10),fhpulserall[i]->GetXaxis()->FindBin(xp+sigma*10));
-        //cout<<i<<"-"<<totalcounts<<"-"<<totalcountsall<<endl;
-        fh2deadtime->Fill(i,100-totalcounts/expectedcounts*100);
-        fh1deadtime->Fill(100-totalcounts/expectedcounts*100);
+        Double_t xp=0;
+        if (s->GetNPeaks()>0) {
+            xp = xpeaks[0];
+            fhpulser[i]->Fit("gaus","RQ","",xp-100,xp+100);
+            Double_t sigma=fhpulser[i]->GetFunction("gaus")->GetParameter(2);
+            Double_t totalcounts=fhpulser[i]->Integral(fhpulser[i]->GetXaxis()->FindBin(xp-sigma*10),fhpulser[i]->GetXaxis()->FindBin(xp+sigma*10));
+            Double_t totalcountsall=fhpulserall[i]->Integral(fhpulserall[i]->GetXaxis()->FindBin(xp-sigma*10),fhpulserall[i]->GetXaxis()->FindBin(xp+sigma*10));
+            //cout<<i<<"-"<<totalcounts<<"-"<<totalcountsall<<endl;
+            fh2deadtime->Fill(i,100-totalcounts/expectedcounts*100);
+            fh1deadtime->Fill(100-totalcounts/expectedcounts*100);
 
-        fh2deadtime2->Fill(i,100-totalcountsall/expectedcounts*100);
-        fh1deadtime2->Fill(100-totalcountsall/expectedcounts*100);
+            fh2deadtime2->Fill(i,100-totalcountsall/expectedcounts*100);
+            fh1deadtime2->Fill(100-totalcountsall/expectedcounts*100);
 
-        fh2deadtime3->Fill(i,100-totalcounts/ncountsDtPuser*100);
-        fh1deadtime3->Fill(100-totalcounts/ncountsDtPuser*100);
+            fh2deadtime3->Fill(i,100-totalcounts/ncountsDtPuser*100);
+            fh1deadtime3->Fill(100-totalcounts/ncountsDtPuser*100);
 
-        fh2deadtime4->Fill(i,100-totalcountsall/ncountsDtPuser*100);
-        fh1deadtime4->Fill(100-totalcountsall/ncountsDtPuser*100);
+            fh2deadtime4->Fill(i,100-totalcountsall/ncountsDtPuser*100);
+            fh1deadtime4->Fill(100-totalcountsall/ncountsDtPuser*100);
+        }
     }
-    */
-    //delete s;
+    delete s;
 
 }
 
@@ -1508,8 +1387,8 @@ void Merger::DoMergeClosePixel()
                         Int_t nneufreal=0;
                         Int_t nneubreal=0;
                         for (Int_t j=0;j<flocalbetaS->GetNeutronForwardMultipliticy();j++){
-                            //if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetFinalVetoTime()<0){
-                            if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetF11Time()<0){
+                            if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetFinalVetoTime()<0){
+                            //if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetF11Time()<0){
                                 decay.neu_ch[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetID();
                                 decay.neu_E[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetEnergy();
                                 decay.neu_T[nneufreal]=((Double_t)((Long64_t)flocalbetaS->GetNeutronForwardHit(j)->GetTimestamp()-(Long64_t)flocalbetaS->GetTimestamp()))/1e3;
@@ -1520,8 +1399,8 @@ void Merger::DoMergeClosePixel()
                         }
 
                         for (Int_t j=0;j<flocalbetaS->GetNeutronBackwardMultipliticy();j++){
-                            //if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetFinalVetoTime()<0){
-                            if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetF11Time()<0){
+                            if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetFinalVetoTime()<0){
+                            //if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetF11Time()<0){
                                 nneubreal++;
                             }
                         }
@@ -1600,8 +1479,8 @@ void Merger::DoMergeClosePixel()
             Int_t nneubreal=0;
 
             for (Int_t j=0;j<flocalbetaS->GetNeutronForwardMultipliticy();j++){
-                //if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetFinalVetoTime()<0){
-                if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetF11Time()<0){
+                if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetFinalVetoTime()<0){
+                //if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetF11Time()<0){
                     decay.neu_ch[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetID();
                     decay.neu_E[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetEnergy();
                     decay.neu_T[nneufreal]=((Double_t)((Long64_t)flocalbetaS->GetNeutronForwardHit(j)->GetTimestamp()-(Long64_t)flocalbetaS->GetTimestamp()))/1e3;
@@ -1612,8 +1491,8 @@ void Merger::DoMergeClosePixel()
             }
 
             for (Int_t j=0;j<flocalbetaS->GetNeutronBackwardMultipliticy();j++){
-                //if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetFinalVetoTime()<0){
-                if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetF11Time()<0){
+                if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetFinalVetoTime()<0){
+                //if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetF11Time()<0){
                     nneubreal++;
                 }
             }
@@ -1683,10 +1562,9 @@ void Merger::DoSeparatePIDFinalTree()
             if (flocalbetaS->GetAncHit(j)->GetMyPrecious()==1||flocalbetaS->GetAncHit(j)->GetID()==1) nf11rveto++;
         }
 
-
         //! beta cut        
-        if (flocalbetaS->GetDtIon()<=dtioncut||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
-        //if (flocalbetaS->GetDtIonAll()>=0||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
+        //if (flocalbetaS->GetDtIon()<=dtioncut||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
+        if (flocalbetaS->GetDtIonAll()>=0||flocalbetaS->GetSumEXYRank()>sumexyrankcut||ndownstreamveto>0) continue;
         if (!abs((int)((long long)flocalbetaS->GetXTimestamp()-(long long)flocalbetaS->GetYTimestamp())<xytdiffcut)) continue;// time cut
         //! select on multiplicity 1 events
         //if (!(flocalbetaS->GetXClusterMultiplicity()==1&&flocalbetaS->GetYClusterMultiplicity()==1)) continue;
@@ -1710,8 +1588,8 @@ void Merger::DoSeparatePIDFinalTree()
 
 
         for (Int_t j=0;j<flocalbetaS->GetNeutronForwardMultipliticy();j++){
-            //if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetFinalVetoTime()<0){
-            if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetF11Time()<0){
+            if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetFinalVetoTime()<0){
+            //if (flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronForwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronForwardHit(j)->GetF11Time()<0){
                 decay.neu_ch[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetID();
                 decay.neu_E[nneufreal]=flocalbetaS->GetNeutronForwardHit(j)->GetEnergy();
                 decay.neu_T[nneufreal]=((Double_t)((Long64_t)flocalbetaS->GetNeutronForwardHit(j)->GetTimestamp()-(Long64_t)flocalbetaS->GetTimestamp()))/1e3;
@@ -1722,8 +1600,8 @@ void Merger::DoSeparatePIDFinalTree()
         }
 
         for (Int_t j=0;j<flocalbetaS->GetNeutronBackwardMultipliticy();j++){
-            //if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetFinalVetoTime()<0){
-            if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetF11Time()<0){
+            if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetFinalVetoTime()<0){
+            //if (flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()>neutronecut[0]&&flocalbetaS->GetNeutronBackwardHit(j)->GetEnergy()<neutronecut[1]&&flocalbetaS->GetNeutronBackwardHit(j)->GetF11Time()<0){
                 nneubreal++;
             }
         }
@@ -1752,7 +1630,6 @@ void Merger::DoSeparatePIDFinalTree()
         Int_t nimpevt=flocalimparray->GetEntriesFast();
         for (Int_t j=0;j<nimpevt;j++){
             IonBetaMult* imp=(IonBetaMult*)flocalimparray->At(j);
-
 
             Double_t deltax=flocalbetaS->GetHitPositionX()-imp->GetHitPositionX();
             Double_t deltay=flocalbetaS->GetHitPositionX()-imp->GetHitPositionX();

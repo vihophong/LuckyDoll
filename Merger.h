@@ -31,8 +31,8 @@ const Int_t kMaxNeutron = 50;
 typedef struct {
     ULong64_t evt;
     ULong64_t ts; 	 //timestamp in ns
-    Double_t t,x,y,ex,ey,ion_x,ion_y,ion_ex,ion_ey,zet,aoq,deltaxy;//ts diff in ns
-    Short_t z,ion_z,multx,multy,multz,ndecay,nbeta;
+    Double_t t,x,y,ex,ey,ion_x,ion_y,ion_ex,ion_ey,zet,aoq,beta,deltaxy;//ts diff in ns
+    Short_t z,ion_z,multx,multy,multz,ndecay,isbump;
 
     Int_t gc_hit;
     Double_t gc_E[kMaxGamma];
@@ -46,7 +46,23 @@ typedef struct {
     Double_t neu_x[kMaxNeutron];
     Double_t neu_y[kMaxNeutron];
     Int_t neub_hit;
+    Double_t neub_E[kMaxNeutron];
+    Double_t neub_T[kMaxNeutron];//moderation time in us
+    Int_t neub_ch[kMaxNeutron];
+    Double_t neub_x[kMaxNeutron];
+    Double_t neub_y[kMaxNeutron];
+
 } datatype;
+
+
+typedef struct {
+    double T; 	 // Calibrated time
+    double Tcorr; //correlated time
+    double x,y,z;// number of pixel for AIDA, or number of tube for BELEN
+    int type;
+    int type2;
+    int evt;
+} datatypesimulation;
 
 typedef struct{
     int correntrybrips;
@@ -87,17 +103,16 @@ public:
     void ReadPID(char* pidfile,Int_t ncutpts=20);
     void SetMergedFile(char* mergedfile){finputMerged = mergedfile;}
     void InitPIDSep();
-    void BookPIDSepTree();
     void BookPIDSepSimpleTree();
     Int_t GetNri(){return nri;}
-    TTree* GetTreeRI(Int_t i){if (i<0) return ftree; else return ftreeRI[i];}
+    TTree* GetTreeRI(Int_t i){if (i<0) return ftreeallRI; else return ftreeRI[i];}
     TTree* GetTreeImpRI(Int_t i){if (i<0) return ftreeimplantAll;return ftreeimplantRI[i];}
 
     TCutG* GetCUTRI(Int_t i){return cutg[i];}
-    void DoSeparatePID();
 
+    void SetOverlapAreaCorr(){fisoverlapareacorr=true;}
 
-    void DoMergeClosePixel();
+    void SeparatePIDFinal();
     void DoSeparatePIDFinalTree();
 
     TH1F* GetHist1(){return fh1;}
@@ -139,6 +154,14 @@ public:
     Double_t GetTotalTimePulser(){return ftotaltimepulser;}
 
     void ResetSimpleData();
+
+    void BookSimulationTree();
+    TTree* GetTreeSimIon(){return ionsimtree;}
+    TTree* GetTreeSimBeta(){return betasimtree;}
+    TTree* GetTreeSimNeutron(){return neutronsimtree;}
+
+    void DisableImplantNoiseFilterTime(){fflagimpnoiserej = false;}
+
 
 protected:
     char* finputAida;
@@ -264,7 +287,8 @@ protected:
      //! simple data
      datatype decay;
 
-     //! timewindows
+     //! Merger parameters
+     bool fisoverlapareacorr;
      unsigned short fmaxmult;
      double fmaxnpixels;
      long long fIonBetaTWlow;
@@ -343,6 +367,7 @@ protected:
      TTree* ftrMerged;
      Long64_t fnentriesMerged;
 
+     TTree* ftreeallRI;
      TTree* ftreeRI[MaxNRI];
      TTree* ftreeimplantRI[MaxNRI];
      TTree* ftreeimplantAll;
@@ -398,6 +423,7 @@ protected:
      Double_t fimpnoisefilter_dxy;
      Short_t fimpnoisefilter_dz;
      Long64_t fimpnoisefilter_dt; //unit ns
+     Bool_t fflagimpnoiserej; // unit micro-second
 
 
      //! temp hist
@@ -405,6 +431,15 @@ protected:
      TH1F* fh2;
      TH2F* fh2d1;
      TH2F* fh2d2;
+
+     //! temp tree
+     datatypesimulation ionsim;
+     datatypesimulation betasim;
+     datatypesimulation neutronsim;
+     TTree* ionsimtree;
+     TTree* betasimtree;
+     TTree* neutronsimtree;
+
 };
 
 #endif // MERGER_H

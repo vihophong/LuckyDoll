@@ -330,14 +330,16 @@ int main(int argc, char* argv[]){
                       aida->SetMinimumDistanceY(evts->GetAIDABeta()->GetMinDistanceY((unsigned short)evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ()));
                       aida->SetSumEXYRank(evts->GetAIDABeta()->GetCluster(i)->GetSumEXYRank());
                       aida->SetMaxELastDSSD(maxeveto);
-                      //if (abs((long long)aida->GetXMinTimestamp()-(long long)aida->GetYMinTimestamp())<2500)
                       //if (abs(aida->GetXEnergy()-aida->GetYEnergy())<300)
+
+                      if (aida->GetYEnergy()>100)
+                      if (abs((long long)aida->GetXMinTimestamp()-(long long)aida->GetYMinTimestamp())<5000)
+                      if (aida->GetSumEXYRank()==0)
                       if (aida->GetMultiplicity()<400) //reject pulser events
                       if (FillFlag) treeaida->Fill();
                   }
                   if (tsvector.size()>0) nbeta++;
               }
-
 
               if (Mode==1) evts->GetAIDABeta()->ClearAllHits();
               if (Mode==1&&evts->GetAIDABeta()->GetNClusters()>0) evts->GetBetaTree()->Fill();

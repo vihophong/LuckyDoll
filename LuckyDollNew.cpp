@@ -194,6 +194,7 @@ int main(int argc, char* argv[]){
       BuildAIDAEvents* evts=new BuildAIDAEvents;
       evts->SetVerbose(Verbose);
       if (GzFlag!=0) evts->SetGzStream();
+
       evts->SetMappingFile(MappingFile);
       evts->SetThresholdFile(ThresholdFile);
       evts->SetCalibFile(CalibrationFile);
@@ -239,14 +240,18 @@ int main(int argc, char* argv[]){
                (total-ctr)*(time_end - local_time_start)/(Float_t)ctr << "s to go \r "<<flush;
             time_last = time_end;
           }                   
-          if (evts->IsBETA()&&evts->GetAIDABeta()->GetMult()<64) {//real beta
+          if (evts->IsBETA()) {//real beta
               //!sort the timestamp
               std::multimap<unsigned long long, int> tsvector;
               std::multimap<unsigned long long, int>::iterator tsvector_it;
 
+
+              //! remove correlation scaler info for now (2018/03/28)
+              /*
               for (int i=0;i<evts->GetAIDACORR()->GetMult();i++){
                   tsvector.insert(std::make_pair(evts->GetAIDACORR()->GetHit(i)->GetTimestamp()*ClockResolution,-1));
               }
+              */
               for (int i = 0;i<evts->GetAIDABeta()->GetNClusters();i++){
                   tsvector.insert(std::make_pair(evts->GetAIDABeta()->GetCluster(i)->GetTimestamp() * ClockResolution,i));
               }
@@ -262,9 +267,17 @@ int main(int argc, char* argv[]){
                       aida.EY = ey;
                       //!If you need time ordered then we need to modify this
                       aida.T = tsvector_it->first;
-                      aida.Tfast = evts->GetAIDABeta()->GetCluster(i)->GetFastTimestamp() * ClockResolution;
-                      aida.x = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionX();
-                      aida.y = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionY();
+
+                      //! adapt data format for new ion-beta position correlation method
+                      uint8_t dx = evts->GetAIDABeta()->GetCluster(i)->GetMaxHitPositionX()-evts->GetAIDABeta()->GetCluster(i)->GetMinHitPositionX();
+                      uint8_t dy = evts->GetAIDABeta()->GetCluster(i)->GetMaxHitPositionY()-evts->GetAIDABeta()->GetCluster(i)->GetMinHitPositionY();
+
+                      aida.Tfast = dx + 0x10 * dy;
+                      //aida.Tfast = (dx&0xF)|(dy<<4&0xF0);
+
+
+                      aida.x = (double)(evts->GetAIDABeta()->GetCluster(i)->GetMaxHitPositionX()+evts->GetAIDABeta()->GetCluster(i)->GetMinHitPositionX())/2.;
+                      aida.y = (double)(evts->GetAIDABeta()->GetCluster(i)->GetMaxHitPositionY()+evts->GetAIDABeta()->GetCluster(i)->GetMinHitPositionY())/2.;
                       aida.z = evts->GetAIDABeta()->GetCluster(i)->GetHitPositionZ();
 
                       //aida.nx=(int)evts->GetAIDABeta()->GetCluster(i)->GetXMultiplicity();
@@ -279,6 +292,11 @@ int main(int argc, char* argv[]){
                       aida.ID=IDcorr;
                       aida.T=tsvector_it->first;
                   }
+
+                  if (evts->GetAIDABeta()->GetCluster(i)->GetYEnergy()>100)
+                  if (abs((long long)evts->GetAIDABeta()->GetCluster(i)->GetXTimestamp()*ClockResolution-(long long)evts->GetAIDABeta()->GetCluster(i)->GetYTimestamp()*ClockResolution)<5000)
+                  if (evts->GetAIDABeta()->GetCluster(i)->GetSumEXYRank()==0)
+                  if (evts->GetAIDABeta()->GetMult()<400) //reject pulser events
                   if (FillFlag) tree->Fill();
               }
           }else if (!evts->IsBETA()){//ion
@@ -304,10 +322,16 @@ int main(int argc, char* argv[]){
                       aida.EY = ey;
                       //!If you need time ordered then we need to modify this
                       aida.T = tsvector_it->first;
-                      aida.Tfast = evts->GetAIDAIon()->GetCluster(i)->GetFastTimestamp() * ClockResolution;                     
-                      aida.x = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionX();
-                      aida.y = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionY();
-                      aida.z = evts->GetAIDAIon()->GetCluster(i)->GetHitPositionZ();
+
+                      uint8_t dx = evts->GetAIDAIon()->GetCluster(i)->GetMaxHitPositionX()-evts->GetAIDAIon()->GetCluster(i)->GetMinHitPositionX();
+                      uint8_t dy = evts->GetAIDAIon()->GetCluster(i)->GetMaxHitPositionY()-evts->GetAIDAIon()->GetCluster(i)->GetMinHitPositionY();
+
+                      aida.Tfast = dx + 0x10 * dy;
+                      //aida.Tfast = (dx&0xF)|(dy<<4&0xF0);
+
+                      aida.x = (double)(evts->GetAIDAIon()->GetCluster(i)->GetMaxHitPositionX()+evts->GetAIDAIon()->GetCluster(i)->GetMinHitPositionX())/2.;
+                      aida.y = (double)(evts->GetAIDAIon()->GetCluster(i)->GetMaxHitPositionY()+evts->GetAIDAIon()->GetCluster(i)->GetMinHitPositionY())/2.;
+
 
                       //aida.nx=(int)evts->GetAIDAIon()->GetCluster(i)->GetXMultiplicity();
                       //aida.ny=(int)evts->GetAIDAIon()->GetCluster(i)->GetYMultiplicity();
@@ -316,7 +340,7 @@ int main(int argc, char* argv[]){
                       aida.nx = (int)evts->GetAIDAIon()->GetMultX((int)aida.z);
                       aida.ny = (int)evts->GetAIDAIon()->GetMultY((int)aida.z);
                       //aida.nz = (int)evts->GetAIDAIon()->GetClustersMultZ();
-                      aida.nz = (int)evts->GetAIDABeta()->GetZHitMult();
+                      aida.nz = (int)evts->GetAIDAIon()->GetZHitMult();
                   }else{//corrlation scaler
                       aida.ID=IDcorr;
                       aida.T=tsvector_it->first;

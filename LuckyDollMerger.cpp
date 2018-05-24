@@ -53,7 +53,7 @@ int main(int argc, char* argv[]){
     int BAend = 0;
 
     int BetaNeutronOffset=-22000;
-    int SumEXYRankcut=10000;
+    int SumEXYRankcut=0;
 
     int XyTDiffCut=5000;
 
@@ -61,7 +61,9 @@ int main(int argc, char* argv[]){
     char* InputMerged = NULL;
     char* InputPID = NULL;
 
-    Int_t Mode=0;
+    Int_t CorrMethod=0;
+
+    Int_t ImplantNoiseRejFlag=0;
 
 
     CommandLineInterface* interface = new CommandLineInterface();
@@ -86,12 +88,17 @@ int main(int argc, char* argv[]){
 
     interface->Add("-pid", "Input PID file", &InputPID);
 
-    interface->Add("-m","Make Simple Tree (0- just separated merged file, 1- make simple saparated tree",&Mode);
     interface->Add("-bnofs", "Beta Neutron offset time (default=-22000)", &BetaNeutronOffset);
 
     interface->Add("-rcut", "Sum Energy ranking cut (0- largest energy, a large number(100000)- disabled)", &SumEXYRankcut);
 
     interface->Add("-tcut", "Time diffrence between X and Y cut (5000 ns by default)", &XyTDiffCut);
+
+    interface->Add("-corrmeth", "Spatial correlation method, 0: old method(default), 1: new method", &CorrMethod);
+
+
+    interface->Add("-impnoiserej", "Time cut to reject low energy noise events, 1 reject , 0 not reject(default)", &ImplantNoiseRejFlag);
+
 
     interface->CheckFlags(argc, argv);
     //Complain about missing mandatory arguments
@@ -110,10 +117,7 @@ int main(int argc, char* argv[]){
     if(OutFile == NULL){
       cout << "No output ROOT file given " << endl;
       //return 2;
-    }    
-
-
-
+    }
 
     cout<<"output file: "<<OutFile<< endl;
     TFile* ofile = new TFile(OutFile,"recreate");
@@ -121,8 +125,8 @@ int main(int argc, char* argv[]){
     TVectorD deadtimecontainer(7);
     for (Int_t i=0;i<7;i++) deadtimecontainer[i]=0;
 
-    if (!(InputAIDA==NULL)){
-        cout<<"Merging"<<endl;
+    if (!(InputAIDA==NULL)&&InputPID==NULL){
+        cout<<"Merging with original merged structure"<<endl;
         TTree* tree = new TTree("tree","tree");
         TTree* treeneutron = new TTree("treeneutron","treeneutron");
         TTree* treeimplant = new TTree("treeimplant","treeimplant");
@@ -131,19 +135,22 @@ int main(int argc, char* argv[]){
         merge->SetAIDAFile(InputAIDA);
         merge->SetBrikenFile(InputBELEN);
         merge->SetBigripsFile(InputBIGRIPS);
+        merge->SetNeutronOffsetTime((long long)BetaNeutronOffset);
         merge->Init();
         merge->BookTreeSingle(tree);
         merge->BookTreeNeutron(treeneutron);
         merge->BookTreeImplant(treeimplant);
 
-        merge->SetNeutronOffsetTime((long long)BetaNeutronOffset);
         cout<<"Set Neutron Beta offset time = "<<merge->GetNeutronOffsetTime()<<endl;
         merge->ReadAIDA();        
         if (InputBIGRIPS!=NULL) merge->ReadBigrips();
         if (InputBELEN!=NULL) merge->ReadBRIKEN();
 
+        if (CorrMethod!=0) {
+            cout<<"New correlation method is chosen!"<<endl;
+            merge->SetOverlapAreaCorr();
+        }
         merge->DoMergeSingle();
-        //merge->DoMergeSingleXYArea();        
 
         //! get deadtime,total time
         deadtimecontainer[0]=merge->GetFinalVetoDeadtime();
@@ -186,68 +193,146 @@ int main(int argc, char* argv[]){
     }
 
     if (!(InputMerged==NULL)){
-        if (Mode==0){
-            /*
-            cout<<"Separate PID"<<endl;
-            Merger *merge=new Merger();
-            merge->ReadPID(InputPID);
-            merge->SetMergedFile(InputMerged);
-            merge->InitPIDSep();
+        cout<<"Separate PID and make simple tree"<<endl;
+        Merger *merge=new Merger();
+        merge->ReadPID(InputPID);
+        merge->SetMergedFile(InputMerged);
+        merge->InitPIDSep();
+        merge->SetSumERankCut(SumEXYRankcut);
+        merge->SetXYTDiffCut(XyTDiffCut);
 
-            deadtimecontainer[0]=merge->GetFinalVetoDeadtime();
-            deadtimecontainer[1]=merge->GetFinalVetoTotaltime();
-            deadtimecontainer[2]=merge->GetF11VetoDeadtime();
-            deadtimecontainer[3]=merge->GetF11VetoTotaltime();
-            deadtimecontainer[4]=merge->GetDownstreamVetoDeadtime();
-            deadtimecontainer[5]=merge->GetDownstreamVetoTotaltime();
-            ofile->cd();
-            merge->BookPIDSepTree();
-            merge->DoSeparatePID();
-
-            for (Int_t i=0;i<merge->GetNri();i++){
-                merge->GetCUTRI(i)->Write();
-            }
-            for (Int_t i=0;i<merge->GetNri();i++){
-                merge->GetTreeRI(i)->Write();
-            }
-            merge->GetTreeRI(-1)->Write();
-            deadtimecontainer.Write("deadtime");
-            ofile->Close();
-            delete merge;
-            */
-        }else{
-            cout<<"Separate PID and make simple tree"<<endl;
-            Merger *merge=new Merger();
-            merge->ReadPID(InputPID);
-            merge->SetMergedFile(InputMerged);
-            merge->InitPIDSep();
-            merge->SetSumERankCut(SumEXYRankcut);
-            merge->SetXYTDiffCut(XyTDiffCut);
-            ofile->cd();
-            merge->BookPIDSepSimpleTree();
-            cout<<"Ranking cut = "<<merge->GetSumERankCut()<<endl;
-            cout<<"TDiff cut = "<<merge->GetXYTDiffCut()<<endl;
-
-            merge->DoSeparatePIDFinalTree();
-            //merge->DoMergeClosePixel();
-
-            for (Int_t i=0;i<merge->GetNri();i++){
-                merge->GetCUTRI(i)->Write();
-            }
-            for (Int_t i=0;i<merge->GetNri();i++){
-                merge->GetTreeRI(i)->Write();
-                merge->GetTreeImpRI(i)->Write();
-            }
-            merge->GetTreeRI(-1)->Write();
-            merge->GetTreeImpRI(-1)->Write();
-
-            merge->GetHist1()->Write();
-            merge->GetHist2()->Write();
-            ofile->Close();
-            delete merge;
+        if (ImplantNoiseRejFlag==0) {
+            merge->DisableImplantNoiseFilterTime();
+            cout<<"Disabled implant-related noise rejection"<<endl;
         }
 
+        ofile->cd();
+        merge->BookPIDSepSimpleTree();
+        cout<<"Ranking cut = "<<merge->GetSumERankCut()<<endl;
+        cout<<"TDiff cut = "<<merge->GetXYTDiffCut()<<endl;
+
+        merge->BookSimulationTree();
+        merge->DoSeparatePIDFinalTree();
+
+        for (Int_t i=0;i<merge->GetNri();i++){
+            merge->GetCUTRI(i)->Write();
+        }
+        for (Int_t i=0;i<merge->GetNri();i++){
+            merge->GetTreeRI(i)->Write();
+            merge->GetTreeImpRI(i)->Write();
+        }
+        merge->GetTreeRI(-1)->Write();
+        merge->GetTreeImpRI(-1)->Write();
+
+        merge->GetHist1()->Write();
+        merge->GetHist2()->Write();
+
+        merge->GetTreeSimIon()->Write();
+        merge->GetTreeSimBeta()->Write();
+        merge->GetTreeSimNeutron()->Write();
+
+        ofile->Close();
+        delete merge;
     }
+
+    //! all together mode (to reduce file size)
+    if ((!(InputAIDA==NULL))&&(!(InputPID==NULL))){
+        cout<<"Merging with final tree"<<endl;
+        //TTree* tree = new TTree("tree","tree");
+        TTree* treeneutron = new TTree("treeneutron","treeneutron");
+        TTree* treeimplant = new TTree("treeimplant","treeimplant");
+
+        Merger *merge=new Merger();
+        merge->SetAIDAFile(InputAIDA);
+        merge->SetBrikenFile(InputBELEN);
+        merge->SetBigripsFile(InputBIGRIPS);
+        merge->SetNeutronOffsetTime((long long)BetaNeutronOffset);
+        merge->Init();
+        //merge->BookTreeSingle(tree);
+        merge->BookTreeNeutron(treeneutron);
+        merge->BookTreeImplant(treeimplant);
+
+        cout<<"Set Neutron Beta offset time = "<<merge->GetNeutronOffsetTime()<<endl;
+        merge->ReadAIDA();
+        if (InputBIGRIPS!=NULL) merge->ReadBigrips();
+        if (InputBELEN!=NULL) merge->ReadBRIKEN();
+
+        if (CorrMethod!=0) {
+            cout<<"New correlation method is chosen!"<<endl;
+            merge->SetOverlapAreaCorr();
+        }
+        ofile->cd();
+
+
+        //! stuff from merger reader
+        merge->ReadPID(InputPID);
+        merge->SetSumERankCut(SumEXYRankcut);
+        merge->SetXYTDiffCut(XyTDiffCut);
+
+        if (ImplantNoiseRejFlag==0) {
+            merge->DisableImplantNoiseFilterTime();
+            cout<<"Disabled implant-related noise rejection"<<endl;
+        }
+        merge->BookPIDSepSimpleTree();
+        cout<<"Ranking cut = "<<merge->GetSumERankCut()<<endl;
+        cout<<"TDiff cut = "<<merge->GetXYTDiffCut()<<endl;
+        merge->BookSimulationTree();
+
+
+        merge->DoMergeSingle();
+        //! get deadtime,total time
+        deadtimecontainer[0]=merge->GetFinalVetoDeadtime();
+        deadtimecontainer[1]=merge->GetFinalVetoTotaltime();
+        deadtimecontainer[2]=merge->GetF11VetoDeadtime();
+        deadtimecontainer[3]=merge->GetF11VetoTotaltime();
+        deadtimecontainer[4]=merge->GetDownstreamVetoDeadtime();
+        deadtimecontainer[5]=merge->GetDownstreamVetoTotaltime();
+        deadtimecontainer[6]=merge->GetTotalTimePulser();
+        ofile->cd();
+
+        //! stuff from merger reader
+        for (Int_t i=0;i<merge->GetNri();i++){
+            merge->GetCUTRI(i)->Write();
+        }
+        for (Int_t i=0;i<merge->GetNri();i++){
+            merge->GetTreeRI(i)->Write();
+            merge->GetTreeImpRI(i)->Write();
+        }
+        merge->GetTreeRI(-1)->Write();
+        merge->GetTreeImpRI(-1)->Write();
+        //! end of stuff from merger reader
+
+
+        treeneutron->Write();
+        treeimplant->Write();
+
+        for (Int_t tubeid=0;tubeid<141;tubeid++){
+            merge->GetPulserHists(tubeid)->Write();
+            merge->GetPulserHistsAll(tubeid)->Write();
+        }
+        merge->GetHist1()->Write();
+        merge->GetHist2()->Write();
+        merge->GetH2Deadtime()->Write();
+        merge->GetH1Deadtime()->Write();
+        merge->GetH2Deadtime2()->Write();
+        merge->GetH1Deadtime2()->Write();
+
+        merge->GetH2Deadtime3()->Write();
+        merge->GetH1Deadtime3()->Write();
+
+        merge->GetH2Deadtime4()->Write();
+        merge->GetH1Deadtime4()->Write();
+
+        merge->GetH1DeadtimePulserChannel()->Write();
+        merge->GetH2D1()->Write();
+        merge->GetH2D2()->Write();
+
+        deadtimecontainer.Write("deadtime");
+        ofile->Close();
+        delete merge;
+        //! Finish----------------
+    }
+
 
     double time_end = get_time();
     cout << "\nProgram Run time: " << time_end - time_start << " s." << endl;

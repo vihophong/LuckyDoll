@@ -388,6 +388,13 @@ void Merger::BookTreeNeutron(TTree* tree)
 }
 void Merger::BookTreeImplant(TTree* tree)
 {
+    ftreeImplant = tree;
+    ftreeImplant->Branch("implant",&flocalimp);
+    ftreeImplant->BranchRef();
+}
+
+void Merger::BookDeadTimeTree(TTree* tree)
+{
     ftreedeadtime = tree;
     ftreedeadtime->Branch("tubeno",&ftubeno,"tubeno/D");
     ftreedeadtime->Branch("totcnt",&ftotcnt,"totcnt/D");
@@ -396,12 +403,6 @@ void Merger::BookTreeImplant(TTree* tree)
     ftreedeadtime->Branch("dtpulcnt",&fdtpulcnt,"dtpulcnt/D");
     ftreedeadtime->BranchRef();
 }
-
-void Merger::BookDeadTimeTree(TTree* tree)
-{
-
-}
-
 
 
 void Merger::BookPIDSepSimpleTree(){

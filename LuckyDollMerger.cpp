@@ -241,16 +241,18 @@ int main(int argc, char* argv[]){
         //TTree* tree = new TTree("tree","tree");
         TTree* treeneutron = new TTree("treeneutron","treeneutron");
         TTree* treeimplant = new TTree("treeimplant","treeimplant");
-
+        TTree* treedeadtime= new TTree("treedeadtime","treedeadtime");
         Merger *merge=new Merger();
         merge->SetAIDAFile(InputAIDA);
         merge->SetBrikenFile(InputBELEN);
         merge->SetBigripsFile(InputBIGRIPS);
         merge->SetNeutronOffsetTime((long long)BetaNeutronOffset);
+
         merge->Init();
         //merge->BookTreeSingle(tree);
         merge->BookTreeNeutron(treeneutron);
         merge->BookTreeImplant(treeimplant);
+        merge->BookDeadTimeTree(treedeadtime);
 
         cout<<"Set Neutron Beta offset time = "<<merge->GetNeutronOffsetTime()<<endl;
         merge->ReadAIDA();
@@ -305,6 +307,7 @@ int main(int argc, char* argv[]){
 
         treeneutron->Write();
         treeimplant->Write();
+        treedeadtime->Write();
 
         for (Int_t tubeid=0;tubeid<141;tubeid++){
             merge->GetPulserHists(tubeid)->Write();

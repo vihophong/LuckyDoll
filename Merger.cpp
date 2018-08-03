@@ -109,6 +109,8 @@ Merger::Merger():fbigrips(),decay()
 
     //! overlap area flag
     fisoverlapareacorr = false;
+
+    ftreedeadtime=NULL;
 }
 
 Merger::~Merger()
@@ -386,9 +388,18 @@ void Merger::BookTreeNeutron(TTree* tree)
 }
 void Merger::BookTreeImplant(TTree* tree)
 {
-    ftreeImplant = tree;
-    ftreeImplant->Branch("implant",&flocalimp);
-    ftreeImplant->BranchRef();
+    ftreedeadtime = tree;
+    ftreedeadtime->Branch("tubeno",&ftubeno,"tubeno/D");
+    ftreedeadtime->Branch("totcnt",&ftotcnt,"totcnt/D");
+    ftreedeadtime->Branch("totcntall",&ftotcntall,"totcntall/D");
+    ftreedeadtime->Branch("expcnt",&fexpcnt,"expcnt/D");
+    ftreedeadtime->Branch("dtpulcnt",&fdtpulcnt,"dtpulcnt/D");
+    ftreedeadtime->BranchRef();
+}
+
+void Merger::BookDeadTimeTree(TTree* tree)
+{
+
 }
 
 
@@ -1078,8 +1089,10 @@ void Merger::DoMergeSingle()
         }
     }
 
+
     //! Build Decay
     //!**************
+    /*
     ktotal=faidaBetaMap.size();
     k=0;
     for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
@@ -1132,32 +1145,6 @@ void Merger::DoMergeSingle()
         }
         if (ndelayedneutron>0) ncorrwneutron++;
 
-        //!******************************ANCINARY detector****************
-
-        /*
-        //! Correlate imp with f11 right side only
-        ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
-        ts2 = (Long64_t)ts + (Long64_t)fBetaAncTWup;
-        corrts = 0;
-        ncorr=0;
-        correntry = 0;
-        check_time = 0;
-        fF11MapR_it = fF11RMap.lower_bound(ts1);
-        while(fF11MapR_it!=fF11RMap.end()&&fF11MapR_it->first<ts2){
-            corrts = (Long64_t) fF11MapR_it->first;
-            correntry = fF11MapR_it->second;
-            if (corrts!=check_time){
-                check_time=corrts;
-                ftrAnc->GetEvent(correntry);
-                BELENHit* hit=new BELENHit;
-                fanc->Copy(*hit);
-                flocalbetaS->AddAnc(hit);
-                ncorr++;
-                break;
-            }
-            fF11MapR_it++;
-        }
-        */
 
         //! Correlate imp with f11 left and right
         ts1 = (Long64_t)ts - (Long64_t)fBetaAncTWlow;
@@ -1307,6 +1294,13 @@ void Merger::DoMergeSingle()
         k++;
     }
 
+    */
+    ftubeno=0;
+    ftotcnt=0;
+    ftotcntall=0;
+    fexpcnt=0;
+    fdtpulcnt=0;
+
 
     TSpectrum *s = new TSpectrum();
     ftotaltimepulser=(Double_t)(ftsendpulser-ftsbeginpulser)/1e9;
@@ -1323,12 +1317,19 @@ void Merger::DoMergeSingle()
         Double_t *xpeaks = s->GetPositionX();
         Double_t xp=0;
         if (s->GetNPeaks()>0) {
+
             xp = xpeaks[0];
             fhpulser[i]->Fit("gaus","RQ","",xp-100,xp+100);
             Double_t sigma=fhpulser[i]->GetFunction("gaus")->GetParameter(2);
             Double_t totalcounts=fhpulser[i]->Integral(fhpulser[i]->GetXaxis()->FindBin(xp-sigma*10),fhpulser[i]->GetXaxis()->FindBin(xp+sigma*10));
             Double_t totalcountsall=fhpulserall[i]->Integral(fhpulserall[i]->GetXaxis()->FindBin(xp-sigma*10),fhpulserall[i]->GetXaxis()->FindBin(xp+sigma*10));
             //cout<<i<<"-"<<totalcounts<<"-"<<totalcountsall<<endl;
+            ftubeno=i;
+            ftotcnt=totalcounts;
+            ftotcntall=totalcountsall;
+            fexpcnt=expectedcounts;
+            fdtpulcnt=ncountsDtPuser;
+            if (ftreedeadtime!=NULL) ftreedeadtime->Fill();
             fh2deadtime->Fill(i,100-totalcounts/expectedcounts*100);
             fh1deadtime->Fill(100-totalcounts/expectedcounts*100);
 

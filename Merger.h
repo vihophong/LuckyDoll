@@ -162,6 +162,7 @@ public:
 
     void DisableImplantNoiseFilterTime(){fflagimpnoiserej = false;}
 
+    void BookDeadTimeTree(TTree* treedeadtime);
 
 protected:
     char* finputAida;
@@ -424,6 +425,18 @@ protected:
      Short_t fimpnoisefilter_dz;
      Long64_t fimpnoisefilter_dt; //unit ns
      Bool_t fflagimpnoiserej; // unit micro-second
+
+
+
+     //! tree of deadtime
+     Double_t ftubeno;
+     Double_t ftotcnt;
+     Double_t ftotcntall;
+     Double_t fexpcnt;
+     Double_t fdtpulcnt;
+     TTree* ftreedeadtime;
+
+
 
 
      //! temp hist

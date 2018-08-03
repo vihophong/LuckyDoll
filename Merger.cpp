@@ -571,7 +571,7 @@ void Merger::ReadBRIKEN(unsigned int startN, unsigned int stopN,unsigned int sta
         }
         if (fanc->GetMyPrecious()==1&&fanc->GetID()==2) fF11LMap.insert(make_pair(fanc->GetTimestamp(),jentry));
 
-        if (fanc->GetMyPrecious()==1) fF11LRMap.insert(make_pair(fanc->GetTimestamp(),jentry));
+        if (fanc->GetMyPrecious()==1&&(fanc->GetID()==1||fanc->GetID()==2)) fF11LRMap.insert(make_pair(fanc->GetTimestamp(),jentry));
 
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==1) fVetoTopMap.insert(make_pair(fanc->GetTimestamp(),jentry));
         if (fanc->GetMyPrecious()==2&&fanc->GetID()==2) fVetoBotMap.insert(make_pair(fanc->GetTimestamp(),jentry));
@@ -687,7 +687,7 @@ void Merger::DoMergeSingle()
         //! add all veto map
         fvetoMap.insert(make_pair(ts,entry));
     }
-    cout<<"vetosizef11"<<fvetoMap.size()<<endl;
+    cout<<"vetosizef11="<<fvetoMap.size()<<endl;
     ff11vetototaltime=(Long64_t)lastts+fNeuAncTWup-ff11vetototaltime;
     ff11vetodeadtime+=fNeuAncTWup;
 

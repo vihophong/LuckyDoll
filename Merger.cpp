@@ -875,6 +875,7 @@ void Merger::DoMergeSingle()
             fvetoMap_it++;
         }
     }
+    cout<<"pulser size="<<fdtpulserMap.size()<<" - veto map="<<fvetoMap.size()<<endl;
     cout<<"number of rejected pulser="<<ncorrcheck<<endl;
     cout<<"************Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu<<endl;
 

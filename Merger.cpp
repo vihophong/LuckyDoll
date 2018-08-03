@@ -687,7 +687,7 @@ void Merger::DoMergeSingle()
         //! add all veto map
         fvetoMap.insert(make_pair(ts,entry));
     }
-    cout<<"vetosizef11="<<fvetoMap.size()<<endl;
+    //cout<<"vetosizef11="<<fvetoMap.size()<<endl;
     ff11vetototaltime=(Long64_t)lastts+fNeuAncTWup-ff11vetototaltime;
     ff11vetodeadtime+=fNeuAncTWup;
 
@@ -851,7 +851,7 @@ void Merger::DoMergeSingle()
         }
     }
 
-    Int_t ncorrcheck=0;
+    //Int_t ncorrcheck=0;
     for (fdtpulserMap_it=fdtpulserMap.begin();fdtpulserMap_it!=fdtpulserMap.end();fdtpulserMap_it++){
         BELENHit* neuhit = (BELENHit*) fdtpulserMap_it->second;
         Int_t id=neuhit->GetID()-1;
@@ -859,6 +859,7 @@ void Merger::DoMergeSingle()
         if (neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulserall[id]->Fill(neuhit->GetEnergy());
         if (neuhit->GetF11Time()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
 
+        /*
         unsigned long long ts=fdtpulserMap_it->first;
         //! Correlate imp with bigrips
         Long64_t ts1 = (Long64_t)ts - 400000;
@@ -875,9 +876,10 @@ void Merger::DoMergeSingle()
             }
             fvetoMap_it++;
         }
+        */
     }
     cout<<"pulser size="<<fdtpulserMap.size()<<" - veto map="<<fvetoMap.size()<<endl;
-    cout<<"number of rejected pulser="<<ncorrcheck<<endl;
+    //cout<<"number of rejected pulser="<<ncorrcheck<<endl;
     cout<<"************Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu<<endl;
 
     //! Write out neutron tree

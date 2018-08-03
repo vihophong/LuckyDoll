@@ -850,14 +850,32 @@ void Merger::DoMergeSingle()
         }
     }
 
+    Int_t ncorrcheck=0;
     for (fdtpulserMap_it=fdtpulserMap.begin();fdtpulserMap_it!=fdtpulserMap.end();fdtpulserMap_it++){
         BELENHit* neuhit = (BELENHit*) fdtpulserMap_it->second;
         Int_t id=neuhit->GetID()-1;
         if (id!=140) cout<<"error! "<<id<<endl;
         if (neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulserall[id]->Fill(neuhit->GetEnergy());
         if (neuhit->GetF11Time()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
-    }
 
+        unsigned long long ts=fdtpulserMap_it->first;
+        //! Correlate imp with bigrips
+        Long64_t ts1 = (Long64_t)ts - 400000;
+        Long64_t ts2 = (Long64_t)ts + 0;
+        Long64_t corrts = 0;
+        Long64_t check_time = 0;
+        fvetoMap_it = fvetoMap.lower_bound(ts1);
+        while(fvetoMap_it!=fvetoMap.end()&&fvetoMap_it->first<ts2){
+            corrts = (Long64_t) fvetoMap_it->first;
+            if (corrts!=check_time){
+                check_time=corrts;
+                ncorrcheck++;
+                break;
+            }
+            fvetoMap_it++;
+        }
+    }
+    cout<<"number of rejected pulser="<<ncorrcheck<<endl;
     cout<<"************Total number of neutron="<<ntotalneu<<" ,vetoed neutrons="<<nvetoneu<<endl;
 
     //! Write out neutron tree

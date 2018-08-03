@@ -1093,7 +1093,7 @@ void Merger::DoMergeSingle()
 
     //! Build Decay
     //!**************
-    /*
+
     ktotal=faidaBetaMap.size();
     k=0;
     for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
@@ -1295,7 +1295,7 @@ void Merger::DoMergeSingle()
         k++;
     }
 
-    */
+
     ftubeno=0;
     ftotcnt=0;
     ftotcntall=0;

@@ -408,8 +408,8 @@ void Merger::BookDeadTimeTree(TTree* tree)
 void Merger::BookPIDSepSimpleTree(){
     for (Int_t i=0;i<nri;i++){
         ftreeRI[i]->Branch("idx",&nionbetacorr,"idx/I");
-        ftreeRI[i]->Branch("ion",&flocalimp);
-        ftreeRI[i]->Branch("beta",&flocalbetaS);
+        //ftreeRI[i]->Branch("ion",&flocalimp);
+        //ftreeRI[i]->Branch("beta",&flocalbetaS);
         ftreeRI[i]->Branch("decay",&decay,"evt/l:ts/l:t/D:x/D:y/D:ex/D:ey/D:ion_x/D:ion_y/D:ion_ex/D:ion_ey/D:zet/D:aoq/D:beta/D:deltaxy/D:z/S:ion_z/S:multx/S:multy/S:multz/S:ndecay/S:isbump/S");
         ftreeRI[i]->Branch("gc_hit",&decay.gc_hit,"gc_hit/I");
         ftreeRI[i]->Branch("gc_E",decay.gc_E,"gc_E[gc_hit]/D");

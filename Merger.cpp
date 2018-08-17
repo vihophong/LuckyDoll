@@ -506,6 +506,7 @@ void Merger::ReadAIDA(unsigned int start, unsigned int stop)
     if (start==0) sstartI = 0; else sstartI = start;
     if (stop==0) sstopI = (unsigned int) fnentriesAIDA; else sstopI = stop;
 
+    //sstopI=1;
     for (unsigned int jentry = sstartI;jentry < sstopI;jentry++){
         ftrAIDA->GetEvent(jentry);
         if (faida->GetID()==4){
@@ -869,7 +870,7 @@ void Merger::DoMergeSingle()
         Int_t id=neuhit->GetID()-1;
         if (id!=140) cout<<"error! "<<id<<endl;
         if (neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulserall[id]->Fill(neuhit->GetEnergy());
-        if (neuhit->GetF11Time()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
+        if (neuhit->GetFinalVetoTime()<0&&neuhit->GetTimestamp()>ftsbeginpulser&&neuhit->GetTimestamp()<ftsendpulser) fhpulser[id]->Fill(neuhit->GetEnergy());
 
         /*
         unsigned long long ts=fdtpulserMap_it->first;
@@ -1094,6 +1095,7 @@ void Merger::DoMergeSingle()
     //! Build Decay
     //!**************
 
+    
     ktotal=faidaBetaMap.size();
     k=0;
     for (faidaBetaMap_it=faidaBetaMap.begin();faidaBetaMap_it!=faidaBetaMap.end();faidaBetaMap_it++){
@@ -1294,7 +1296,7 @@ void Merger::DoMergeSingle()
         if (nionbetacorr>0) ncorrwbeta++;
         k++;
     }
-
+    
 
     ftubeno=0;
     ftotcnt=0;
@@ -1332,16 +1334,18 @@ void Merger::DoMergeSingle()
             fdtpulcnt=ncountsDtPuser;
             if (ftreedeadtime!=NULL) ftreedeadtime->Fill();
             fh2deadtime->Fill(i,100-totalcounts/expectedcounts*100);
-            fh1deadtime->Fill(100-totalcounts/expectedcounts*100);
+            if (i!=140) fh1deadtime->Fill(100-totalcounts/expectedcounts*100);
+
+	    cout<<"total counts of tube "<<i<<" = "<<totalcounts<<endl;
 
             fh2deadtime2->Fill(i,100-totalcountsall/expectedcounts*100);
-            fh1deadtime2->Fill(100-totalcountsall/expectedcounts*100);
+            if (i!=140) fh1deadtime2->Fill(100-totalcountsall/expectedcounts*100);
 
             fh2deadtime3->Fill(i,100-totalcounts/ncountsDtPuser*100);
-            fh1deadtime3->Fill(100-totalcounts/ncountsDtPuser*100);
+            if (i!=140) fh1deadtime3->Fill(100-totalcounts/ncountsDtPuser*100);
 
             fh2deadtime4->Fill(i,100-totalcountsall/ncountsDtPuser*100);
-            fh1deadtime4->Fill(100-totalcountsall/ncountsDtPuser*100);
+            if (i!=140) fh1deadtime4->Fill(100-totalcountsall/ncountsDtPuser*100);
         }
     }
     delete s;

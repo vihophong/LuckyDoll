@@ -22,14 +22,14 @@ Merger::Merger():fbigrips(),decay()
     fNeuGammaTWup = 100000;
     fNeuGammaTWlow = 800000;
 
-    fNeuAncTWup = 400000; //400 us
+    fNeuAncTWup = 600000; //400 us
     fNeuAncTWlow = 0;
 
     //fNeuAncTWup = 1000000;
     //fNeuAncTWlow = 1000000;
 
-    fNeuBetaTWup = 400000; //400 us
-    fNeuBetaTWlow = 400000; //400 us
+    fNeuBetaTWup = 600000; //400 us
+    fNeuBetaTWlow = 600000; //400 us
     fNeuBetaoffset = -22000;
     //fNeuBetaoffset = 0;//for simulation
 

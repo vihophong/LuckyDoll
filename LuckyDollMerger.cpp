@@ -61,9 +61,12 @@ int main(int argc, char* argv[]){
     char* InputMerged = NULL;
     char* InputPID = NULL;
 
-    Int_t CorrMethod=0;
+    Int_t CorrMethod=0;   
 
     Int_t ImplantNoiseRejFlag=0;
+
+
+    Int_t IsIsomerMode=0;
 
 
     CommandLineInterface* interface = new CommandLineInterface();
@@ -87,6 +90,8 @@ int main(int argc, char* argv[]){
     interface->Add("-i", "Input Merged file", &InputMerged);
 
     interface->Add("-pid", "Input PID file", &InputPID);
+
+    interface->Add("-isomer", "Isomer mode : 0- disable (default), 1-enable", &IsIsomerMode);
 
     interface->Add("-bnofs", "Beta Neutron offset time (default=-22000)", &BetaNeutronOffset);
 
@@ -192,6 +197,9 @@ int main(int argc, char* argv[]){
         //! Finish----------------
     }
 
+
+    
+    /*
     if (!(InputMerged==NULL)){
         cout<<"Separate PID and make simple tree"<<endl;
         Merger *merge=new Merger();
@@ -234,9 +242,12 @@ int main(int argc, char* argv[]){
         ofile->Close();
         delete merge;
     }
+    */    
+
+
 
     //! all together mode (to reduce file size)
-    if ((!(InputAIDA==NULL))&&(!(InputPID==NULL))){
+    if ((IsIsomerMode==0)&&(!(InputAIDA==NULL))&&(!(InputPID==NULL))){
         cout<<"Merging with final tree"<<endl;
         //TTree* tree = new TTree("tree","tree");
         TTree* treeneutron = new TTree("treeneutron","treeneutron");
@@ -334,9 +345,55 @@ int main(int argc, char* argv[]){
         ofile->Close();
         delete merge;
         //! Finish----------------
+    }        
+
+
+
+    //! Isomer Mode
+    if ((IsIsomerMode!=0)&&(!(InputAIDA==NULL))&&(!(InputPID==NULL))){
+        cout<<"Merging in ISOMER mode"<<endl;
+        //TTree* tree = new TTree("tree","tree");
+        Merger *merge=new Merger();
+        merge->SetAIDAFile(InputAIDA);
+        merge->SetBrikenFile(InputBELEN);
+        merge->SetBigripsFile(InputBIGRIPS);
+        merge->SetNeutronOffsetTime((long long)BetaNeutronOffset);
+
+        merge->Init();
+
+        cout<<"Set Neutron Beta offset time = "<<merge->GetNeutronOffsetTime()<<endl;
+        merge->ReadAIDAImpOnly();
+        if (InputBIGRIPS!=NULL) merge->ReadBigrips();
+        if (InputBELEN!=NULL) merge->ReadBRIKENAncGammaOnly();
+        //if (InputBELEN!=NULL) merge->ReadBRIKEN(0,0,0,0,0,0);
+
+        merge->ReadSlewCorr();
+        merge->DoAddback();
+        ofile->cd();
+        //! stuff from merger reader
+        merge->ReadPID(InputPID);
+        merge->BookIsomerSimpleTree();
+
+        merge->DoMergeIsomer();
+        ofile->cd();
+
+        //! stuff from merger reader
+        for (Int_t i=0;i<merge->GetNri();i++){
+            merge->GetCUTRI(i)->Write();
+        }
+        for (Int_t i=0;i<merge->GetNri();i++){
+            merge->GetTreeRI(i)->Write();
+        }
+        merge->GetTreeRI(-1)->Write();
+
+        merge->GetHist1()->Write();
+        merge->GetHist2()->Write();
+
+        //! end of stuff from merger reader
+        ofile->Close();
+        delete merge;
+        //! Finish----------------
     }
-
-
     double time_end = get_time();
     cout << "\nProgram Run time: " << time_end - time_start << " s." << endl;
     timer.Stop();

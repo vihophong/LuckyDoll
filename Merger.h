@@ -25,8 +25,8 @@
 #define MaxNRI 1000
 
 
-const Int_t kMaxGamma = 50;
-const Int_t kMaxNeutron = 50;
+const Int_t kMaxGamma = 500;
+const Int_t kMaxNeutron = 500;
 
 typedef struct {
     ULong64_t evt;
@@ -53,6 +53,66 @@ typedef struct {
     Double_t neub_y[kMaxNeutron];
 
 } datatype;
+
+typedef struct {
+    ULong64_t evt;
+    ULong64_t ts; 	 //timestamp in ns
+    Double_t ion_t,ion_x,ion_y,ion_ex,ion_ey,zet,aoq,beta;
+    Double_t F11L_T,F11L_E,F11R_T,F11R_E,F7_T,F7_E,veto_T,veto_E,de_T,de_E;
+    Short_t ion_z,multx,multy,multz;
+
+    Int_t gc_hit;
+    Double_t gc_E[kMaxGamma];
+    Double_t gc_T[kMaxGamma];//gamma time in ns
+    Double_t gc_Tslew[kMaxGamma];//gamma time in ns
+    Int_t gc_ch[kMaxGamma];
+
+    Int_t gc1_hit;
+    Double_t gc1_E[kMaxGamma];
+    Double_t gc1_T[kMaxGamma];//gamma time in ns
+    Double_t gc1_Tslew[kMaxGamma];//gamma time in ns
+    Int_t gc1_ch[kMaxGamma];
+
+    Int_t gc2_hit;
+    Double_t gc2_E[kMaxGamma];
+    Double_t gc2_T[kMaxGamma];//gamma time in ns
+    Double_t gc2_Tslew[kMaxGamma];//gamma time in ns
+    Int_t gc2_ch[kMaxGamma];
+
+    Int_t ab1_hit;
+    Double_t ab1_E[kMaxGamma];
+    Double_t ab1_T[kMaxGamma];//gamma time in ns
+    Double_t ab1_Tslew[kMaxGamma];//gamma time in ns
+    Int_t ab1_ch[kMaxGamma];//first hit channel
+    Short_t ab1_mult[kMaxGamma];//multiplicity
+
+    Int_t ab2_hit;
+    Double_t ab2_E[kMaxGamma];
+    Double_t ab2_T[kMaxGamma];//gamma time in ns
+    Double_t ab2_Tslew[kMaxGamma];//gamma time in ns
+    Int_t ab2_ch[kMaxGamma];//first hit channel
+    Short_t ab2_mult[kMaxGamma];//multiplicity
+
+    Int_t neu_hit;
+    Double_t neu_E[kMaxNeutron];
+    Double_t neu_T[kMaxNeutron];//moderation time in us
+    Int_t neu_ch[kMaxNeutron];
+
+} datatypeisomer;
+
+typedef struct{
+    Double_t gc_E;
+    Double_t gc_T;//gamma time in ns
+    Int_t gc_ch;
+} gammahit;
+
+typedef struct{
+    Double_t ab_E;
+    unsigned long long ab_T;//gamma time in ns
+    Double_t ab_Tslew;//gamma time in ns
+    Int_t ab_ch;//first hit channel
+    Short_t ab_mult[4];//multiplicity
+} gammaab;
 
 
 typedef struct {
@@ -83,10 +143,17 @@ public:
     void SetBigripsFile(char* bigripsfile){finputBigrips = bigripsfile;}
     void SetBrikenFile(char* brikenfile){finputBriken = brikenfile;}
     void Init();
-    void ReadBigrips();
+    // normal mode of merging
+    void ReadBigrips();  
     void ReadAIDA(unsigned int start = 0, unsigned int stop = 0);
     void ReadBRIKEN(unsigned int startN=0, unsigned int stopN=0,unsigned int startG=0, unsigned int stopG=0,unsigned int startA=0, unsigned int stopA=0);
     void DoMergeSingle();    
+
+    // isomer mode
+    void ReadAIDAImpOnly(unsigned int start = 0, unsigned int stop = 0);
+    void ReadBRIKENAncGammaOnly(unsigned int startN=0, unsigned int stopN=0,unsigned int startG=0, unsigned int stopG=0,unsigned int startA=0, unsigned int stopA=0);
+    void DoMergeIsomer();
+
 
     void BookTreeSingle(TTree* tree);
     void BookTreeNeutron(TTree* tree);
@@ -104,6 +171,10 @@ public:
     void SetMergedFile(char* mergedfile){finputMerged = mergedfile;}
     void InitPIDSep();
     void BookPIDSepSimpleTree();
+    //! for isomer
+    void BookIsomerSimpleTree();
+
+
     Int_t GetNri(){return nri;}
     TTree* GetTreeRI(Int_t i){if (i<0) return ftreeallRI; else return ftreeRI[i];}
     TTree* GetTreeImpRI(Int_t i){if (i<0) return ftreeimplantAll;return ftreeimplantRI[i];}
@@ -114,6 +185,9 @@ public:
 
     void SeparatePIDFinal();
     void DoSeparatePIDFinalTree();
+
+    void CopyAddbackData(gammaab* ab_src,gammaab* ab_des);
+    void DoAddback();
 
     TH1F* GetHist1(){return fh1;}
     TH1F* GetHist2(){return fh2;}
@@ -155,6 +229,10 @@ public:
 
     void ResetSimpleData();
 
+
+    //! reset isomer data
+    void ResetIsomerData();
+
     void BookSimulationTree();
     TTree* GetTreeSimIon(){return ionsimtree;}
     TTree* GetTreeSimBeta(){return betasimtree;}
@@ -163,6 +241,15 @@ public:
     void DisableImplantNoiseFilterTime(){fflagimpnoiserej = false;}
 
     void BookDeadTimeTree(TTree* treedeadtime);
+
+
+    //!stuff for slew correction
+    void ReadSlewCorr();
+    Bool_t isslewcorr;
+    Double_t a[8];
+    Double_t b[8];
+    Double_t c[8];
+    Double_t d[8];
 
 protected:
     char* finputAida;
@@ -176,7 +263,6 @@ protected:
 
     //! tree to be read
     TTree* ftrAIDA;
-
     TTree* ftrAIDABeta;
     TTree* ftrAIDAIon;
 
@@ -219,6 +305,10 @@ protected:
     std::multimap < unsigned long long, IonBetaMult* > faidaImplantMapFull;
     std::multimap < unsigned long long, BELENHit*> fhe3Map;
     std::multimap < unsigned long long, unsigned int> fcloverMap;
+    std::multimap < unsigned long long, gammaab*> faddbackclover1Map;
+    std::multimap < unsigned long long, gammaab*> faddbackclover2Map;
+
+
     std::multimap < unsigned long long, unsigned int> fancMap;
     std::multimap < unsigned long long, BELENHit*> fdtpulserMap;
     std::multimap < unsigned long long, unsigned int>::iterator fbigripsMap_it;
@@ -228,6 +318,9 @@ protected:
     std::multimap < unsigned long long, IonBetaMult* > ::iterator faidaImplantMapFull_it;
     std::multimap < unsigned long long, BELENHit*>::iterator fhe3Map_it;
     std::multimap < unsigned long long, unsigned int>::iterator fcloverMap_it;
+    std::multimap < unsigned long long, gammaab*>::iterator faddbackclover1Map_it;
+    std::multimap < unsigned long long, gammaab*>::iterator faddbackclover2Map_it;
+
     std::multimap < unsigned long long, unsigned int>::iterator fancMap_it;
     std::multimap < unsigned long long, BELENHit*>::iterator fdtpulserMap_it;
 
@@ -285,8 +378,11 @@ protected:
 
      BELENHit* flocalneutron;
 
-     //! simple data
+     //! simple decay data
      datatype decay;
+
+     //! simple isomer data
+     datatypeisomer isomer;
 
      //! Merger parameters
      bool fisoverlapareacorr;
@@ -332,6 +428,16 @@ protected:
 
      long long fF11LGammaTWlow;
      long long fF11LGammaTWup;
+
+     //! TW for Isomer
+     long long fPIDGammaTWlow;
+     long long fPIDGammaTWup;
+     long long fPIDVetoTWlow;
+     long long fPIDVetoTWup;
+     long long fPIDF11TWlow;
+     long long fPIDF11TWup;
+     long long fPIDdETWlow;
+     long long fPIDdETWup;
 
      double fminneue;
      double fmaxneue;
@@ -452,6 +558,7 @@ protected:
      TTree* ionsimtree;
      TTree* betasimtree;
      TTree* neutronsimtree;
+
 
 };
 

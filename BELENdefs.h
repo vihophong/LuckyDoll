@@ -1,0 +1,12 @@
+#define NCounter 140
+#define IdDTPulser 95
+#define IdSyncPulser 160
+#define Index1UPlastic 9
+#define Index1F11LG 10
+#define Index1F11 11
+#define Index1dE 12
+#define Index1AIDAPL 13
+#define ScintillatorType 1
+#define SilliconType 2
+#define PulserType 3
+#define BRIKENClockResolution 20
